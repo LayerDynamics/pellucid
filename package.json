@@ -20,12 +20,14 @@
     "e2e:visual": "bunx playwright test --project=web-visual",
     "e2e:desktop": "bunx wdio run wdio.conf.ts",
     "format": "bun run --filter='*' format",
-    "clean": "bun run --filter='*' clean && rm -rf node_modules .bun"
+    "clean": "bun run --filter='*' clean && rm -rf node_modules .bun",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@playwright/test": "1.49.1",
     "@types/bun": "1.1.14",
     "@types/node": "22.10.5",
+    "husky": "9.1.7",
     "@wdio/cli": "9.4.4",
     "@wdio/local-runner": "9.4.4",
     "@wdio/mocha-framework": "9.4.4",

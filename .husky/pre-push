@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Pellucid pre-push gate (SPEC-001 OP-19, plan T0.12).
+#
+# Runs the universal CI gate's fast subset locally so a broken push fails
+# at the developer's machine, not CI. Mirrors the original WorldMonitor
+# pre-push hook's intent: typecheck, lint, cargo nextest, the four
+# Pellucid tooling gates, and version sync. Playwright e2e is skipped
+# because it spawns a dev server (~30s); CI runs it on every PR via
+# .github/workflows/test-linux-app.yml.
+
+set -euo pipefail
+
+# Allow opting out for emergencies — but only with an explicit env var so
+# `git push --no-verify` is not the easy path.
+if [[ "${PELLUCID_SKIP_PREPUSH:-}" == "1" ]]; then
+    printf '[pre-push] PELLUCID_SKIP_PREPUSH=1 — skipping universal gate\n' >&2
+    exit 0
+fi
+
+cd "$(git rev-parse --show-toplevel)"
+
+steps=(
+    "cargo fmt --check"
+    "cargo clippy --workspace --all-targets -- -D warnings"
+    "cargo nextest run --workspace"
+    "bun run --filter='*' typecheck"
+    "bun run --filter='*' test"
+    "bun run tools/check-cache-keys.ts"
+    "bun run tools/check-csp.ts"
+    "bun run tools/check-edge-imports.ts"
+    "bun run tools/version-sync.ts"
+)
+
+for step in "${steps[@]}"; do
+    printf '\n[pre-push] %s\n' "$step"
+    if ! eval "$step"; then
+        printf '\n[pre-push] FAILED: %s\n' "$step" >&2
+        printf '[pre-push] push refused. Fix the failure above or set PELLUCID_SKIP_PREPUSH=1 (not recommended).\n' >&2
+        exit 1
+    fi
+done
+
+printf '\n[pre-push] all gates passed\n'
