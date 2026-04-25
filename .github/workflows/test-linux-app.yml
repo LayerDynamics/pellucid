@@ -1,0 +1,76 @@
+name: test-linux-app
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  rust-tests:
+    name: cargo nextest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - name: install Tauri Linux deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev
+      - run: cargo nextest run --workspace --all-targets
+
+  bun-tests:
+    name: bun test (webview + convex + tools)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run --filter='*' test
+
+  e2e-web:
+    name: playwright web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install --with-deps chromium
+      - run: bunx playwright test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  e2e-desktop:
+    name: webdriverio desktop (tauri-driver)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: install Tauri Linux deps + webkit2gtk-driver
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev webkit2gtk-driver xvfb
+      - run: cargo install tauri-driver --locked
+      - run: bun install --frozen-lockfile
+      - run: bun run --filter=@pellucid/webview build
+      - run: cargo build --release -p pellucid-tauri
+      - run: xvfb-run --auto-servernum bun run e2e:desktop
+        env:
+          PELLUCID_TAURI_BIN: ${{ github.workspace }}/target/release/pellucid-tauri

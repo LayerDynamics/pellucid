@@ -1,0 +1,43 @@
+name: proto-check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "proto/**"
+      - "crates/pellucid-codegen/**"
+      - "crates/pellucid-handlers/src/generated/**"
+      - "webview/src/generated/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "proto/**"
+      - "crates/pellucid-codegen/**"
+      - "crates/pellucid-handlers/src/generated/**"
+      - "webview/src/generated/**"
+  workflow_dispatch:
+
+jobs:
+  proto-drift:
+    name: regenerate and diff (OP-20)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: bufbuild/buf-action@v1
+        with:
+          version: latest
+      - run: bun install --frozen-lockfile
+      - name: regenerate stubs
+        run: |
+          if [ -f Justfile ]; then
+            just gen
+          else
+            echo "no Justfile yet, codegen wires at T0.10 + T2.5"
+          fi
+      - name: fail on drift
+        run: git diff --exit-code
