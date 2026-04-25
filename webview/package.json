@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "react-dom": "19.0.0",
+    "zustand": "5.0.2"
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "15.11.7",
