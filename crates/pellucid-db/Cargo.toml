@@ -11,3 +11,12 @@ description = "SQLite handle pool, migrations, pragmas"
 workspace = true
 
 [dependencies]
+pellucid-core = { path = "../pellucid-core" }
+sqlx = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

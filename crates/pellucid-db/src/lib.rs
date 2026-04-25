@@ -1,32 +1,38 @@
-//! pellucid-db
+//! pellucid-db — SQLite handle pool, migrations, and pragma enforcement
+//! for every Pellucid binary that needs a canonical store. SPEC-001 §6.
 //!
-//! SQLite handle pool, migrations, pragmas.
+//! Public surface:
 //!
-//! See `docs/specs/SPEC-001-pellucid-stack-rebuild.md` §11 for this crate's role
-//! in the Pellucid workspace.
+//! - [`Pool`] — type alias for `sqlx::SqlitePool` so dependent crates
+//!   refer to a single name.
+//! - [`open`] / [`open_in_memory`] — async constructors that enforce
+//!   the spec-mandated PRAGMAs and run migrations.
+//! - [`migrate`] — applies the bundled migrations directory; idempotent.
+//! - [`pragmas`] — exposes the canonical PRAGMA list as a slice for
+//!   diagnostic / introspection use.
+
+pub mod error;
+pub mod migrate;
+pub mod pool;
+
+pub use error::DbError;
+pub use migrate::migrate;
+pub use pool::{Pool, SqliteOpenOptions, open, open_in_memory, pragmas};
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.
-///
-/// Used by the universal smoke test (per implementation plan §1.1) so every
-/// crate has at least one passing unit test from the moment it is created.
 #[must_use]
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
 #[cfg(test)]
+#[allow(clippy::panic, clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 
     #[test]
     fn version_is_set() {
-        let v = version();
-        assert!(!v.is_empty(), "version must not be empty");
-        assert!(v.contains('.'), "expected semver with dot, got {v}");
-    }
-
-    #[test]
-    fn version_matches_workspace() {
-        assert_eq!(version(), env!("CARGO_PKG_VERSION"));
+        assert!(!version().is_empty());
+        assert!(version().contains('.'));
     }
 }
