@@ -7,7 +7,8 @@
   "packageManager": "bun@1.1.42",
   "workspaces": [
     "webview",
-    "convex"
+    "convex",
+    "tools"
   ],
   "scripts": {
     "typecheck": "bun run --filter='*' typecheck",

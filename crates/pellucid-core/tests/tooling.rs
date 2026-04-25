@@ -3,6 +3,8 @@
 //! every subsequent crate that needs them can rely on the workspace
 //! dependency aliases.
 
+#![allow(clippy::panic, clippy::unwrap_used, clippy::expect_used)]
+
 use proptest::prelude::*;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -18,7 +20,12 @@ async fn wiremock_can_bind_and_serve() {
         .await;
 
     let url = format!("{}/ping", server.uri());
-    let body = reqwest::get(&url).await.expect("request").text().await.expect("body");
+    let body = reqwest::get(&url)
+        .await
+        .expect("request")
+        .text()
+        .await
+        .expect("body");
 
     assert_eq!(body, "pong");
     assert!(server.uri().starts_with("http://"));

@@ -51,7 +51,9 @@ fn capabilities_default_grants_main_window() {
         .and_then(serde_json::Value::as_array)
         .expect("permissions array");
     assert!(perms.iter().any(|p| p.as_str() == Some("core:default")));
-    assert!(perms.iter().any(|p| p.as_str() == Some("core:window:default")));
+    assert!(perms
+        .iter()
+        .any(|p| p.as_str() == Some("core:window:default")));
 }
 
 #[test]
@@ -67,7 +69,10 @@ fn build_dev_url_is_local_vite() {
         dev_url.contains("localhost") || dev_url.contains("127.0.0.1"),
         "devUrl must point at a local vite server, got {dev_url}"
     );
-    assert!(dev_url.contains(":5173"), "expected port 5173 (vite default), got {dev_url}");
+    assert!(
+        dev_url.contains(":5173"),
+        "expected port 5173 (vite default), got {dev_url}"
+    );
 }
 
 #[test]
@@ -95,10 +100,18 @@ fn bundle_icon_set_is_complete() {
         .and_then(serde_json::Value::as_array)
         .expect("bundle.icon array missing");
 
-    let want = ["32x32.png", "128x128.png", "128x128@2x.png", "icon.icns", "icon.ico"];
+    let want = [
+        "32x32.png",
+        "128x128.png",
+        "128x128@2x.png",
+        "icon.icns",
+        "icon.ico",
+    ];
     for required in want {
         assert!(
-            icons.iter().any(|i| i.as_str().is_some_and(|s| s.ends_with(required))),
+            icons
+                .iter()
+                .any(|i| i.as_str().is_some_and(|s| s.ends_with(required))),
             "bundle.icon must include {required}"
         );
     }
@@ -125,12 +138,18 @@ fn variant_configs_present_for_all_five_variants() {
             .get("productName")
             .and_then(serde_json::Value::as_str)
             .unwrap_or_else(|| panic!("{path}: productName missing"));
-        assert!(product.starts_with("Pellucid"), "{path}: productName wrong: {product}");
+        assert!(
+            product.starts_with("Pellucid"),
+            "{path}: productName wrong: {product}"
+        );
 
         let id = cfg
             .get("identifier")
             .and_then(serde_json::Value::as_str)
             .unwrap_or_else(|| panic!("{path}: identifier missing"));
-        assert!(id.starts_with("app.worldmonitor.pellucid"), "{path}: identifier wrong: {id}");
+        assert!(
+            id.starts_with("app.worldmonitor.pellucid"),
+            "{path}: identifier wrong: {id}"
+        );
     }
 }

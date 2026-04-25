@@ -1,0 +1,20 @@
+{
+  "name": "@pellucid/tools",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts --cache",
+    "test": "bun test",
+    "format": "prettier --write '**/*.ts'"
+  },
+  "dependencies": {
+    "tree-sitter": "0.21.1",
+    "tree-sitter-rust": "0.23.2"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.5",
+    "typescript": "5.7.2"
+  }
+}
