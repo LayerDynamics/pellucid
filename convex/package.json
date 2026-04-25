@@ -1,0 +1,27 @@
+{
+  "name": "@pellucid/convex",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "convex dev",
+    "codegen": "convex codegen",
+    "deploy": "convex deploy",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts --cache",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "format": "prettier --write '**/*.ts'"
+  },
+  "dependencies": {
+    "convex": "1.18.0"
+  },
+  "devDependencies": {
+    "@edge-runtime/vm": "5.0.0",
+    "@types/node": "22.10.5",
+    "convex-test": "0.0.36",
+    "typescript": "5.7.2",
+    "vite": "6.0.7",
+    "vitest": "2.1.8"
+  }
+}

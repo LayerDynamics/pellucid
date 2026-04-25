@@ -76,8 +76,12 @@ docs/api/openapi.json
 *.tsbuildinfo
 **/.vite-tsbuildinfo/
 
-# Convex generated
-convex/_generated/
+# Convex generated. Hand-checked-in at T0.9 (the canonical output of
+# `bunx convex codegen` against this schema; checked in because convex-test
+# requires the directory to exist and we cannot run `convex codegen`
+# without a provisioned cloud deployment). Will be regenerated from the
+# real deployment at T7.1.
+!convex/_generated/
 
 # Profiling / benchmark
 flamegraph.svg

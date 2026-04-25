@@ -6,7 +6,8 @@
   "license": "MIT",
   "packageManager": "bun@1.1.42",
   "workspaces": [
-    "webview"
+    "webview",
+    "convex"
   ],
   "scripts": {
     "typecheck": "bun run --filter='*' typecheck",
