@@ -11,7 +11,7 @@
   "scripts": {
     "typecheck": "bun run --filter='*' typecheck",
     "lint": "bun run --filter='*' lint",
-    "test": "bun test",
+    "test": "bun run --filter='*' test",
     "build": "bun run --filter=webview build",
     "dev": "bun run --filter=webview dev",
     "e2e": "bunx playwright test",
