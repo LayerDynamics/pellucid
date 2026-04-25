@@ -1,0 +1,29 @@
+{
+  "name": "pellucid",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "packageManager": "bun@1.1.42",
+  "workspaces": [
+    "webview"
+  ],
+  "scripts": {
+    "typecheck": "bun run --filter='*' typecheck",
+    "lint": "bun run --filter='*' lint",
+    "test": "bun test",
+    "build": "bun run --filter=webview build",
+    "dev": "bun run --filter=webview dev",
+    "e2e": "bunx playwright test",
+    "format": "bun run --filter='*' format",
+    "clean": "bun run --filter='*' clean && rm -rf node_modules .bun"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.49.1",
+    "@types/bun": "1.1.14",
+    "typescript": "5.7.2"
+  },
+  "engines": {
+    "bun": ">=1.1.0"
+  }
+}
