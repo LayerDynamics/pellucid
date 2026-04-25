@@ -1,0 +1,50 @@
+* text=auto eol=lf
+
+# Binary blobs
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.icns binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.onnx binary
+*.bin binary
+*.wasm binary
+*.zst binary
+*.gz binary
+*.zip binary
+*.dmg binary
+*.msi binary
+*.app binary
+*.AppImage binary
+
+# Rust + TS source files explicitly text/lf
+*.rs text eol=lf
+*.toml text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.json text eol=lf
+*.jsonc text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.sh text eol=lf
+*.proto text eol=lf
+*.sql text eol=lf
+
+# Lockfiles
+Cargo.lock text eol=lf -diff
+bun.lockb binary
+package-lock.json text eol=lf -diff
+
+# Test fixtures may contain CRLF intentionally
+**/test-fixtures/**/*.txt -text
