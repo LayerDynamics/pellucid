@@ -72,6 +72,10 @@ crates/pellucid-handlers/src/generated/
 webview/src/generated/
 docs/api/openapi.json
 
+# TypeScript incremental build outputs
+*.tsbuildinfo
+**/.vite-tsbuildinfo/
+
 # Convex generated
 convex/_generated/
 

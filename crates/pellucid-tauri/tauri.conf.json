@@ -1,0 +1,47 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Pellucid",
+  "version": "0.1.0",
+  "identifier": "app.worldmonitor.pellucid",
+  "build": {
+    "beforeDevCommand": "bun run --filter=@pellucid/webview dev",
+    "beforeBuildCommand": "bun run --filter=@pellucid/webview build",
+    "frontendDist": "../../webview/dist",
+    "devUrl": "http://localhost:5173"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Pellucid",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 640,
+        "decorations": true,
+        "transparent": false,
+        "center": true,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "category": "Productivity",
+    "copyright": "Copyright (c) 2026 Pellucid contributors",
+    "shortDescription": "Real-time situational-awareness console",
+    "longDescription": "Pellucid is a real-time situational-awareness console — markets, geopolitics, climate, energy, supply chain, infrastructure, cyber, intelligence — surfaced through deck.gl and globe.gl with cross-source correlation and on-device ML.",
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

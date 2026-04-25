@@ -1,0 +1,16 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Pellucid Commodity",
+  "identifier": "app.worldmonitor.pellucid.commodity",
+  "build": {
+    "beforeBuildCommand": "VITE_VARIANT=commodity bun run --filter=@pellucid/webview build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Pellucid · Commodity"
+      }
+    ]
+  }
+}

@@ -19,6 +19,49 @@ members = [
     "crates/pellucid-relay-bin",
 ]
 
+[workspace.dependencies]
+# async runtime + HTTP
+tokio = { version = "1.44", features = ["full"] }
+axum = { version = "0.8", features = ["macros", "ws"] }
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", features = ["cors", "compression-full", "trace", "fs", "timeout", "limit", "set-header"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip", "brotli", "stream", "json"] }
+hyper = { version = "1.6", features = ["full"] }
+
+# storage
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio-rustls", "sqlite", "macros", "migrate", "json", "time", "uuid"] }
+
+# serialization + utilities
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+anyhow = "1"
+uuid = { version = "1.10", features = ["v4", "v7", "serde"] }
+phf = { version = "0.11", features = ["macros"] }
+async-trait = "0.1"
+bytes = "1.8"
+futures = "0.3"
+parking_lot = "0.12"
+dashmap = "6"
+once_cell = "1.20"
+
+# observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+metrics = "0.24"
+metrics-exporter-prometheus = "0.16"
+
+# auth + crypto
+jsonwebtoken = "9"
+hmac = "0.12"
+sha2 = "0.10"
+subtle = "2.6"
+
+# test-only dependencies (declared once so per-crate dev-dependencies stay slim)
+wiremock = "0.6"
+proptest = "1.5"
+tempfile = "3.13"
+
 [workspace.package]
 version = "0.1.0"
 edition = "2021"

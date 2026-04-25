@@ -11,3 +11,9 @@ description = "shared types, errors, FNV, envelopes, time helpers"
 workspace = true
 
 [dependencies]
+
+[dev-dependencies]
+proptest = { workspace = true }
+wiremock = { workspace = true }
+tokio = { workspace = true }
+reqwest = { workspace = true }
