@@ -1,9 +1,33 @@
 //! pellucid-core
 //!
-//! shared types, errors, FNV, envelopes, time helpers.
+//! Shared types, errors, FNV hashing, envelope schema, time helpers, and
+//! identifier types used across the entire Pellucid Cargo workspace.
 //!
-//! See `docs/specs/SPEC-001-pellucid-stack-rebuild.md` §11 for this crate's role
-//! in the Pellucid workspace.
+//! See `docs/specs/SPEC-001-pellucid-stack-rebuild.md` §11 for the role
+//! this crate plays in the workspace topology.
+//!
+//! Pure types only — no I/O, no async runtime. Every dependent crate
+//! re-exports these as the canonical building blocks for envelopes,
+//! cache-tier headers, ETag computation (FNV-1a), and shared error
+//! mapping.
+
+pub mod cache_tier;
+pub mod envelope;
+pub mod error;
+pub mod fnv;
+pub mod id;
+pub mod seed_meta;
+pub mod time;
+
+pub use cache_tier::CacheTier;
+pub use envelope::{
+    validate_envelope_size, Envelope, EnvelopeMeta, SeedEnvelope, MAX_ENVELOPE_BYTES,
+};
+pub use error::{Error, Result};
+pub use fnv::FnvHasher;
+pub use id::RunId;
+pub use seed_meta::{SeedMeta, SeedState};
+pub use time::now_ms;
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.
 ///
@@ -15,6 +39,7 @@ pub fn version() -> &'static str {
 }
 
 #[cfg(test)]
+#[allow(clippy::panic, clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 
@@ -28,5 +53,16 @@ mod tests {
     #[test]
     fn version_matches_workspace() {
         assert_eq!(version(), env!("CARGO_PKG_VERSION"));
+    }
+
+    #[test]
+    fn re_exports_resolve() {
+        // Compile-time proof that the public surface re-exports are
+        // reachable through the crate root.
+        let _: CacheTier = CacheTier::Fast;
+        let _: SeedState = SeedState::Live;
+        let _: RunId = RunId::new();
+        let _: usize = MAX_ENVELOPE_BYTES;
+        let _: Result<()> = Ok(());
     }
 }

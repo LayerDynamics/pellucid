@@ -1,0 +1,15 @@
+{
+  "_seed": {
+    "fetchedAt": 1726764000000,
+    "recordCount": 3,
+    "sourceVersion": "aviationstack:v1",
+    "state": "live"
+  },
+  "data": {
+    "flights": [
+      { "id": "AA100", "status": "active" },
+      { "id": "DL42", "status": "scheduled" },
+      { "id": "UA8", "status": "landed" }
+    ]
+  }
+}
