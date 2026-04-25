@@ -1,0 +1,58 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/pellucid-core",
+    "crates/pellucid-db",
+    "crates/pellucid-cache",
+    "crates/pellucid-streams",
+    "crates/pellucid-seeders",
+    "crates/pellucid-gateway",
+    "crates/pellucid-handlers",
+    "crates/pellucid-auth",
+    "crates/pellucid-ml",
+    "crates/pellucid-correlation",
+    "crates/pellucid-workers",
+    "crates/pellucid-codegen",
+    "crates/pellucid-tauri",
+    "crates/pellucid-sidecar-bin",
+    "crates/pellucid-edge-bin",
+    "crates/pellucid-relay-bin",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+license = "MIT"
+repository = "https://github.com/layerdynamics/pellucid"
+authors = ["Pellucid contributors"]
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+unreachable_pub = "warn"
+
+[workspace.lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+print_stdout = "warn"
+print_stderr = "warn"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+panic = "abort"
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.test]
+opt-level = 1
+debug = true

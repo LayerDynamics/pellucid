@@ -1,0 +1,4 @@
+avoid-breaking-exported-api = false
+disallowed-methods = [
+    { path = "std::env::var", reason = "use pellucid_core::config or explicit ConfigSource trait" },
+]

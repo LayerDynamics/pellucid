@@ -1,0 +1,17 @@
+[package]
+name = "pellucid-edge-bin"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "hosted public API binary"
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "pellucid-edge-bin"
+path = "src/main.rs"
+
+[dependencies]

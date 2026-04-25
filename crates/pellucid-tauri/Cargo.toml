@@ -1,0 +1,17 @@
+[package]
+name = "pellucid-tauri"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Tauri 2 host (window, tray, IPC, vault, updater)"
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "pellucid-tauri"
+path = "src/main.rs"
+
+[dependencies]

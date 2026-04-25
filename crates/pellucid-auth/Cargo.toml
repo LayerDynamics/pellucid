@@ -1,0 +1,13 @@
+[package]
+name = "pellucid-auth"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Clerk JWT verify, entitlement check, HMAC sign/verify"
+
+[lints]
+workspace = true
+
+[dependencies]

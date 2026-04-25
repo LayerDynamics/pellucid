@@ -1,0 +1,13 @@
+[package]
+name = "pellucid-gateway"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "14-stage Tower middleware stack, router, ETag, CSP middleware"
+
+[lints]
+workspace = true
+
+[dependencies]

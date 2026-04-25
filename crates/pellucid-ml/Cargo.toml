@@ -1,0 +1,13 @@
+[package]
+name = "pellucid-ml"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "ort/candle wrapper: embeddings, sentiment, summarization, NER"
+
+[lints]
+workspace = true
+
+[dependencies]

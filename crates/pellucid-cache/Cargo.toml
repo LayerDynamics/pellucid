@@ -1,0 +1,13 @@
+[package]
+name = "pellucid-cache"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "KV API, stampede coalescing, negative sentinel, batch pipeline, rate-limit"
+
+[lints]
+workspace = true
+
+[dependencies]
