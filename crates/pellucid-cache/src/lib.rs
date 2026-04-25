@@ -1,32 +1,51 @@
-//! pellucid-cache
+//! pellucid-cache — SQLite-backed KV cache with stampede coalescing,
+//! negative-result sentinel, and batch reads. SPEC-001 §7.
 //!
-//! KV API, stampede coalescing, negative sentinel, batch pipeline, rate-limit.
+//! Replaces the original WorldMonitor `server/_shared/redis.ts` Redis
+//! cache layer. Public surface:
 //!
-//! See `docs/specs/SPEC-001-pellucid-stack-rebuild.md` §11 for this crate's role
-//! in the Pellucid workspace.
+//! - [`KvCache`] — pool wrapper exposing the cache primitives.
+//! - [`cached_fetch_json`] — stampede-protected single-key fetch with
+//!   negative sentinel + envelope writeback (SPEC-001 §7.2 + §7.3).
+//! - [`get_cached_json_batch`] — single-transaction batch read
+//!   replacing `getCachedJsonBatch` from the original codebase.
+//! - [`set_cached_json`] / [`set_negative_sentinel`] — direct writers
+//!   used by seeders and integration tests.
+//!
+//! Stampede semantics: concurrent calls to `cached_fetch_json` with the
+//! same key are coalesced via an in-flight registry keyed on `cache_key`.
+//! Exactly one fetcher invocation runs per key per pending window; every
+//! awaiter receives a clone of the same result.
+//!
+//! Negative semantics: a `null` upstream result is recorded as a row
+//! with `is_negative = 1` and a short TTL (default 120s, overridable).
+//! Subsequent reads inside that window return [`CacheHit::NegativeSentinel`]
+//! without firing the upstream fetcher again.
+
+pub mod batch;
+pub mod coalesce;
+pub mod kv;
+pub mod negative;
+
+pub use batch::{BatchHit, get_cached_json_batch};
+pub use coalesce::{CoalesceRegistry, cached_fetch_json};
+pub use kv::{CacheHit, KvCache, set_cached_json, set_negative_sentinel};
+pub use negative::DEFAULT_NEGATIVE_TTL_MS;
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.
-///
-/// Used by the universal smoke test (per implementation plan §1.1) so every
-/// crate has at least one passing unit test from the moment it is created.
 #[must_use]
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
 #[cfg(test)]
+#[allow(clippy::panic, clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 
     #[test]
     fn version_is_set() {
-        let v = version();
-        assert!(!v.is_empty(), "version must not be empty");
-        assert!(v.contains('.'), "expected semver with dot, got {v}");
-    }
-
-    #[test]
-    fn version_matches_workspace() {
-        assert_eq!(version(), env!("CARGO_PKG_VERSION"));
+        assert!(!version().is_empty());
+        assert!(version().contains('.'));
     }
 }

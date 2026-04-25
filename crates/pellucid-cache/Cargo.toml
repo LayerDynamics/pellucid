@@ -11,3 +11,18 @@ description = "KV API, stampede coalescing, negative sentinel, batch pipeline, r
 workspace = true
 
 [dependencies]
+pellucid-core = { path = "../pellucid-core" }
+pellucid-db = { path = "../pellucid-db" }
+sqlx = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+futures = { workspace = true }
+parking_lot = { workspace = true }
+dashmap = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
