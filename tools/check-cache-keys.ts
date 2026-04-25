@@ -24,8 +24,10 @@ import { join, relative } from "node:path";
 import { argv, exit } from "node:process";
 
 import Parser from "tree-sitter";
-// @ts-expect-error tree-sitter-rust ships its grammar without TS types
-import Rust from "tree-sitter-rust";
+// tree-sitter-rust ships its grammar without TS types and the cast on
+// import doesn't compose with bun's type stripping; cast at the call
+// site instead (see buildParser below).
+import RustGrammar from "tree-sitter-rust";
 
 export interface CacheKeyFinding {
   file: string;
@@ -42,7 +44,9 @@ export interface LintReport {
 
 function buildParser(): Parser {
   const p = new Parser();
-  p.setLanguage(Rust as Parser.Language);
+  // tree-sitter's setLanguage takes the language object exposed by
+  // tree-sitter-rust; the package's CommonJS export is the language.
+  p.setLanguage(RustGrammar as unknown as Parameters<Parser["setLanguage"]>[0]);
   return p;
 }
 
