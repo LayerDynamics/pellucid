@@ -5,12 +5,24 @@
 //! T2.4 (HMAC identity) plug into the same crate as separate modules.
 
 pub mod clerk;
+pub mod endpoint_tiers;
+pub mod entitlement;
 pub mod jwks;
 
 #[cfg(any(test, feature = "test-keys"))]
 pub mod test_keys;
 
 pub use clerk::{ClerkJwtVerifier, DEFAULT_LEEWAY_SECS};
+pub use endpoint_tiers::{
+    iter_premium_paths, premium_path_count, rank_for_tier, tier_for_path, tier_from_rank,
+    ENDPOINT_ENTITLEMENTS,
+};
+pub use entitlement::{
+    read_cache, write_cache, CacheError, ClerkEntitlementChecker, ConvexEntitlementSource,
+    EntitlementFeatures, EntitlementSnapshot, EntitlementSource, EntitlementSourceError,
+    StaticEntitlementSource, CONVEX_INTERNAL_ENTITLEMENTS_PATH, CONVEX_SHARED_SECRET_HEADER,
+    DEFAULT_CACHE_TTL, DEFAULT_UPSTREAM_DOWN_RETRY_SECS,
+};
 pub use jwks::{CachedJwks, JwksCache, JwksError, JwksFetcher, DEFAULT_TTL};
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.

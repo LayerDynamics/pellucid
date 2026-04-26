@@ -2794,17 +2794,23 @@ name = "pellucid-auth"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "axum",
  "base64 0.22.1",
  "jsonwebtoken",
  "parking_lot",
  "pellucid-auth",
+ "pellucid-core",
+ "pellucid-db",
  "pellucid-gateway",
+ "phf 0.11.3",
  "reqwest 0.12.28",
  "rsa",
  "serde",
  "serde_json",
+ "sqlx",
  "thiserror 2.0.18",
  "tokio",
+ "tower",
  "tracing",
  "wiremock",
 ]

@@ -1,6 +1,9 @@
 ## Critical Instructions
 
-- **Production for the File-Browser-Client is deployed to Railway**
+**Rule for this session:** make ONLY the changes I explicitly request. No bonus refactors, no feature flags, no files from other branches/stashes, no edits to shared/global config unless I name them. If you think something else needs changing, ASK first.
+
+## Below are Rules and Required Reactions
+
 - **If something is called but missing**: It should be implemented, not removed
 - **Unused variables/methods/imports**: Always use them appropriately as intended - they are critical to operations
 - **NEVER claim tasks are 'complete', 'done', or at 'parity' without running the actual tests/typecheck/lint and showing output**
@@ -118,3 +121,4 @@ Add as a new section '## Root Cause Discipline' under debugging guidance\n\n## R
 - **Before claiming a fix works, verify by running tests/builds. Do NOT prematurely claim '100% parity' or 'fully fixed' without evidence.**
 - **When debugging, resist jumping to the first plausible cause. Enumerate candidates, then systematically eliminate.** Common failure mode: chasing version mismatches/dependency bumps when the real bug is in app code.
 - **If a user pushes back on a diagnosis, STOP and reconsider from scratch rather than defending the current hypothesis.**
+
