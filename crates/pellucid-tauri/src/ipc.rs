@@ -20,6 +20,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::sidecar::SidecarHandle;
+use crate::token_rotation::TokenRotator;
 use crate::vault::{SecretsBlob, Vault};
 
 /// Visual variant identifier — kept in sync with the webview
@@ -131,12 +132,18 @@ impl serde::Serialize for IpcError {
 
 /// Central, clonable state every IPC command reads. Wraps the heap-
 /// allocated vault behind an `Arc` so a single instance is shared.
+///
+/// The optional `rotator` field is the T1.8 hot path — when present,
+/// `local_api_token` returns the rotator's current token instead of the
+/// cached vault blob. This keeps token-rotation logic out of every IPC
+/// command while still letting the webview see the freshest token.
 #[derive(Clone, Debug)]
 pub struct LocalApiState {
     sidecar: SidecarHandle,
     vault: Arc<dyn Vault>,
     variant: Arc<RwLock<Variant>>,
     cached: Arc<RwLock<SecretsBlob>>,
+    rotator: Arc<RwLock<Option<Arc<TokenRotator>>>>,
 }
 
 impl LocalApiState {
@@ -153,17 +160,40 @@ impl LocalApiState {
             vault,
             variant: Arc::new(RwLock::new(default_variant)),
             cached: Arc::new(RwLock::new(SecretsBlob::default())),
+            rotator: Arc::new(RwLock::new(None)),
         }
     }
 
+    /// Install a [`TokenRotator`] so subsequent token reads come from
+    /// rotation state rather than the cached vault blob. Used by the
+    /// host once the T1.8 background loop is spawned.
+    pub fn attach_rotator(&self, rotator: Arc<TokenRotator>) {
+        *self.rotator.write() = Some(rotator);
+    }
+
+    /// Detach the rotator. After this call `local_api_token` falls back
+    /// to the cached vault blob again.
+    pub fn detach_rotator(&self) {
+        *self.rotator.write() = None;
+    }
+
     /// Refresh the cached secrets from the vault. Called once at boot
-    /// and again whenever the webview asks via `refresh_secrets`.
+    /// and again whenever the webview asks via `refresh_secrets`. When
+    /// a [`TokenRotator`] is attached, the returned bundle reflects the
+    /// rotator's view rather than the cached blob — this guarantees the
+    /// webview always sees the freshest token.
     pub async fn refresh_secrets(&self) -> Result<SecretBundle, IpcError> {
         let blob = self.vault.read().await?;
         *self.cached.write() = blob.clone();
+        let rotator = self.rotator.read().clone();
+        let (current, previous) = if let Some(r) = rotator {
+            (Some(r.current()), r.previous())
+        } else {
+            (blob.sidecar_token.clone(), blob.sidecar_token_previous.clone())
+        };
         Ok(SecretBundle {
-            sidecar_token: blob.sidecar_token,
-            sidecar_token_previous: blob.sidecar_token_previous,
+            sidecar_token: current,
+            sidecar_token_previous: previous,
         })
     }
 
@@ -173,10 +203,45 @@ impl LocalApiState {
         self.sidecar.port()
     }
 
-    /// Return the current bearer token (may be `None` on first launch).
+    /// Return the current bearer token. Routes through the rotator
+    /// when one is attached so post-rotation reads see the new token
+    /// without an explicit `refresh_secrets` round-trip.
     #[must_use]
     pub fn local_api_token(&self) -> Option<String> {
+        if let Some(r) = self.rotator.read().clone() {
+            return Some(r.current());
+        }
         self.cached.read().sidecar_token.clone()
+    }
+
+    /// Return the previous bearer token if the rotator considers it
+    /// still acceptable inside the overlap window. Falls back to the
+    /// cached vault blob when no rotator is attached.
+    #[must_use]
+    pub fn local_api_token_previous(&self) -> Option<String> {
+        if let Some(r) = self.rotator.read().clone() {
+            return r.previous();
+        }
+        self.cached.read().sidecar_token_previous.clone()
+    }
+
+    /// `true` iff the supplied token is the current bearer or a still-
+    /// valid previous bearer. Used by the sidecar's auth middleware
+    /// (T1.9) — it consults `LocalApiState` over a thin shared-state
+    /// channel rather than re-implementing the rotation policy.
+    #[must_use]
+    pub fn accepts_token(&self, token: &str) -> bool {
+        if let Some(r) = self.rotator.read().clone() {
+            return r.accepts(token);
+        }
+        let cached = self.cached.read();
+        if cached.sidecar_token.as_deref() == Some(token) {
+            return true;
+        }
+        if cached.sidecar_token_previous.as_deref() == Some(token) {
+            return true;
+        }
+        false
     }
 
     /// Returns the current variant.
@@ -215,6 +280,23 @@ impl LocalApiState {
     /// fresh tokens into the IPC layer without re-reading the vault.
     pub fn set_cached_blob(&self, blob: SecretsBlob) {
         *self.cached.write() = blob;
+    }
+
+    /// Persist a rotation outcome into the vault and into the cached
+    /// blob. Called by the rotation loop callback (`on_rotate`) so the
+    /// host's vault always carries the freshest current/previous pair —
+    /// after a process restart the boot path can read them straight out
+    /// of the keychain instead of starting cold.
+    pub async fn persist_rotation(
+        &self,
+        outcome: &crate::token_rotation::RotationOutcome,
+    ) -> Result<(), IpcError> {
+        let mut blob = self.vault.read().await?;
+        blob.sidecar_token = Some(outcome.new_token.clone());
+        blob.sidecar_token_previous = Some(outcome.retired_token.clone());
+        self.vault.write(&blob).await?;
+        *self.cached.write() = blob;
+        Ok(())
     }
 
     /// Clone of the inner cached blob. Reserved for diagnostics + tests.
@@ -401,5 +483,102 @@ mod tests {
         assert_eq!(s.local_api_token().as_deref(), Some("override"));
         // Vault was not written.
         assert_eq!(s.vault().read().await.unwrap(), SecretsBlob::default());
+    }
+
+    // ----- T1.8 token rotation integration with LocalApiState -----
+
+    fn rotator(initial: &str) -> Arc<TokenRotator> {
+        let clock: Arc<dyn crate::token_rotation::Clock> =
+            Arc::new(crate::token_rotation::ManualClock::new());
+        Arc::new(TokenRotator::with_schedule(
+            initial.to_string(),
+            clock,
+            crate::token_rotation::DEFAULT_ROTATION_INTERVAL_MS,
+            crate::token_rotation::DEFAULT_OVERLAP_MS,
+        ))
+    }
+
+    #[tokio::test]
+    async fn local_api_token_routes_through_rotator_when_attached() {
+        let s = fixture(Variant::Base);
+        let r = rotator("rotator-seed");
+        s.attach_rotator(r.clone());
+        assert_eq!(s.local_api_token().as_deref(), Some("rotator-seed"));
+        let outcome = r.rotate_now().unwrap();
+        assert_eq!(s.local_api_token().as_deref(), Some(outcome.new_token.as_str()));
+        assert_eq!(
+            s.local_api_token_previous().as_deref(),
+            Some("rotator-seed"),
+        );
+    }
+
+    #[tokio::test]
+    async fn detach_rotator_falls_back_to_cached_blob() {
+        let s = fixture(Variant::Base);
+        s.set_cached_blob(SecretsBlob {
+            sidecar_token: Some("cached".into()),
+            ..Default::default()
+        });
+        let r = rotator("rotator");
+        s.attach_rotator(r);
+        assert_eq!(s.local_api_token().as_deref(), Some("rotator"));
+        s.detach_rotator();
+        assert_eq!(s.local_api_token().as_deref(), Some("cached"));
+    }
+
+    #[tokio::test]
+    async fn accepts_token_consults_rotator_when_attached() {
+        let s = fixture(Variant::Base);
+        let r = rotator("v1");
+        s.attach_rotator(r.clone());
+        assert!(s.accepts_token("v1"));
+        let v2 = r.rotate_now().unwrap().new_token;
+        assert!(s.accepts_token(&v2));
+        assert!(s.accepts_token("v1"), "previous still inside overlap");
+        assert!(!s.accepts_token("v0"));
+    }
+
+    #[tokio::test]
+    async fn accepts_token_falls_back_to_cached_pair_without_rotator() {
+        let s = fixture(Variant::Base);
+        s.set_cached_blob(SecretsBlob {
+            sidecar_token: Some("c".into()),
+            sidecar_token_previous: Some("p".into()),
+            ..Default::default()
+        });
+        assert!(s.accepts_token("c"));
+        assert!(s.accepts_token("p"));
+        assert!(!s.accepts_token("nope"));
+    }
+
+    #[tokio::test]
+    async fn persist_rotation_writes_both_tokens_into_vault() {
+        let s = fixture(Variant::Base);
+        let outcome = crate::token_rotation::RotationOutcome {
+            new_token: "fresh".into(),
+            retired_token: "stale".into(),
+            at_ms: 1_234,
+        };
+        s.persist_rotation(&outcome).await.unwrap();
+        let blob = s.vault().read().await.unwrap();
+        assert_eq!(blob.sidecar_token.as_deref(), Some("fresh"));
+        assert_eq!(blob.sidecar_token_previous.as_deref(), Some("stale"));
+        assert_eq!(s.cached_blob().sidecar_token.as_deref(), Some("fresh"));
+    }
+
+    #[tokio::test]
+    async fn refresh_secrets_under_rotator_returns_rotator_state_not_cached() {
+        let s = fixture(Variant::Base);
+        s.set_cached_blob(SecretsBlob {
+            sidecar_token: Some("stale".into()),
+            sidecar_token_previous: Some("ancient".into()),
+            ..Default::default()
+        });
+        let r = rotator("rot-init");
+        s.attach_rotator(r.clone());
+        r.rotate_now().unwrap();
+        let bundle = s.refresh_secrets().await.unwrap();
+        assert_eq!(bundle.sidecar_token.as_deref(), Some(r.current().as_str()));
+        assert_eq!(bundle.sidecar_token_previous.as_deref(), Some("rot-init"));
     }
 }

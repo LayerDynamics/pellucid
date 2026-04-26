@@ -22,10 +22,15 @@
 
 pub mod ipc;
 pub mod sidecar;
+pub mod token_rotation;
 pub mod vault;
 
 pub use ipc::{LocalApiState, SecretBundle, Variant, VariantParseError};
 pub use sidecar::{SidecarHandle, SidecarLaunchError, SidecarSupervisor};
+pub use token_rotation::{
+    generate_token, spawn_rotation_loop, Clock, ManualClock, RotationOutcome, SystemClock,
+    TokenGenError, TokenRotator, DEFAULT_OVERLAP_MS, DEFAULT_ROTATION_INTERVAL_MS, TOKEN_BYTES,
+};
 pub use vault::{
     InMemoryVault, KeychainVault, SecretsBlob, Vault, VaultChange, VaultError,
     VAULT_SERVICE, VAULT_USER,

@@ -59,6 +59,7 @@ subtle = "2.6"
 
 # desktop secrets
 keyring = { version = "3", default-features = false, features = ["apple-native", "linux-native", "windows-native", "sync-secret-service"] }
+getrandom = { version = "0.2", features = ["std"] }
 
 # test-only dependencies (declared once so per-crate dev-dependencies stay slim)
 wiremock = "0.6"
