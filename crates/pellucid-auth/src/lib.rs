@@ -1,20 +1,26 @@
-//! pellucid-auth
+//! pellucid-auth — Clerk JWT verify, entitlement check (T2.3), HMAC
+//! sign/verify (T2.4).
 //!
-//! Clerk JWT verify, entitlement check, HMAC sign/verify.
-//!
-//! See `docs/specs/SPEC-001-pellucid-stack-rebuild.md` §11 for this crate's role
-//! in the Pellucid workspace.
+//! T2.2 ships the Clerk verifier + JWKS cache. T2.3 (entitlement) and
+//! T2.4 (HMAC identity) plug into the same crate as separate modules.
+
+pub mod clerk;
+pub mod jwks;
+
+#[cfg(any(test, feature = "test-keys"))]
+pub mod test_keys;
+
+pub use clerk::{ClerkJwtVerifier, DEFAULT_LEEWAY_SECS};
+pub use jwks::{CachedJwks, JwksCache, JwksError, JwksFetcher, DEFAULT_TTL};
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.
-///
-/// Used by the universal smoke test (per implementation plan §1.1) so every
-/// crate has at least one passing unit test from the moment it is created.
 #[must_use]
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
 #[cfg(test)]
+#[allow(clippy::panic, clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 

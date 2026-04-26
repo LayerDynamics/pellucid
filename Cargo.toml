@@ -65,6 +65,8 @@ getrandom = { version = "0.2", features = ["std"] }
 wiremock = "0.6"
 proptest = "1.5"
 tempfile = "3.13"
+rsa = "0.9"
+base64 = "0.22"
 
 [workspace.package]
 version = "0.1.0"
