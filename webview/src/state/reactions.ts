@@ -9,6 +9,7 @@
  * during P1 so unit tests of individual stores stay isolated.
  */
 
+import { pushVariantToHost } from "../services/runtime";
 import { useMapStore } from "./useMapStore";
 import { useVariantStore, type Variant } from "./useVariantStore";
 
@@ -22,6 +23,9 @@ export function installVariantReactions(): () => void {
       // own default layer set; the per-variant config modules (T2.8)
       // expose `defaultMapLayers(variant): string[]`.
       useMapStore.getState().resetLayers();
+      // Inform the Tauri host so the desktop title bar / window
+      // accent reflects the new variant. A no-op on web.
+      void pushVariantToHost(current);
       // Mark switching as complete now that the cross-store side
       // effects fired.
       useVariantStore.setState({ switching: false });
