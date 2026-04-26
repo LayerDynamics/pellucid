@@ -19,7 +19,7 @@ use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::sidecar::SidecarHandle;
+use crate::sidecar::{SidecarHandle, SidecarLaunchError, SidecarSupervisor};
 use crate::token_rotation::TokenRotator;
 use crate::vault::{SecretsBlob, Vault};
 
@@ -137,6 +137,12 @@ impl serde::Serialize for IpcError {
 /// `local_api_token` returns the rotator's current token instead of the
 /// cached vault blob. This keeps token-rotation logic out of every IPC
 /// command while still letting the webview see the freshest token.
+///
+/// The optional `supervisor` field is the M0 Gate hook — when the host
+/// spawns the real `pellucid-sidecar-bin` process it stashes the
+/// supervisor here so (a) the Arc keeps the child alive for the
+/// lifetime of the app, and (b) the rotation loop can forward
+/// `TOKEN_ROTATED` lines to the sidecar's stdin.
 #[derive(Clone, Debug)]
 pub struct LocalApiState {
     sidecar: SidecarHandle,
@@ -144,6 +150,7 @@ pub struct LocalApiState {
     variant: Arc<RwLock<Variant>>,
     cached: Arc<RwLock<SecretsBlob>>,
     rotator: Arc<RwLock<Option<Arc<TokenRotator>>>>,
+    supervisor: Arc<RwLock<Option<Arc<SidecarSupervisor>>>>,
 }
 
 impl LocalApiState {
@@ -161,6 +168,54 @@ impl LocalApiState {
             variant: Arc::new(RwLock::new(default_variant)),
             cached: Arc::new(RwLock::new(SecretsBlob::default())),
             rotator: Arc::new(RwLock::new(None)),
+            supervisor: Arc::new(RwLock::new(None)),
+        }
+    }
+
+    /// Clone of the inner [`SidecarHandle`]. The host needs this when
+    /// it composes the rotation-loop callback so it can update the
+    /// port without holding a reference to `LocalApiState`.
+    #[must_use]
+    pub fn sidecar_handle(&self) -> SidecarHandle {
+        self.sidecar.clone()
+    }
+
+    /// Replace the sidecar port. Called by the host after the real
+    /// `pellucid-sidecar-bin` finishes its handshake on a dynamic
+    /// port.
+    pub fn set_sidecar_port(&self, port: u16) {
+        self.sidecar.set_port(port);
+    }
+
+    /// Install a [`SidecarSupervisor`] so the host's rotation loop
+    /// can forward `TOKEN_ROTATED` control lines to the running
+    /// sidecar. The supervisor's `Arc` is also held here so the
+    /// child process stays alive for the lifetime of `LocalApiState`.
+    pub fn attach_sidecar_supervisor(&self, supervisor: Arc<SidecarSupervisor>) {
+        *self.supervisor.write() = Some(supervisor);
+    }
+
+    /// Detach the supervisor. After this call
+    /// `forward_token_rotation_to_sidecar` becomes a no-op (returns
+    /// `Ok(())`). The supervisor itself is dropped on the last
+    /// remaining `Arc` so the child terminates.
+    pub fn detach_sidecar_supervisor(&self) {
+        *self.supervisor.write() = None;
+    }
+
+    /// Forward an H1 rotation outcome to the running sidecar's stdin
+    /// control channel. Returns `Ok(())` (no-op) when no supervisor
+    /// is attached so tests + non-desktop builds can call this
+    /// uniformly.
+    pub async fn forward_token_rotation_to_sidecar(
+        &self,
+        current: &str,
+        previous: Option<&str>,
+    ) -> Result<(), SidecarLaunchError> {
+        let sup = self.supervisor.read().clone();
+        match sup {
+            Some(s) => s.send_token_rotation(current, previous).await,
+            None => Ok(()),
         }
     }
 
@@ -580,5 +635,77 @@ mod tests {
         let bundle = s.refresh_secrets().await.unwrap();
         assert_eq!(bundle.sidecar_token.as_deref(), Some(r.current().as_str()));
         assert_eq!(bundle.sidecar_token_previous.as_deref(), Some("rot-init"));
+    }
+
+    // ----- M0 Gate: sidecar supervisor wiring -----
+
+    #[test]
+    fn set_sidecar_port_updates_handle() {
+        let s = fixture(Variant::Base);
+        assert_eq!(s.local_api_port(), 46_123);
+        s.set_sidecar_port(50_000);
+        assert_eq!(s.local_api_port(), 50_000);
+    }
+
+    #[test]
+    fn sidecar_handle_clone_observes_port_writes() {
+        let s = fixture(Variant::Base);
+        let h = s.sidecar_handle();
+        s.set_sidecar_port(50_500);
+        assert_eq!(h.port(), 50_500);
+    }
+
+    #[tokio::test]
+    async fn forward_token_rotation_is_a_noop_when_no_supervisor_attached() {
+        let s = fixture(Variant::Base);
+        // Must not error even though no supervisor is attached.
+        s.forward_token_rotation_to_sidecar("a", Some("b"))
+            .await
+            .unwrap();
+        s.forward_token_rotation_to_sidecar("a", None).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn forward_token_rotation_writes_to_attached_supervisor_stdin() {
+        // Synthetic sidecar process that captures stdin.
+        let program = std::path::PathBuf::from("/bin/sh");
+        let path = "/tmp/pellucid-state-stdin-1";
+        let _ = std::fs::remove_file(path);
+        let args = vec![
+            "-c".to_string(),
+            format!("echo PORT=51200; cat > {path}"),
+        ];
+        let sup = Arc::new(
+            crate::sidecar::SidecarSupervisor::spawn(&program, &args)
+                .await
+                .unwrap(),
+        );
+        let s = fixture(Variant::Base);
+        s.attach_sidecar_supervisor(sup.clone());
+
+        s.forward_token_rotation_to_sidecar("fresh", Some("stale"))
+            .await
+            .unwrap();
+        s.forward_token_rotation_to_sidecar("solo", None)
+            .await
+            .unwrap();
+
+        // Drop our retained supervisor reference + the one in state
+        // so the child sees stdin EOF and the test can read the file.
+        s.detach_sidecar_supervisor();
+        sup.shutdown().await.unwrap();
+        drop(sup);
+
+        for _ in 0..40 {
+            if std::path::Path::new(path).exists() {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+        }
+        let captured = std::fs::read_to_string(path).expect("captured stdin");
+        let _ = std::fs::remove_file(path);
+        let mut lines = captured.lines();
+        assert_eq!(lines.next(), Some("TOKEN_ROTATED fresh stale"));
+        assert_eq!(lines.next(), Some("TOKEN_ROTATED solo -"));
     }
 }

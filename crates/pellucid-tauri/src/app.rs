@@ -9,8 +9,9 @@ use std::sync::Arc;
 use tauri::{App, Builder, Emitter, Manager, Wry};
 
 use pellucid_tauri::{
-    generate_token, ipc, spawn_rotation_loop, InMemoryVault, KeychainVault, LocalApiState,
-    SidecarHandle, SystemClock, TokenRotator, Variant, Vault,
+    generate_token, ipc, resolve_sidecar_binary_path, spawn_rotation_loop, InMemoryVault,
+    KeychainVault, LocalApiState, SidecarHandle, SidecarSupervisor, SystemClock, TokenRotator,
+    Variant, Vault,
 };
 
 /// Tauri event emitted to the webview after every successful rotation.
@@ -40,11 +41,17 @@ pub(crate) fn builder() -> Builder<Wry> {
         .setup(setup_main_window)
 }
 
+/// Pre-discovery placeholder port. Replaced with the real bound
+/// port via `LocalApiState::set_sidecar_port` once the sidecar
+/// finishes its `PORT=<n>` handshake.
+const PRE_DISCOVERY_SIDECAR_PORT: u16 = 0;
+
 /// Construct the [`LocalApiState`] the IPC handlers consume. Uses the
 /// real OS keyring when available and falls back to an in-memory vault
 /// in environments where the keyring is not (e.g. CI Linux without
-/// secret-service). The sidecar handle is initialised with the
-/// configured fallback port; T1.9 swaps it for the real spawned port.
+/// secret-service). The sidecar handle is initialised with port 0 so
+/// any IPC reads before the supervisor's `PORT=<n>` handshake clearly
+/// indicate the sidecar has not yet bound.
 pub(crate) fn default_local_api_state() -> LocalApiState {
     let vault: Arc<dyn Vault> = match KeychainVault::new() {
         Ok(v) => Arc::new(v),
@@ -56,7 +63,7 @@ pub(crate) fn default_local_api_state() -> LocalApiState {
             Arc::new(InMemoryVault::new())
         }
     };
-    let sidecar = SidecarHandle::from_port(46_123);
+    let sidecar = SidecarHandle::from_port(PRE_DISCOVERY_SIDECAR_PORT);
     LocalApiState::new(sidecar, vault, Variant::Base)
 }
 
@@ -118,6 +125,22 @@ pub(crate) fn setup_main_window(app: &mut App) -> Result<(), Box<dyn std::error:
                     "persist rotation failed: {err}"
                 );
             }
+            // Forward to the running sidecar (no-op until the
+            // supervisor finishes its handshake).
+            let prev = if outcome_for_persist.retired_token.is_empty() {
+                None
+            } else {
+                Some(outcome_for_persist.retired_token.as_str())
+            };
+            if let Err(err) = state
+                .forward_token_rotation_to_sidecar(&outcome_for_persist.new_token, prev)
+                .await
+            {
+                tracing::warn!(
+                    target: "pellucid::token_rotation",
+                    "forward TOKEN_ROTATED to sidecar failed: {err}"
+                );
+            }
             if let Err(err) = handle.emit(TOKEN_ROTATED_EVENT, payload) {
                 tracing::warn!(
                     target: "pellucid::token_rotation",
@@ -127,7 +150,64 @@ pub(crate) fn setup_main_window(app: &mut App) -> Result<(), Box<dyn std::error:
         });
     });
 
+    // Spawn the actual `pellucid-sidecar-bin` on a background task
+    // so the `setup_main_window` hook returns quickly. The supervisor
+    // parses `PORT=<n>` from stdout, updates `LocalApiState::sidecar`
+    // with the discovered port, and stays attached so the rotation
+    // loop above can forward control lines into the child's stdin.
+    let state_for_sidecar = state.inner().clone();
+    let initial_token_for_sidecar = state
+        .inner()
+        .local_api_token()
+        .unwrap_or_default();
+    tauri::async_runtime::spawn(async move {
+        if let Err(err) =
+            launch_sidecar(state_for_sidecar, initial_token_for_sidecar).await
+        {
+            tracing::error!(
+                target: "pellucid::sidecar",
+                "sidecar launch failed: {err}"
+            );
+        }
+    });
+
     Ok(())
+}
+
+/// Launch the sidecar binary, capture its dynamic port, and attach
+/// the supervisor to `LocalApiState`. Returns `Err` only if the
+/// binary cannot be located or fails its `PORT=<n>` handshake — the
+/// app continues running in either case (a missing sidecar makes
+/// `/api/*` calls fail but the desktop window is still usable).
+async fn launch_sidecar(
+    state: LocalApiState,
+    initial_token: String,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let bin = sidecar_binary_path()?;
+    let env = vec![
+        ("PELLUCID_SIDECAR_TOKEN".to_string(), initial_token),
+    ];
+    let supervisor = SidecarSupervisor::spawn_with_env(&bin, &[], &env).await?;
+    let port = supervisor.handle().port();
+    state.set_sidecar_port(port);
+    state.attach_sidecar_supervisor(Arc::new(supervisor));
+    tracing::info!(
+        target: "pellucid::sidecar",
+        port,
+        bin = %bin.display(),
+        "sidecar live on dynamic port"
+    );
+    Ok(())
+}
+
+/// Resolve `pellucid-sidecar-bin` next to the host binary. Search
+/// rules live in `pellucid_tauri::sidecar::resolve_sidecar_binary_path`.
+fn sidecar_binary_path() -> Result<std::path::PathBuf, std::io::Error> {
+    let exe = std::env::current_exe()?;
+    let here = exe.parent().ok_or_else(|| {
+        std::io::Error::new(std::io::ErrorKind::NotFound, "no parent for current_exe")
+    })?;
+    resolve_sidecar_binary_path(here)
 }
 
 /// Run the Tauri event loop. Returns `Err` only if the runtime fails to

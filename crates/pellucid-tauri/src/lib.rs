@@ -26,7 +26,10 @@ pub mod token_rotation;
 pub mod vault;
 
 pub use ipc::{LocalApiState, SecretBundle, Variant, VariantParseError};
-pub use sidecar::{SidecarHandle, SidecarLaunchError, SidecarSupervisor};
+pub use sidecar::{
+    resolve_sidecar_binary_path, sidecar_binary_filename, SidecarHandle, SidecarLaunchError,
+    SidecarSupervisor,
+};
 pub use token_rotation::{
     generate_token, spawn_rotation_loop, Clock, ManualClock, RotationOutcome, SystemClock,
     TokenGenError, TokenRotator, DEFAULT_OVERLAP_MS, DEFAULT_ROTATION_INTERVAL_MS, TOKEN_BYTES,
