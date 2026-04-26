@@ -1,0 +1,19 @@
+/* Finance variant — Bloomberg-style amber on slate. SPEC-001 §13.1. */
+[data-variant="finance"] {
+  --pellucid-surface: #0e1117;
+  --pellucid-surface-raised: #161b22;
+  --pellucid-accent: #ffb000;
+  --pellucid-accent-fg: #1a1300;
+  --pellucid-accent-muted: rgba(255, 176, 0, 0.32);
+  --pellucid-fg: #f5f5f0;
+  --pellucid-fg-muted: #9aa0a6;
+  --pellucid-border: #2d333b;
+  --pellucid-danger: #ff5252;
+  --pellucid-success: #4ade80;
+  --pellucid-radius-sm: 2px;
+  --pellucid-radius-md: 4px;
+  --pellucid-radius-lg: 8px;
+  --pellucid-font-sans: "Inter";
+  --pellucid-font-mono: "JetBrains Mono";
+  --pellucid-shadow-panel: 0 2px 16px rgba(0, 0, 0, 0.55);
+}

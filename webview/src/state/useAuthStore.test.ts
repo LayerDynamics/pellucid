@@ -2,7 +2,9 @@ import { afterEach, describe, expect, test } from "bun:test";
 
 import { useAuthStore } from "./useAuthStore";
 
-const FAKE_ENT = {
+import type { Entitlements } from "./useAuthStore";
+
+const FAKE_ENT: Entitlements = {
   tier: 1,
   maxDashboards: 5,
   apiAccess: false,
@@ -10,7 +12,7 @@ const FAKE_ENT = {
   prioritySupport: false,
   exportFormats: ["json"],
   validUntilMs: 9_999_999_999_999,
-} as const;
+};
 
 afterEach(() => {
   useAuthStore.getState().signOut();

@@ -1,0 +1,19 @@
+/* Happy variant — playful pastels for the consumer-friendly skin. SPEC-001 §13.1. */
+[data-variant="happy"] {
+  --pellucid-surface: #fdfbff;
+  --pellucid-surface-raised: #ffffff;
+  --pellucid-accent: #ec4899;
+  --pellucid-accent-fg: #ffffff;
+  --pellucid-accent-muted: rgba(236, 72, 153, 0.3);
+  --pellucid-fg: #1f1233;
+  --pellucid-fg-muted: #6b5e80;
+  --pellucid-border: #e7d8f5;
+  --pellucid-danger: #f43f5e;
+  --pellucid-success: #10b981;
+  --pellucid-radius-sm: 8px;
+  --pellucid-radius-md: 14px;
+  --pellucid-radius-lg: 22px;
+  --pellucid-font-sans: "Inter";
+  --pellucid-font-mono: "JetBrains Mono";
+  --pellucid-shadow-panel: 0 8px 32px rgba(236, 72, 153, 0.18);
+}

@@ -33,7 +33,7 @@ const DEFAULT_VIEWPORT: Viewport = {
 };
 
 export const useMapStore = create<MapState>()(
-  subscribeWithSelector((set, get) => ({
+  subscribeWithSelector((set) => ({
     mode: "2d",
     viewport: DEFAULT_VIEWPORT,
     layers: [],

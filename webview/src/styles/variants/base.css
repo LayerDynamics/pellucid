@@ -1,0 +1,20 @@
+/* Base variant — neutral Pellucid theme. SPEC-001 §13.1. */
+:root,
+[data-variant="base"] {
+  --pellucid-surface: #0c0d10;
+  --pellucid-surface-raised: #16181d;
+  --pellucid-accent: #5fb0ff;
+  --pellucid-accent-fg: #ffffff;
+  --pellucid-accent-muted: rgba(95, 176, 255, 0.4);
+  --pellucid-fg: #f3f4f6;
+  --pellucid-fg-muted: #8a8f9a;
+  --pellucid-border: #2a2d35;
+  --pellucid-danger: #ef4444;
+  --pellucid-success: #22c55e;
+  --pellucid-radius-sm: 4px;
+  --pellucid-radius-md: 8px;
+  --pellucid-radius-lg: 12px;
+  --pellucid-font-sans: "Inter";
+  --pellucid-font-mono: "JetBrains Mono";
+  --pellucid-shadow-panel: 0 4px 24px rgba(0, 0, 0, 0.4);
+}

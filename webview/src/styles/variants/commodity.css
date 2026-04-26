@@ -1,0 +1,19 @@
+/* Commodity variant — earthen tones, paper-like surfaces. SPEC-001 §13.1. */
+[data-variant="commodity"] {
+  --pellucid-surface: #1c1815;
+  --pellucid-surface-raised: #2a241e;
+  --pellucid-accent: #d97706;
+  --pellucid-accent-fg: #1c1208;
+  --pellucid-accent-muted: rgba(217, 119, 6, 0.32);
+  --pellucid-fg: #f5ecd9;
+  --pellucid-fg-muted: #b3a187;
+  --pellucid-border: #3a302a;
+  --pellucid-danger: #dc2626;
+  --pellucid-success: #65a30d;
+  --pellucid-radius-sm: 4px;
+  --pellucid-radius-md: 8px;
+  --pellucid-radius-lg: 14px;
+  --pellucid-font-sans: "Inter";
+  --pellucid-font-mono: "JetBrains Mono";
+  --pellucid-shadow-panel: 0 6px 24px rgba(34, 24, 14, 0.6);
+}
