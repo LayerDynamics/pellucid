@@ -5,13 +5,30 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "in-process desktop API binary"
+description = "in-process desktop API binary — Axum sidecar with bearer auth"
 
 [lints]
 workspace = true
+
+[lib]
+name = "pellucid_sidecar"
+path = "src/lib.rs"
 
 [[bin]]
 name = "pellucid-sidecar-bin"
 path = "src/main.rs"
 
 [dependencies]
+axum = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+parking_lot = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+reqwest = { workspace = true }
+tokio = { workspace = true }
