@@ -57,6 +57,9 @@ hmac = "0.12"
 sha2 = "0.10"
 subtle = "2.6"
 
+# desktop secrets
+keyring = { version = "3", default-features = false, features = ["apple-native", "linux-native", "windows-native", "sync-secret-service"] }
+
 # test-only dependencies (declared once so per-crate dev-dependencies stay slim)
 wiremock = "0.6"
 proptest = "1.5"

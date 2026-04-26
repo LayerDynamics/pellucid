@@ -4,12 +4,49 @@
 //! can re-use the same builder configuration without invoking the platform
 //! native window.
 
+use std::sync::Arc;
+
 use tauri::{App, Builder, Manager, Wry};
+
+use pellucid_tauri::{
+    ipc, InMemoryVault, KeychainVault, LocalApiState, SidecarHandle, Variant, Vault,
+};
 
 /// Build the production [`Builder`] used by [`run`]. Re-exported so tests can
 /// re-construct the exact same configuration against the mock runtime.
 pub(crate) fn builder() -> Builder<Wry> {
-    tauri::Builder::default().setup(setup_main_window)
+    tauri::Builder::default()
+        .manage(default_local_api_state())
+        .invoke_handler(tauri::generate_handler![
+            ipc::get_local_api_port,
+            ipc::get_local_api_token,
+            ipc::refresh_secrets,
+            ipc::get_variant,
+            ipc::set_variant,
+            ipc::request_updater_check,
+            ipc::open_external,
+        ])
+        .setup(setup_main_window)
+}
+
+/// Construct the [`LocalApiState`] the IPC handlers consume. Uses the
+/// real OS keyring when available and falls back to an in-memory vault
+/// in environments where the keyring is not (e.g. CI Linux without
+/// secret-service). The sidecar handle is initialised with the
+/// configured fallback port; T1.9 swaps it for the real spawned port.
+pub(crate) fn default_local_api_state() -> LocalApiState {
+    let vault: Arc<dyn Vault> = match KeychainVault::new() {
+        Ok(v) => Arc::new(v),
+        Err(err) => {
+            tracing::warn!(
+                target: "pellucid::vault",
+                "keychain unavailable, falling back to in-memory vault: {err}"
+            );
+            Arc::new(InMemoryVault::new())
+        }
+    };
+    let sidecar = SidecarHandle::from_port(46_123);
+    LocalApiState::new(sidecar, vault, Variant::Base)
 }
 
 /// Setup hook invoked once the runtime is ready. At T0.6 the only job is to
