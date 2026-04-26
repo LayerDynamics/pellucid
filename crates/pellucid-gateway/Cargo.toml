@@ -11,3 +11,22 @@ description = "14-stage Tower middleware stack, router, ETag, CSP middleware"
 workspace = true
 
 [dependencies]
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+async-trait = { workspace = true }
+parking_lot = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+pellucid-core = { path = "../pellucid-core" }
+pellucid-cache = { path = "../pellucid-cache" }
+pellucid-db = { path = "../pellucid-db" }
+
+[dev-dependencies]
+tokio = { workspace = true }
+reqwest = { workspace = true }
+hyper = { workspace = true }
+tempfile = { workspace = true }
