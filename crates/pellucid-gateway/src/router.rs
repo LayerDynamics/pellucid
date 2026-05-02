@@ -26,11 +26,7 @@ use axum::Router;
 
 use crate::config::GatewayConfig;
 use crate::identity::RequestIdentity;
-use crate::stages::{
-    api_key::ApiKeyState, cache_control::CacheControlState, clerk_session::ClerkSessionState,
-    cors::CorsState, endpoint_rate::EndpointRateState, entitlement::EntitlementState,
-    origin::OriginAllowListState, tier_gate::TierGateState,
-};
+use crate::stages::endpoint_rate::EndpointRateState;
 use crate::stages::{
     api_key, cache_control, clerk_session, cors_merge, endpoint_rate, entitlement, etag,
     global_rate, handler_boundary, header_merge, options_preflight, origin_allow_list, tier_gate,
@@ -67,13 +63,13 @@ impl HandlerSet for Router {
 pub fn build_router<H: HandlerSet>(handlers: H, config: GatewayConfig) -> Router {
     let cfg = Arc::new(config);
 
-    let cache_state = CacheControlState(Arc::new(cfg.cache_rules.clone()));
-    let cors_state = CorsState(Arc::new(cfg.cors.clone()));
-    let origin_state = OriginAllowListState(Arc::new(cfg.origins.clone()));
-    let tier_state = TierGateState(Arc::new(cfg.route_tiers.clone()));
-    let clerk_state = ClerkSessionState(cfg.clerk.clone());
-    let api_state = ApiKeyState(cfg.api_keys.clone());
-    let entitlement_state = EntitlementState(cfg.entitlement.clone());
+    let cache_rules = Arc::new(cfg.cache_rules.clone());
+    let cors_cfg = Arc::new(cfg.cors.clone());
+    let origins = Arc::new(cfg.origins.clone());
+    let route_tiers = Arc::new(cfg.route_tiers.clone());
+    let clerk = cfg.clerk.clone();
+    let api_keys = cfg.api_keys.clone();
+    let entitlement_checker = cfg.entitlement.clone();
     let endpoint_state = EndpointRateState {
         rules: Arc::new(cfg.rate_limits.clone()),
         pool: cfg.rate_limit_pool.clone(),
@@ -84,19 +80,19 @@ pub fn build_router<H: HandlerSet>(handlers: H, config: GatewayConfig) -> Router
         // Innermost layers run last on the way in, first on the way
         // out. Because Axum stacks layers in reverse insertion order,
         // we apply them bottom-up so the spec's stage 1 is outermost.
-        .layer(from_fn_with_state(cache_state, cache_control))
+        .layer(from_fn_with_state(cache_rules, cache_control))
         .layer(axum::middleware::from_fn(etag))
         .layer(axum::middleware::from_fn(header_merge))
         .layer(axum::middleware::from_fn(handler_boundary))
         .layer(axum::middleware::from_fn(global_rate))
         .layer(from_fn_with_state(endpoint_state, endpoint_rate))
-        .layer(from_fn_with_state(entitlement_state, entitlement))
-        .layer(from_fn_with_state(api_state, api_key))
-        .layer(from_fn_with_state(clerk_state, clerk_session))
-        .layer(from_fn_with_state(tier_state, tier_gate))
+        .layer(from_fn_with_state(entitlement_checker, entitlement))
+        .layer(from_fn_with_state(api_keys, api_key))
+        .layer(from_fn_with_state(clerk, clerk_session))
+        .layer(from_fn_with_state(route_tiers, tier_gate))
         .layer(axum::middleware::from_fn(options_preflight))
-        .layer(from_fn_with_state(cors_state, cors_merge))
-        .layer(from_fn_with_state(origin_state, origin_allow_list))
+        .layer(from_fn_with_state(cors_cfg, cors_merge))
+        .layer(from_fn_with_state(origins, origin_allow_list))
         // Outside everything: thread a `RequestIdentity` so stages
         // 8 / 9 see the caller's IP without re-parsing headers.
         .layer(axum::middleware::from_fn(install_request_identity))

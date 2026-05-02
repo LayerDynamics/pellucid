@@ -110,10 +110,9 @@ mod tests {
     }
 
     fn router(verifier: Arc<dyn ClerkVerifier>, required: Tier) -> Router {
-        let state = ClerkSessionState(verifier);
         Router::new()
             .route("/x", get(echo_user))
-            .layer(from_fn_with_state(state, clerk_session))
+            .layer(from_fn_with_state(verifier, clerk_session))
             .layer(axum::middleware::from_fn(move |mut req: Request, next: Next| {
                 let r = required;
                 async move {

@@ -22,14 +22,10 @@ use crate::traits::{ApiKeyDecision, ApiKeyStore, Tier};
 /// Header name for API key auth.
 pub const API_KEY_HEADER: HeaderName = HeaderName::from_static("x-api-key");
 
-/// Per-stage state.
-#[derive(Clone, Debug)]
-pub struct ApiKeyState(pub Arc<dyn ApiKeyStore>);
-
 /// Middleware: API key validation. No-op for anonymous routes and for
 /// requests already carrying a Clerk identity.
 pub async fn api_key(
-    State(state): State<ApiKeyState>,
+    State(store): State<Arc<dyn ApiKeyStore>>,
     mut request: Request,
     next: Next,
 ) -> Response {
@@ -58,7 +54,7 @@ pub async fn api_key(
         }
     };
 
-    match state.0.lookup(&key).await {
+    match store.lookup(&key).await {
         ApiKeyDecision::Allow { identity, tier } => {
             let api_identity = ApiIdentity { identity, tier };
             // Mutate the threaded RequestIdentity envelope so stage
@@ -109,10 +105,10 @@ mod tests {
     }
 
     fn router(required: Tier) -> Router {
-        let state = ApiKeyState(Arc::new(StaticStore));
+        let store: Arc<dyn ApiKeyStore> = Arc::new(StaticStore);
         Router::new()
             .route("/x", get(echo_api))
-            .layer(from_fn_with_state(state, api_key))
+            .layer(from_fn_with_state(store, api_key))
             .layer(axum::middleware::from_fn(move |mut req: Request, next: Next| {
                 let r = required;
                 async move {

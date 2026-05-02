@@ -18,23 +18,19 @@ use axum::response::Response;
 
 use crate::config::RouteCacheRules;
 
-/// Per-stage state.
-#[derive(Clone, Debug)]
-pub struct CacheControlState(pub Arc<RouteCacheRules>);
-
 const NO_STORE: HeaderValue = HeaderValue::from_static("no-store");
 const CACHE_CONTROL_HEADER: HeaderName = header::CACHE_CONTROL;
 
 /// Middleware: attach `Cache-Control` per route policy.
 pub async fn cache_control(
-    State(state): State<CacheControlState>,
+    State(rules): State<Arc<RouteCacheRules>>,
     request: Request,
     next: Next,
 ) -> Response {
     let path = request.uri().path().to_string();
     let mut response = next.run(request).await;
     let policy = if response.status().is_success() {
-        state.0.for_path(&path).header
+        rules.for_path(&path).header
     } else {
         "no-store".to_string()
     };
@@ -56,7 +52,7 @@ mod tests {
     use tower::util::ServiceExt;
 
     fn router(rules: RouteCacheRules) -> Router {
-        let state = CacheControlState(Arc::new(rules));
+        let rules = Arc::new(rules);
         Router::new()
             .route("/anonymous", get(|| async { "ok" }))
             .route("/cacheable", get(|| async { "fresh" }))
@@ -64,7 +60,7 @@ mod tests {
                 "/error",
                 get(|| async { (StatusCode::FORBIDDEN, "denied") }),
             )
-            .layer(from_fn_with_state(state, cache_control))
+            .layer(from_fn_with_state(rules, cache_control))
     }
 
     #[tokio::test]

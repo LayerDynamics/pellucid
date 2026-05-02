@@ -24,13 +24,9 @@ use crate::identity::{ClientIdentity, RequestIdentity};
 use crate::stages::tier_gate::RequiredTier;
 use crate::traits::{EntitlementChecker, EntitlementDecision, Tier};
 
-/// Per-stage state.
-#[derive(Clone, Debug)]
-pub struct EntitlementState(pub Arc<dyn EntitlementChecker>);
-
 /// Middleware: entitlement check.
 pub async fn entitlement(
-    State(state): State<EntitlementState>,
+    State(checker): State<Arc<dyn EntitlementChecker>>,
     mut request: Request,
     next: Next,
 ) -> Response {
@@ -65,7 +61,7 @@ pub async fn entitlement(
         return GatewayError::ClerkUnauthorized.into_response();
     };
 
-    match state.0.check(&user_key, required).await {
+    match checker.check(&user_key, required).await {
         EntitlementDecision::Allow { effective_tier } => {
             // Update threaded identities so stage 11+ can read the
             // resolved tier. We mutate both the standalone
@@ -121,7 +117,7 @@ mod tests {
     fn router(checker: Arc<dyn EntitlementChecker>, required: Tier) -> Router {
         Router::new()
             .route("/x", get(report))
-            .layer(from_fn_with_state(EntitlementState(checker), entitlement))
+            .layer(from_fn_with_state(checker, entitlement))
             .layer(axum::middleware::from_fn(move |mut req: Request, next: Next| {
                 let r = required;
                 async move {
