@@ -110,37 +110,47 @@ impl ClerkJwtVerifier {
         &self.fetcher
     }
 
-    /// Validate `token`. The async path always reads through the
-    /// fetcher's read-fast cache.
-    pub async fn verify_internal(&self, token: &str) -> Result<ClerkClaims, ClerkVerifyError> {
+    /// Look up `kid` in the cached JWKS, force-refreshing once on
+    /// miss to absorb a Clerk key rotation that occurred since the
+    /// cached fetch. Returns the cloned [`Jwk`] on success.
+    async fn lookup_with_one_refresh(
+        &self,
+        kid: &str,
+    ) -> Result<jsonwebtoken::jwk::Jwk, ClerkVerifyError> {
+        let jwks = self
+            .fetcher
+            .get_or_refresh()
+            .await
+            .map_err(|e| ClerkVerifyError::Jwks(e.to_string()))?;
+        if let Some(jwk) = jwks.find(kid).cloned() {
+            return Ok(jwk);
+        }
+        let refreshed = self
+            .fetcher
+            .refresh()
+            .await
+            .map_err(|e| ClerkVerifyError::Jwks(e.to_string()))?;
+        refreshed.find(kid).cloned().ok_or_else(|| {
+            ClerkVerifyError::Jwks(
+                JwksError::KidNotFound {
+                    kid: kid.to_string(),
+                }
+                .to_string(),
+            )
+        })
+    }
+}
+
+#[async_trait]
+impl ClerkVerifier for ClerkJwtVerifier {
+    async fn verify(&self, token: &str) -> Result<ClerkClaims, ClerkVerifyError> {
         let header = decode_header(token).map_err(|err| {
             tracing::debug!(target: "pellucid::auth", "decode_header failed: {err}");
             ClerkVerifyError::Malformed
         })?;
         let kid = header.kid.ok_or(ClerkVerifyError::Malformed)?;
 
-        let jwks = self
-            .fetcher
-            .get_or_refresh()
-            .await
-            .map_err(|e| ClerkVerifyError::Jwks(e.to_string()))?;
-
-        let jwk = match jwks.find(&kid).cloned() {
-            Some(j) => j,
-            None => {
-                // Possibly a key rotation since the cached fetch.
-                // Force-refresh once and retry; if still missing,
-                // surface as a JWKS error.
-                let refreshed = self
-                    .fetcher
-                    .refresh()
-                    .await
-                    .map_err(|e| ClerkVerifyError::Jwks(e.to_string()))?;
-                refreshed.find(&kid).cloned().ok_or_else(|| {
-                    ClerkVerifyError::Jwks(JwksError::KidNotFound { kid: kid.clone() }.to_string())
-                })?
-            }
-        };
+        let jwk = self.lookup_with_one_refresh(&kid).await?;
 
         let decoding_key = DecodingKey::from_jwk(&jwk).map_err(|err| {
             tracing::debug!(target: "pellucid::auth", "from_jwk: {err}");
@@ -167,13 +177,6 @@ impl ClerkJwtVerifier {
             expires_at: token_data.claims.exp,
             issuer: token_data.claims.iss,
         })
-    }
-}
-
-#[async_trait]
-impl ClerkVerifier for ClerkJwtVerifier {
-    async fn verify(&self, token: &str) -> Result<ClerkClaims, ClerkVerifyError> {
-        self.verify_internal(token).await
     }
 }
 

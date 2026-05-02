@@ -239,12 +239,14 @@ struct ConvexResponse {
 }
 
 /// In-memory test source returning a pre-seeded snapshot. Used by
-/// unit tests to drive every code path deterministically.
+/// unit tests to drive every code path deterministically. Fields are
+/// private — interact via [`Self::seed`], [`Self::install_error`],
+/// [`Self::clear_error`], and [`Self::fetch_count`].
 #[derive(Debug, Default)]
 pub struct StaticEntitlementSource {
-    pub snapshots: parking_lot::RwLock<std::collections::HashMap<String, EntitlementSnapshot>>,
-    pub error: parking_lot::RwLock<Option<EntitlementSourceError>>,
-    pub call_count: std::sync::atomic::AtomicUsize,
+    snapshots: parking_lot::RwLock<std::collections::HashMap<String, EntitlementSnapshot>>,
+    error: parking_lot::RwLock<Option<EntitlementSourceError>>,
+    call_count: std::sync::atomic::AtomicUsize,
 }
 
 impl StaticEntitlementSource {
@@ -311,69 +313,120 @@ pub enum CacheError {
     Parse(#[from] serde_json::Error),
 }
 
-/// Read the cache row for `user_id` if present.
+/// Newtype around [`Pool`] that owns the entitlements_cache table
+/// surface. Cheap to clone (the pool is itself an `Arc`-backed
+/// handle).
+#[derive(Clone, Debug)]
+pub struct EntitlementCache {
+    pool: Pool,
+}
+
+impl EntitlementCache {
+    /// Wrap a pool.
+    #[must_use]
+    pub fn new(pool: Pool) -> Self {
+        Self { pool }
+    }
+
+    /// Reference to the underlying pool. Reserved for diagnostics +
+    /// migrations.
+    #[must_use]
+    pub fn pool(&self) -> &Pool {
+        &self.pool
+    }
+
+    /// Read the cache row for `user_id` if present.
+    pub async fn read(
+        &self,
+        user_id: &str,
+    ) -> Result<Option<EntitlementSnapshot>, CacheError> {
+        let row = sqlx::query(
+            "SELECT user_id, tier, features_json, valid_until_ms \
+             FROM entitlements_cache WHERE user_id = ?1",
+        )
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await?;
+        let Some(row) = row else { return Ok(None) };
+        let user_id: String = sqlx::Row::get(&row, 0);
+        let tier: i64 = sqlx::Row::get(&row, 1);
+        let features_json: String = sqlx::Row::get(&row, 2);
+        let valid_until_ms: i64 = sqlx::Row::get(&row, 3);
+        let features: EntitlementFeatures = serde_json::from_str(&features_json)?;
+        Ok(Some(EntitlementSnapshot {
+            user_id,
+            tier: u8::try_from(tier).unwrap_or(0),
+            features,
+            valid_until_ms,
+        }))
+    }
+
+    /// Write (insert-or-replace) a cache row.
+    pub async fn write(
+        &self,
+        snapshot: &EntitlementSnapshot,
+    ) -> Result<(), CacheError> {
+        let now_ms = pellucid_core::now_ms();
+        let features_json = serde_json::to_string(&snapshot.features)?;
+        sqlx::query(
+            "INSERT OR REPLACE INTO entitlements_cache \
+             (user_id, tier, features_json, valid_until_ms, cached_at_ms) \
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+        )
+        .bind(&snapshot.user_id)
+        .bind(i64::from(snapshot.tier))
+        .bind(features_json)
+        .bind(snapshot.valid_until_ms)
+        .bind(now_ms)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+}
+
+/// Free-function read shim — kept so existing call sites keep
+/// compiling. Prefer [`EntitlementCache::read`].
 pub async fn read_cache(
     pool: &Pool,
     user_id: &str,
 ) -> Result<Option<EntitlementSnapshot>, CacheError> {
-    let row = sqlx::query(
-        "SELECT user_id, tier, features_json, valid_until_ms \
-         FROM entitlements_cache WHERE user_id = ?1",
-    )
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await?;
-    let Some(row) = row else { return Ok(None) };
-    let user_id: String = sqlx::Row::get(&row, 0);
-    let tier: i64 = sqlx::Row::get(&row, 1);
-    let features_json: String = sqlx::Row::get(&row, 2);
-    let valid_until_ms: i64 = sqlx::Row::get(&row, 3);
-    let features: EntitlementFeatures = serde_json::from_str(&features_json)?;
-    Ok(Some(EntitlementSnapshot {
-        user_id,
-        tier: u8::try_from(tier).unwrap_or(0),
-        features,
-        valid_until_ms,
-    }))
+    EntitlementCache::new(pool.clone()).read(user_id).await
 }
 
-/// Write (insert-or-replace) a cache row.
+/// Free-function write shim — kept so existing call sites keep
+/// compiling. Prefer [`EntitlementCache::write`].
 pub async fn write_cache(
     pool: &Pool,
     snapshot: &EntitlementSnapshot,
 ) -> Result<(), CacheError> {
-    let now_ms = pellucid_core::now_ms();
-    let features_json = serde_json::to_string(&snapshot.features)?;
-    sqlx::query(
-        "INSERT OR REPLACE INTO entitlements_cache \
-         (user_id, tier, features_json, valid_until_ms, cached_at_ms) \
-         VALUES (?1, ?2, ?3, ?4, ?5)",
-    )
-    .bind(&snapshot.user_id)
-    .bind(i64::from(snapshot.tier))
-    .bind(features_json)
-    .bind(snapshot.valid_until_ms)
-    .bind(now_ms)
-    .execute(pool)
-    .await?;
-    Ok(())
+    EntitlementCache::new(pool.clone()).write(snapshot).await
 }
 
 /// The actual checker the gateway plugs in.
 #[derive(Debug)]
 pub struct ClerkEntitlementChecker {
-    pool: Pool,
+    cache: EntitlementCache,
     source: Arc<dyn EntitlementSource>,
     upstream_down_retry_secs: u32,
 }
 
 impl ClerkEntitlementChecker {
     /// Construct a new checker with the SPEC default 30-second
-    /// `Retry-After`.
+    /// `Retry-After`. Internally wraps `pool` in an [`EntitlementCache`].
     #[must_use]
     pub fn new(pool: Pool, source: Arc<dyn EntitlementSource>) -> Self {
+        Self::with_cache(EntitlementCache::new(pool), source)
+    }
+
+    /// Construct from an explicit cache. Reserved for callers that
+    /// share an [`EntitlementCache`] instance with other components.
+    #[must_use]
+    pub fn with_cache(
+        cache: EntitlementCache,
+        source: Arc<dyn EntitlementSource>,
+    ) -> Self {
         Self {
-            pool,
+            cache,
             source,
             upstream_down_retry_secs: DEFAULT_UPSTREAM_DOWN_RETRY_SECS,
         }
@@ -392,6 +445,13 @@ impl ClerkEntitlementChecker {
         &self.source
     }
 
+    /// Reference to the underlying cache. Tests use this to assert on
+    /// cache state without going through the checker.
+    #[must_use]
+    pub fn cache(&self) -> &EntitlementCache {
+        &self.cache
+    }
+
     /// Resolve a snapshot for `user_id`, hitting the cache first and
     /// the source on miss/expiry. Returns `Ok(None)` when both layers
     /// fail — callers map that to `UpstreamDown`.
@@ -401,7 +461,7 @@ impl ClerkEntitlementChecker {
     ) -> Option<EntitlementSnapshot> {
         let now_ms = pellucid_core::now_ms();
         // 1. Cache lookup.
-        match read_cache(&self.pool, user_id).await {
+        match self.cache.read(user_id).await {
             Ok(Some(snapshot)) if snapshot.is_fresh_at(now_ms) => {
                 return Some(snapshot);
             }
@@ -424,7 +484,7 @@ impl ClerkEntitlementChecker {
         // 2. Source fetch.
         match self.source.fetch(user_id).await {
             Ok(snapshot) => {
-                if let Err(err) = write_cache(&self.pool, &snapshot).await {
+                if let Err(err) = self.cache.write(&snapshot).await {
                     tracing::warn!(
                         target: "pellucid::auth",
                         "entitlements_cache write failed: {err}"

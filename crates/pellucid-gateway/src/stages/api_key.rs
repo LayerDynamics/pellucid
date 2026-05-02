@@ -15,7 +15,7 @@ use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 
 use crate::error_mapper::GatewayError;
-use crate::identity::{ApiIdentity, ClientIdentity};
+use crate::identity::{ApiIdentity, ClientIdentity, RequestIdentity};
 use crate::stages::tier_gate::RequiredTier;
 use crate::traits::{ApiKeyDecision, ApiKeyStore, Tier};
 
@@ -60,7 +60,13 @@ pub async fn api_key(
 
     match state.0.lookup(&key).await {
         ApiKeyDecision::Allow { identity, tier } => {
-            request.extensions_mut().insert(ApiIdentity { identity, tier });
+            let api_identity = ApiIdentity { identity, tier };
+            // Mutate the threaded RequestIdentity envelope so stage
+            // 7 has one source of truth.
+            if let Some(req_id) = request.extensions_mut().get_mut::<RequestIdentity>() {
+                req_id.api = Some(api_identity.clone());
+            }
+            request.extensions_mut().insert(api_identity);
             next.run(request).await
         }
         ApiKeyDecision::Revoked | ApiKeyDecision::Unknown => {

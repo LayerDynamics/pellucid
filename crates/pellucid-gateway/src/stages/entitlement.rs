@@ -20,7 +20,7 @@ use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 
 use crate::error_mapper::GatewayError;
-use crate::identity::{ApiIdentity, ClientIdentity};
+use crate::identity::{ClientIdentity, RequestIdentity};
 use crate::stages::tier_gate::RequiredTier;
 use crate::traits::{EntitlementChecker, EntitlementDecision, Tier};
 
@@ -45,9 +45,19 @@ pub async fn entitlement(
         return next.run(request).await;
     }
 
-    let user_key = if let Some(c) = request.extensions().get::<ClientIdentity>() {
+    // Read the caller through the threaded RequestIdentity envelope
+    // — single source of truth populated by stage 5 (clerk_session)
+    // and stage 6 (api_key). Falls back to standalone ClientIdentity
+    // / ApiIdentity extensions so the per-stage unit tests in stages
+    // 5/6 (which insert those types directly) continue to work.
+    let user_key = if let Some(req_id) = request.extensions().get::<RequestIdentity>() {
+        if !req_id.is_authenticated() {
+            return GatewayError::ClerkUnauthorized.into_response();
+        }
+        req_id.user_key()
+    } else if let Some(c) = request.extensions().get::<ClientIdentity>() {
         format!("clerk:{}", c.user_id)
-    } else if let Some(a) = request.extensions().get::<ApiIdentity>() {
+    } else if let Some(a) = request.extensions().get::<crate::identity::ApiIdentity>() {
         format!("apikey:{}", a.identity)
     } else {
         // Should have been caught by stages 5/6, but if not, fail
@@ -58,9 +68,16 @@ pub async fn entitlement(
     match state.0.check(&user_key, required).await {
         EntitlementDecision::Allow { effective_tier } => {
             // Update threaded identities so stage 11+ can read the
-            // resolved tier.
+            // resolved tier. We mutate both the standalone
+            // ClientIdentity (legacy reads) and the RequestIdentity
+            // envelope's clerk slot.
             if let Some(c) = request.extensions_mut().get_mut::<ClientIdentity>() {
                 c.tier = Some(effective_tier);
+            }
+            if let Some(req_id) = request.extensions_mut().get_mut::<RequestIdentity>() {
+                if let Some(c) = req_id.clerk.as_mut() {
+                    c.tier = Some(effective_tier);
+                }
             }
             // For ApiIdentity we already had a tier from stage 6;
             // the entitlement check only confirms it satisfies the

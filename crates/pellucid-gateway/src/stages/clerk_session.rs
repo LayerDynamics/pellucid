@@ -15,7 +15,7 @@ use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 
 use crate::error_mapper::GatewayError;
-use crate::identity::ClientIdentity;
+use crate::identity::{ClientIdentity, RequestIdentity};
 use crate::stages::tier_gate::RequiredTier;
 use crate::traits::{ClerkVerifier, Tier};
 
@@ -52,11 +52,20 @@ pub async fn clerk_session(
 
     match state.0.verify(&token).await {
         Ok(claims) => {
-            request.extensions_mut().insert(ClientIdentity {
+            let identity = ClientIdentity {
                 user_id: claims.user_id,
                 session_id: claims.session_id,
                 tier: None,
-            });
+            };
+            // Mutate the threaded RequestIdentity envelope so stage 7
+            // can read the caller through one source of truth.
+            if let Some(req_id) = request.extensions_mut().get_mut::<RequestIdentity>() {
+                req_id.clerk = Some(identity.clone());
+            }
+            // Keep ClientIdentity standalone too so stage 7's tier
+            // mutation path (and the stage's own unit tests) still
+            // see it directly.
+            request.extensions_mut().insert(identity);
             next.run(request).await
         }
         Err(_) => GatewayError::ClerkUnauthorized.into_response(),

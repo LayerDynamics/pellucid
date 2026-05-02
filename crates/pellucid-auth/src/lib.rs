@@ -19,9 +19,9 @@ pub use endpoint_tiers::{
 };
 pub use entitlement::{
     read_cache, write_cache, CacheError, ClerkEntitlementChecker, ConvexEntitlementSource,
-    EntitlementFeatures, EntitlementSnapshot, EntitlementSource, EntitlementSourceError,
-    StaticEntitlementSource, CONVEX_INTERNAL_ENTITLEMENTS_PATH, CONVEX_SHARED_SECRET_HEADER,
-    DEFAULT_CACHE_TTL, DEFAULT_UPSTREAM_DOWN_RETRY_SECS,
+    EntitlementCache, EntitlementFeatures, EntitlementSnapshot, EntitlementSource,
+    EntitlementSourceError, StaticEntitlementSource, CONVEX_INTERNAL_ENTITLEMENTS_PATH,
+    CONVEX_SHARED_SECRET_HEADER, DEFAULT_CACHE_TTL, DEFAULT_UPSTREAM_DOWN_RETRY_SECS,
 };
 pub use jwks::{CachedJwks, JwksCache, JwksError, JwksFetcher, DEFAULT_TTL};
 
