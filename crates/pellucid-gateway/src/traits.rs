@@ -48,6 +48,20 @@ impl Tier {
     pub const fn satisfies(self, required: Tier) -> bool {
         self.rank() >= required.rank()
     }
+
+    /// Convert a numeric tier rank back into the typed enum. Inverse
+    /// of [`Self::rank`]. Any rank above `3` clamps to [`Tier::Tier2`]
+    /// — defensive against stale cache rows persisting a numeric tier
+    /// from a future build that introduced higher tiers.
+    #[must_use]
+    pub const fn from_rank(rank: u8) -> Tier {
+        match rank {
+            0 => Self::Anonymous,
+            1 => Self::Free,
+            2 => Self::Tier1,
+            _ => Self::Tier2,
+        }
+    }
 }
 
 /// Claims returned by [`ClerkVerifier::verify`]. Real Clerk tokens
@@ -138,6 +152,12 @@ impl ApiKeyStore for NoopApiKeyStore {
     }
 }
 
+/// SPEC-001 §14.1 default for [`EntitlementDecision::UpstreamDown::retry_after_secs`].
+/// The webview reads `Retry-After` to size its outage-banner countdown.
+/// Lives on the gateway side so any [`EntitlementChecker`] implementor
+/// (and the stage 7 fallback path) reads the same value.
+pub const DEFAULT_UPSTREAM_DOWN_RETRY_SECS: u32 = 30;
+
 /// Three-arm entitlement decision from SPEC-001 §11.2 + §24 (H2 fix).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum EntitlementDecision {
@@ -205,6 +225,19 @@ mod tests {
         assert!(Tier::Anonymous.rank() < Tier::Free.rank());
         assert!(Tier::Free.rank() < Tier::Tier1.rank());
         assert!(Tier::Tier1.rank() < Tier::Tier2.rank());
+    }
+
+    #[test]
+    fn tier_from_rank_round_trips() {
+        for tier in [Tier::Anonymous, Tier::Free, Tier::Tier1, Tier::Tier2] {
+            assert_eq!(Tier::from_rank(tier.rank()), tier);
+        }
+    }
+
+    #[test]
+    fn tier_from_rank_clamps_unknown_high_ranks_to_tier2() {
+        assert_eq!(Tier::from_rank(4), Tier::Tier2);
+        assert_eq!(Tier::from_rank(255), Tier::Tier2);
     }
 
     #[test]

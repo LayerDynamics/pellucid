@@ -26,7 +26,6 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 async-trait = { workspace = true }
 parking_lot = { workspace = true }
-phf = { workspace = true }
 sqlx = { workspace = true }
 pellucid-gateway = { path = "../pellucid-gateway" }
 pellucid-core = { path = "../pellucid-core" }

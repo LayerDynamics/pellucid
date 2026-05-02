@@ -43,7 +43,7 @@ pub use router::{build_router, GatewayState, HandlerSet};
 pub use traits::{
     AlwaysAllowEntitlement, AlwaysDenyEntitlement, ApiKeyDecision, ApiKeyStore, ClerkClaims,
     ClerkVerifier, EntitlementChecker, EntitlementDecision, NoopApiKeyStore, NoopClerkVerifier,
-    Tier,
+    Tier, DEFAULT_UPSTREAM_DOWN_RETRY_SECS,
 };
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.

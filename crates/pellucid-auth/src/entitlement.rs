@@ -26,17 +26,13 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use pellucid_gateway::traits::{EntitlementChecker, EntitlementDecision, Tier};
+use pellucid_gateway::traits::{
+    EntitlementChecker, EntitlementDecision, Tier, DEFAULT_UPSTREAM_DOWN_RETRY_SECS,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use pellucid_db::Pool;
-
-use crate::endpoint_tiers::tier_from_rank;
-
-/// SPEC-001 §14.1 default. The webview reads `Retry-After` to size
-/// its outage-banner countdown.
-pub const DEFAULT_UPSTREAM_DOWN_RETRY_SECS: u32 = 30;
 
 /// SPEC-001 §6.4 cache TTL.
 pub const DEFAULT_CACHE_TTL: Duration = Duration::from_secs(15 * 60);
@@ -86,7 +82,7 @@ impl EntitlementSnapshot {
     /// Convert the numeric tier to the typed enum.
     #[must_use]
     pub fn typed_tier(&self) -> Tier {
-        tier_from_rank(self.tier)
+        Tier::from_rank(self.tier)
     }
 
     /// `true` iff `valid_until_ms > now_ms`.

@@ -14,14 +14,13 @@ pub mod test_keys;
 
 pub use clerk::{ClerkJwtVerifier, DEFAULT_LEEWAY_SECS};
 pub use endpoint_tiers::{
-    iter_premium_paths, premium_path_count, rank_for_tier, tier_for_path, tier_from_rank,
-    ENDPOINT_ENTITLEMENTS,
+    iter_premium_paths, premium_path_count, tier_for_path, ENDPOINT_ENTITLEMENTS,
 };
 pub use entitlement::{
     read_cache, write_cache, CacheError, ClerkEntitlementChecker, ConvexEntitlementSource,
     EntitlementCache, EntitlementFeatures, EntitlementSnapshot, EntitlementSource,
     EntitlementSourceError, StaticEntitlementSource, CONVEX_INTERNAL_ENTITLEMENTS_PATH,
-    CONVEX_SHARED_SECRET_HEADER, DEFAULT_CACHE_TTL, DEFAULT_UPSTREAM_DOWN_RETRY_SECS,
+    CONVEX_SHARED_SECRET_HEADER, DEFAULT_CACHE_TTL,
 };
 pub use jwks::{CachedJwks, JwksCache, JwksError, JwksFetcher, DEFAULT_TTL};
 

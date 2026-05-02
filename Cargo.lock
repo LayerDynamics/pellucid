@@ -2802,7 +2802,6 @@ dependencies = [
  "pellucid-core",
  "pellucid-db",
  "pellucid-gateway",
- "phf 0.11.3",
  "reqwest 0.12.28",
  "rsa",
  "serde",
