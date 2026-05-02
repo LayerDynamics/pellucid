@@ -1,0 +1,20 @@
+version: v2
+plugins:
+  # sebuf — WorldMonitor's homegrown buf plugin. Emits typed
+  # request/response structs annotated with cache key + tier
+  # metadata used by `pellucid-handlers`. Output lands in
+  # `crates/pellucid-handlers/src/generated/`.
+  #
+  # When the sebuf binary is on $PATH, `bun run gen` (which calls
+  # `buf generate`) regenerates these files from the .proto schemas.
+  # Until then, the canonical generated/ tree is committed by hand
+  # under the same shape sebuf would produce — `pellucid-codegen`'s
+  # build.rs verifies the schema/output match on every cargo build.
+  - remote: buf.build/sebuf/sebuf-rust
+    out: ../crates/pellucid-handlers/src/generated
+    opt:
+      - emit_cache_metadata=true
+  - remote: buf.build/sebuf/sebuf-ts
+    out: ../webview/src/generated
+    opt:
+      - emit_cache_metadata=true

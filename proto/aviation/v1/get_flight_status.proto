@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package aviation.v1;
+
+// Aviation flight-status RPC.
+//
+// Cache key (sebuf option `cache_key`): assembled from request
+// fields per SPEC-001 §7.2. The format mirrors WorldMonitor's
+// original handler so the linter at
+// `tools/check-cache-keys.ts` can verify it without divergence.
+//
+// Cache tier (sebuf option `cache_tier`): FAST — the upstream
+// (aviationstack) updates flight status every ~60s; the FAST tier's
+// 60-second `s-maxage` matches that cadence.
+
+import "sebuf/cache.proto";
+
+message GetFlightStatusRequest {
+  // IATA flight number, e.g. "AA100".
+  string flight = 1;
+
+  // ISO 8601 date (`YYYY-MM-DD`).
+  string date = 2;
+
+  // 3-letter IATA origin airport code, e.g. "JFK".
+  string origin = 3;
+}
+
+message FlightStatus {
+  // Echo of the requested flight identifier so the webview can
+  // correlate the response to the request that produced it.
+  string flight = 1;
+
+  // Schedule (ISO 8601 strings).
+  string scheduled_departure = 2;
+  string scheduled_arrival = 3;
+
+  // Live status: one of `scheduled`, `active`, `landed`,
+  // `cancelled`, `incident`, `diverted`. Mirrors the
+  // aviationstack `flight_status` enum.
+  string status = 4;
+
+  // Origin / destination IATA codes.
+  string origin = 5;
+  string destination = 6;
+
+  // Optional gate / terminal — the upstream may omit.
+  optional string departure_gate = 7;
+  optional string arrival_gate = 8;
+}
+
+service AviationService {
+  // sebuf annotations:
+  //   (sebuf.cache.key)  = "aviation:status:{flight}:{date}:{origin}:v1"
+  //   (sebuf.cache.tier) = "FAST"
+  rpc GetFlightStatus(GetFlightStatusRequest) returns (FlightStatus) {
+    option (sebuf.cache.key) = "aviation:status:{flight}:{date}:{origin}:v1";
+    option (sebuf.cache.tier) = "FAST";
+  }
+}

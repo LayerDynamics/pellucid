@@ -1,20 +1,29 @@
-//! pellucid-streams
+//! pellucid-streams — upstream HTTP clients for aviationstack, AIS,
+//! OpenSky, RSS, Telegram, OREF, and the rest of the SPEC-001 §10
+//! provider matrix.
 //!
-//! AIS, OpenSky, RSS, Telegram, OREF clients.
-//!
-//! See `docs/specs/SPEC-001-pellucid-stack-rebuild.md` §11 for this crate's role
-//! in the Pellucid workspace.
+//! Each provider has its own module exposing typed `fetch_*`
+//! functions that take an injected `reqwest::Client` + base URL so
+//! integration tests can point them at a `wiremock` server. The
+//! production binaries (`pellucid-edge-bin`, `pellucid-relay-bin`,
+//! `pellucid-seeders-bin`) build a single client per process and
+//! pass it through. Errors are wrapped in [`StreamsError`] so the
+//! gateway's stage 11 can map them to consistent envelope shapes.
+
+pub mod aviationstack;
+pub mod error;
+
+pub use aviationstack::{AviationstackClient, AviationstackConfig};
+pub use error::StreamsError;
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.
-///
-/// Used by the universal smoke test (per implementation plan §1.1) so every
-/// crate has at least one passing unit test from the moment it is created.
 #[must_use]
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
 #[cfg(test)]
+#[allow(clippy::panic, clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 

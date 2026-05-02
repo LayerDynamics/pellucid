@@ -39,6 +39,7 @@ anyhow = "1"
 uuid = { version = "1.10", features = ["v4", "v7", "serde"] }
 phf = { version = "0.11", features = ["macros"] }
 async-trait = "0.1"
+url = "2.5"
 bytes = "1.8"
 futures = "0.3"
 parking_lot = "0.12"

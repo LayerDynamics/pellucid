@@ -1,32 +1,56 @@
-//! pellucid-handlers
+//! pellucid-handlers — RPC handler implementations.
 //!
-//! RPC handlers (40 domains).
+//! Each domain (`aviation`, `market`, `news`, …) sits in its own
+//! module. Generated request / response types live under
+//! [`generated`] and are produced from `proto/` by `bun run gen`
+//! (`pellucid-codegen`'s build script enforces the proto-tree /
+//! generated-tree digest invariant on every cargo build).
 //!
-//! See `docs/specs/SPEC-001-pellucid-stack-rebuild.md` §11 for this crate's role
-//! in the Pellucid workspace.
+//! ## Public surface
+//!
+//! - [`aviation`] — domain modules; each `vN/get_*` function
+//!   returns an [`axum::routing::MethodRouter`] that the gateway
+//!   `HandlerSet` mounts.
+//! - [`AppState`] — shared per-process state every handler is
+//!   parametrised with: SQLite pool, cache coalesce registry, and
+//!   pluggable upstream clients.
+//! - [`build_handlers`] — composes the per-domain `Router`s into a
+//!   single `Router` ready to hand to `pellucid_gateway::build_router`.
+
+pub mod aviation;
+pub mod generated;
+pub mod state;
+
+pub use state::{AppState, AppStateError, FlightStatusUpstream};
+
+use axum::Router;
+
+/// Compose every domain's routes into one `Router` ready to hand
+/// to `pellucid_gateway::build_router`.
+pub fn build_handlers(state: AppState) -> Router {
+    Router::new().merge(aviation::router(state))
+}
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.
-///
-/// Used by the universal smoke test (per implementation plan §1.1) so every
-/// crate has at least one passing unit test from the moment it is created.
 #[must_use]
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
 #[cfg(test)]
+#[allow(clippy::panic, clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 
     #[test]
     fn version_is_set() {
-        let v = version();
-        assert!(!v.is_empty(), "version must not be empty");
-        assert!(v.contains('.'), "expected semver with dot, got {v}");
+        assert!(!version().is_empty());
+        assert!(version().contains('.'));
     }
 
-    #[test]
-    fn version_matches_workspace() {
-        assert_eq!(version(), env!("CARGO_PKG_VERSION"));
+    #[tokio::test]
+    async fn build_handlers_returns_router() {
+        let state = AppState::for_tests();
+        let _: Router = build_handlers(state);
     }
 }

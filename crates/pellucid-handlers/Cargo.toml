@@ -11,3 +11,25 @@ description = "RPC handlers (40 domains)"
 workspace = true
 
 [dependencies]
+axum = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+sqlx = { workspace = true }
+pellucid-core = { path = "../pellucid-core" }
+pellucid-cache = { path = "../pellucid-cache" }
+pellucid-db = { path = "../pellucid-db" }
+pellucid-gateway = { path = "../pellucid-gateway" }
+pellucid-codegen = { path = "../pellucid-codegen" }
+
+[dev-dependencies]
+tokio = { workspace = true }
+tower = { workspace = true }
+wiremock = { workspace = true }
+reqwest = { workspace = true }
+url = { workspace = true }
+async-trait = { workspace = true }
+pellucid-streams = { path = "../pellucid-streams" }
