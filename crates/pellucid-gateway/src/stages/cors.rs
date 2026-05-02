@@ -14,13 +14,9 @@ use axum::response::Response;
 
 use crate::config::CorsConfig;
 
-/// Per-stage state.
-#[derive(Clone, Debug)]
-pub struct CorsState(pub Arc<CorsConfig>);
-
 /// Middleware: merges CORS headers onto the response.
 pub async fn cors_merge(
-    State(state): State<CorsState>,
+    State(cfg): State<Arc<CorsConfig>>,
     request: Request,
     next: Next,
 ) -> Response {
@@ -38,7 +34,7 @@ pub async fn cors_merge(
         // Same-origin / curl. Set `*` only when credentials are not
         // allowed; otherwise omit the header entirely so the browser
         // does not silently drop cookies.
-        if !state.0.allow_credentials {
+        if !cfg.allow_credentials {
             headers.insert(
                 header::ACCESS_CONTROL_ALLOW_ORIGIN,
                 HeaderValue::from_static("*"),
@@ -48,17 +44,17 @@ pub async fn cors_merge(
 
     headers.insert(
         header::ACCESS_CONTROL_ALLOW_METHODS,
-        join_methods(&state.0.allowed_methods),
+        join_methods(&cfg.allowed_methods),
     );
     headers.insert(
         header::ACCESS_CONTROL_ALLOW_HEADERS,
-        join_headers(&state.0.allowed_headers),
+        join_headers(&cfg.allowed_headers),
     );
     headers.insert(
         header::ACCESS_CONTROL_MAX_AGE,
-        HeaderValue::from(state.0.max_age_secs),
+        HeaderValue::from(cfg.max_age_secs),
     );
-    if state.0.allow_credentials {
+    if cfg.allow_credentials {
         headers.insert(
             header::ACCESS_CONTROL_ALLOW_CREDENTIALS,
             HeaderValue::from_static("true"),
@@ -97,16 +93,16 @@ mod tests {
     use axum::Router;
     use tower::util::ServiceExt;
 
-    fn router(state: CorsState) -> Router {
+    fn router(cfg: Arc<CorsConfig>) -> Router {
         Router::new()
             .route("/echo", get(|| async { "ok" }))
-            .layer(from_fn_with_state(state, cors_merge))
+            .layer(from_fn_with_state(cfg, cors_merge))
     }
 
     #[tokio::test]
     async fn echoes_origin_back_when_present() {
         let cfg = CorsConfig::default();
-        let resp = router(CorsState(Arc::new(cfg)))
+        let resp = router(Arc::new(cfg))
             .oneshot(
                 AxumRequest::builder()
                     .uri("/echo")
@@ -131,7 +127,7 @@ mod tests {
     #[tokio::test]
     async fn no_origin_with_credentials_omits_origin_header() {
         let cfg = CorsConfig::default();
-        let resp = router(CorsState(Arc::new(cfg)))
+        let resp = router(Arc::new(cfg))
             .oneshot(AxumRequest::builder().uri("/echo").body(Body::empty()).unwrap())
             .await
             .unwrap();
@@ -144,7 +140,7 @@ mod tests {
     #[tokio::test]
     async fn methods_and_headers_advertised() {
         let cfg = CorsConfig::default();
-        let resp = router(CorsState(Arc::new(cfg)))
+        let resp = router(Arc::new(cfg))
             .oneshot(
                 AxumRequest::builder()
                     .uri("/echo")
@@ -168,7 +164,7 @@ mod tests {
             allow_credentials: false,
             ..CorsConfig::default()
         };
-        let resp = router(CorsState(Arc::new(cfg)))
+        let resp = router(Arc::new(cfg))
             .oneshot(AxumRequest::builder().uri("/echo").body(Body::empty()).unwrap())
             .await
             .unwrap();

@@ -19,13 +19,9 @@ use crate::identity::{ClientIdentity, RequestIdentity};
 use crate::stages::tier_gate::RequiredTier;
 use crate::traits::{ClerkVerifier, Tier};
 
-/// Per-stage state.
-#[derive(Clone, Debug)]
-pub struct ClerkSessionState(pub Arc<dyn ClerkVerifier>);
-
 /// Middleware: validate Clerk session for tier-gated routes.
 pub async fn clerk_session(
-    State(state): State<ClerkSessionState>,
+    State(verifier): State<Arc<dyn ClerkVerifier>>,
     mut request: Request,
     next: Next,
 ) -> Response {
@@ -50,7 +46,7 @@ pub async fn clerk_session(
         }
     };
 
-    match state.0.verify(&token).await {
+    match verifier.verify(&token).await {
         Ok(claims) => {
             let identity = ClientIdentity {
                 user_id: claims.user_id,

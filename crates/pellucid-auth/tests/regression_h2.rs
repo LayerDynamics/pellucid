@@ -30,7 +30,9 @@ use axum::Router;
 use pellucid_auth::test_keys::{fixture_jwk_set, fixture_signing_key, FIXTURE_KID};
 use pellucid_auth::{ClerkEntitlementChecker, ClerkJwtVerifier, ConvexEntitlementSource};
 use pellucid_db::open_in_memory;
-use pellucid_gateway::traits::{ClerkClaims, ClerkVerifier, ClerkVerifyError, Tier};
+use pellucid_gateway::traits::{
+    ClerkClaims, ClerkVerifier, ClerkVerifyError, EntitlementChecker, Tier,
+};
 use pellucid_gateway::{
     build_router, GatewayConfig, OriginAllowList, RouteEntitlementRules,
 };
@@ -76,6 +78,25 @@ fn handlers() -> Router {
         .route(TIER2_PATH, get(|| async { "secret-stock-data" }))
 }
 
+/// Build the gateway under test: TIER2_PATH gated to `Tier::Tier2`,
+/// with the supplied Clerk verifier + entitlement checker, and the
+/// loopback origin allow-listed so the test client's default Origin
+/// (none) clears stage 1.
+fn gateway_with_checker(
+    clerk: Arc<dyn ClerkVerifier>,
+    checker: Arc<dyn EntitlementChecker>,
+) -> Router {
+    let mut tiers = RouteEntitlementRules::new();
+    tiers.require(TIER2_PATH, Tier::Tier2);
+    let cfg = GatewayConfig::builder()
+        .route_tiers(tiers)
+        .clerk(clerk)
+        .entitlement(checker)
+        .origins(OriginAllowList::new().with_loopback(true))
+        .build();
+    build_router(handlers(), cfg)
+}
+
 #[tokio::test]
 async fn convex_5xx_with_cold_cache_yields_503_plus_retry_after_30() {
     // Arrange — a real Convex stand-in returning 5xx.
@@ -94,19 +115,7 @@ async fn convex_5xx_with_cold_cache_yields_503_plus_retry_after_30() {
         reqwest::Client::new(),
     ));
     let checker = Arc::new(ClerkEntitlementChecker::new(pool, source));
-
-    // Build a gateway with the entitlement stage real, the Clerk
-    // stage stubbed to accept our fixture token, and the route
-    // marked tier-2.
-    let mut tiers = RouteEntitlementRules::new();
-    tiers.require(TIER2_PATH, Tier::Tier2);
-    let cfg = GatewayConfig::builder()
-        .route_tiers(tiers)
-        .clerk(Arc::new(TestClerk))
-        .entitlement(checker)
-        .origins(OriginAllowList::new().with_loopback(true))
-        .build();
-    let app = build_router(handlers(), cfg);
+    let app = gateway_with_checker(Arc::new(TestClerk), checker);
 
     // Act — issue a request that requires entitlement.
     let response = app
@@ -161,15 +170,7 @@ async fn convex_unreachable_yields_503_plus_retry_after() {
         reqwest::Client::new(),
     ));
     let checker = Arc::new(ClerkEntitlementChecker::new(pool, source));
-
-    let mut tiers = RouteEntitlementRules::new();
-    tiers.require(TIER2_PATH, Tier::Tier2);
-    let cfg = GatewayConfig::builder()
-        .route_tiers(tiers)
-        .clerk(Arc::new(TestClerk))
-        .entitlement(checker)
-        .build();
-    let app = build_router(handlers(), cfg);
+    let app = gateway_with_checker(Arc::new(TestClerk), checker);
 
     let response = app
         .oneshot(
@@ -218,15 +219,7 @@ async fn convex_returns_allow_succeeds_with_200() {
         reqwest::Client::new(),
     ));
     let checker = Arc::new(ClerkEntitlementChecker::new(pool, source));
-
-    let mut tiers = RouteEntitlementRules::new();
-    tiers.require(TIER2_PATH, Tier::Tier2);
-    let cfg = GatewayConfig::builder()
-        .route_tiers(tiers)
-        .clerk(Arc::new(TestClerk))
-        .entitlement(checker)
-        .build();
-    let app = build_router(handlers(), cfg);
+    let app = gateway_with_checker(Arc::new(TestClerk), checker);
 
     let response = app
         .oneshot(
@@ -269,15 +262,7 @@ async fn convex_returns_low_tier_yields_403_not_503() {
         reqwest::Client::new(),
     ));
     let checker = Arc::new(ClerkEntitlementChecker::new(pool, source));
-
-    let mut tiers = RouteEntitlementRules::new();
-    tiers.require(TIER2_PATH, Tier::Tier2);
-    let cfg = GatewayConfig::builder()
-        .route_tiers(tiers)
-        .clerk(Arc::new(TestClerk))
-        .entitlement(checker)
-        .build();
-    let app = build_router(handlers(), cfg);
+    let app = gateway_with_checker(Arc::new(TestClerk), checker);
 
     let response = app
         .oneshot(
@@ -354,15 +339,7 @@ async fn end_to_end_with_real_clerk_jwks_and_convex_outage() {
         reqwest::Client::new(),
     ));
     let checker = Arc::new(ClerkEntitlementChecker::new(pool, source));
-
-    let mut tiers = RouteEntitlementRules::new();
-    tiers.require(TIER2_PATH, Tier::Tier2);
-    let cfg = GatewayConfig::builder()
-        .route_tiers(tiers)
-        .clerk(clerk)
-        .entitlement(checker)
-        .build();
-    let app = build_router(handlers(), cfg);
+    let app = gateway_with_checker(clerk, checker);
 
     let response = app
         .oneshot(

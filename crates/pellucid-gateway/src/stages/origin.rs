@@ -16,13 +16,10 @@ use axum::response::{IntoResponse, Response};
 use crate::config::OriginAllowList;
 use crate::error_mapper::GatewayError;
 
-/// Per-stage state extracted by the middleware adapter.
-#[derive(Clone, Debug)]
-pub struct OriginAllowListState(pub Arc<OriginAllowList>);
-
-/// Middleware function consumed by `from_fn_with_state`.
+/// Middleware function consumed by `from_fn_with_state`. The state
+/// is the shared [`OriginAllowList`] itself — no wrapper newtype.
 pub async fn origin_allow_list(
-    State(state): State<OriginAllowListState>,
+    State(allow): State<Arc<OriginAllowList>>,
     request: Request,
     next: Next,
 ) -> Response {
@@ -31,7 +28,7 @@ pub async fn origin_allow_list(
         .get(header::ORIGIN)
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
-    if !state.0.permits(origin) {
+    if !allow.permits(origin) {
         return GatewayError::OriginForbidden.into_response();
     }
     next.run(request).await
@@ -48,10 +45,10 @@ mod tests {
     use axum::Router;
     use tower::util::ServiceExt;
 
-    fn router(state: OriginAllowListState) -> Router {
+    fn router(allow: Arc<OriginAllowList>) -> Router {
         Router::new()
             .route("/echo", get(|| async { "ok" }))
-            .layer(from_fn_with_state(state, origin_allow_list))
+            .layer(from_fn_with_state(allow, origin_allow_list))
     }
 
     fn req(origin: Option<&str>) -> AxumRequest<Body> {
@@ -65,17 +62,14 @@ mod tests {
     #[tokio::test]
     async fn allows_empty_origin() {
         let allow = Arc::new(OriginAllowList::new());
-        let resp = router(OriginAllowListState(allow))
-            .oneshot(req(None))
-            .await
-            .unwrap();
+        let resp = router(allow).oneshot(req(None)).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
     }
 
     #[tokio::test]
     async fn forbids_unknown_origin() {
         let allow = Arc::new(OriginAllowList::new());
-        let resp = router(OriginAllowListState(allow))
+        let resp = router(allow)
             .oneshot(req(Some("https://evil.example")))
             .await
             .unwrap();
@@ -86,7 +80,7 @@ mod tests {
     async fn allows_exact_origin() {
         let mut allow = OriginAllowList::new();
         allow.allow_exact("https://worldmonitor.app");
-        let resp = router(OriginAllowListState(Arc::new(allow)))
+        let resp = router(Arc::new(allow))
             .oneshot(req(Some("https://worldmonitor.app")))
             .await
             .unwrap();
@@ -96,7 +90,7 @@ mod tests {
     #[tokio::test]
     async fn allows_loopback_when_flag_set() {
         let allow = OriginAllowList::new().with_loopback(true);
-        let resp = router(OriginAllowListState(Arc::new(allow)))
+        let resp = router(Arc::new(allow))
             .oneshot(req(Some("http://127.0.0.1:5173")))
             .await
             .unwrap();

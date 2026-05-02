@@ -21,18 +21,14 @@ use crate::traits::Tier;
 #[derive(Clone, Copy, Debug)]
 pub struct RequiredTier(pub Tier);
 
-/// Per-stage state.
-#[derive(Clone, Debug)]
-pub struct TierGateState(pub Arc<RouteEntitlementRules>);
-
 /// Middleware: insert the required tier into the request extensions.
 pub async fn tier_gate(
-    State(state): State<TierGateState>,
+    State(rules): State<Arc<RouteEntitlementRules>>,
     mut request: Request,
     next: Next,
 ) -> Response {
     let path = request.uri().path().to_string();
-    let required = state.0.required_for(&path);
+    let required = rules.required_for(&path);
     request.extensions_mut().insert(RequiredTier(required));
     next.run(request).await
 }
@@ -52,17 +48,17 @@ mod tests {
         format!("{:?}", t.0)
     }
 
-    fn router(state: TierGateState) -> Router {
+    fn router(rules: Arc<RouteEntitlementRules>) -> Router {
         Router::new()
             .route("/x", get(echo_required))
             .route("/y", get(echo_required))
-            .layer(from_fn_with_state(state, tier_gate))
+            .layer(from_fn_with_state(rules, tier_gate))
     }
 
     #[tokio::test]
     async fn unmapped_path_defaults_to_anonymous() {
         let rules = Arc::new(RouteEntitlementRules::new());
-        let resp = router(TierGateState(rules))
+        let resp = router(rules)
             .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())
             .await
             .unwrap();
@@ -75,7 +71,7 @@ mod tests {
     async fn mapped_path_resolves_to_configured_tier() {
         let mut rules = RouteEntitlementRules::new();
         rules.require("/y", Tier::Tier2);
-        let resp = router(TierGateState(Arc::new(rules)))
+        let resp = router(Arc::new(rules))
             .oneshot(AxumRequest::builder().uri("/y").body(Body::empty()).unwrap())
             .await
             .unwrap();
@@ -88,7 +84,7 @@ mod tests {
         let mut rules = RouteEntitlementRules::new();
         rules.require("/x", Tier::Free);
         rules.require("/y", Tier::Tier1);
-        let r = router(TierGateState(Arc::new(rules)));
+        let r = router(Arc::new(rules));
         let a = r
             .clone()
             .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())

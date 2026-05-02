@@ -41,6 +41,25 @@ struct RawClaims {
 }
 
 /// Production Clerk JWT verifier.
+///
+/// ## `aud` (audience) validation policy
+///
+/// Audience checking is **opt-in**, not on-by-default. Behaviour:
+///
+/// | Configuration                                      | Verifier behaviour                                              |
+/// |----------------------------------------------------|-----------------------------------------------------------------|
+/// | `ClerkJwtVerifier::new(...)` (no `with_audience`)  | `aud` is **not** validated — `validation.validate_aud = false`. |
+/// | `.with_audience("expected-aud")`                   | Token's `aud` claim must equal `"expected-aud"` exactly.        |
+///
+/// Rationale: Clerk frontend tokens omit `aud` entirely (the issuer
+/// itself uniquely identifies the Clerk instance via `iss`), and the
+/// gateway already validates `iss` against `expected_issuer` on every
+/// request. Requiring `aud` by default would 401 every legitimate
+/// Clerk session — see SPEC-001 §13.1. Production deployments that
+/// also issue M2M / backend tokens with an explicit audience SHOULD
+/// call [`Self::with_audience`] to harden the verifier; the
+/// `wrong_audience_is_rejected_when_audience_required` unit test
+/// pins this behaviour.
 #[derive(Debug)]
 pub struct ClerkJwtVerifier {
     fetcher: JwksFetcher,
@@ -83,6 +102,14 @@ impl ClerkJwtVerifier {
     }
 
     /// Require the token's `aud` claim equal `audience`.
+    ///
+    /// Without this call the verifier sets
+    /// `validation.validate_aud = false` and the `aud` claim is
+    /// ignored (Clerk frontend tokens routinely omit it). Calling
+    /// this opts into strict equality: any token whose `aud` differs
+    /// — or which omits `aud` entirely — is rejected with
+    /// [`ClerkVerifyError::Malformed`]. See the type-level docs on
+    /// [`ClerkJwtVerifier`] for the full policy.
     #[must_use]
     pub fn with_audience(mut self, audience: impl Into<String>) -> Self {
         self.expected_audience = Some(audience.into());

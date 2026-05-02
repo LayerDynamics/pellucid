@@ -110,6 +110,20 @@ pub enum EntitlementSourceError {
     Parse(String),
 }
 
+/// Errors the cache → source resolution path may surface to the
+/// `EntitlementChecker`. The checker maps every variant to
+/// `UpstreamDown { retry_after_secs }` per SPEC-001 §14.1, but the
+/// typed envelope keeps the underlying cause attached for tracing
+/// and lets future callers (e.g. webhook refreshers) react more
+/// specifically.
+#[derive(Debug, Error)]
+pub enum ResolveError {
+    /// The source layer (Convex / fixture) returned an error after
+    /// the cache layer had nothing fresh to serve.
+    #[error("entitlement source failed: {0}")]
+    Source(#[from] EntitlementSourceError),
+}
+
 /// Pluggable source of entitlement snapshots.
 #[async_trait]
 pub trait EntitlementSource: Send + Sync + std::fmt::Debug {
@@ -449,17 +463,30 @@ impl ClerkEntitlementChecker {
     }
 
     /// Resolve a snapshot for `user_id`, hitting the cache first and
-    /// the source on miss/expiry. Returns `Ok(None)` when both layers
-    /// fail — callers map that to `UpstreamDown`.
+    /// the source on miss/expiry.
+    ///
+    /// Outcomes:
+    /// - `Ok(Some(snapshot))` — fresh snapshot from cache or source.
+    /// - `Ok(None)` — reserved for the source's
+    ///   genuinely-unknown-user case (currently unreachable; the
+    ///   trait doc on [`EntitlementSource::fetch`] holds the slot
+    ///   for a future "user missing → anonymous tier with short TTL"
+    ///   path).
+    /// - `Err(ResolveError::Source(_))` — the source returned an
+    ///   error after the cache layer had nothing fresh.
+    ///
+    /// Cache hard-failures are still warn-and-continued (treated as
+    /// misses) so a corrupt SQLite row cannot DoS the gateway —
+    /// only an actual source failure surfaces upward.
     pub async fn resolve(
         &self,
         user_id: &str,
-    ) -> Option<EntitlementSnapshot> {
+    ) -> Result<Option<EntitlementSnapshot>, ResolveError> {
         let now_ms = pellucid_core::now_ms();
         // 1. Cache lookup.
         match self.cache.read(user_id).await {
             Ok(Some(snapshot)) if snapshot.is_fresh_at(now_ms) => {
-                return Some(snapshot);
+                return Ok(Some(snapshot));
             }
             Ok(Some(_)) => {
                 // Cache row exists but is stale. Treat as miss and
@@ -478,24 +505,14 @@ impl ClerkEntitlementChecker {
         }
 
         // 2. Source fetch.
-        match self.source.fetch(user_id).await {
-            Ok(snapshot) => {
-                if let Err(err) = self.cache.write(&snapshot).await {
-                    tracing::warn!(
-                        target: "pellucid::auth",
-                        "entitlements_cache write failed: {err}"
-                    );
-                }
-                Some(snapshot)
-            }
-            Err(err) => {
-                tracing::warn!(
-                    target: "pellucid::auth",
-                    "entitlement source failed: {err}"
-                );
-                None
-            }
+        let snapshot = self.source.fetch(user_id).await?;
+        if let Err(err) = self.cache.write(&snapshot).await {
+            tracing::warn!(
+                target: "pellucid::auth",
+                "entitlements_cache write failed: {err}"
+            );
         }
+        Ok(Some(snapshot))
     }
 }
 
@@ -503,8 +520,13 @@ impl ClerkEntitlementChecker {
 impl EntitlementChecker for ClerkEntitlementChecker {
     async fn check(&self, user_id: &str, required: Tier) -> EntitlementDecision {
         let snapshot = match self.resolve(user_id).await {
-            Some(s) => s,
-            None => {
+            Ok(Some(snapshot)) => snapshot,
+            Ok(None) | Err(_) => {
+                // Both genuinely-missing and source-failure currently
+                // collapse to UpstreamDown. The webview's outage
+                // banner is the closest UX to "we don't know your
+                // entitlement right now" — better than a misleading
+                // 403 + upgrade prompt (the H2 fix).
                 return EntitlementDecision::UpstreamDown {
                     retry_after_secs: self.upstream_down_retry_secs,
                 };

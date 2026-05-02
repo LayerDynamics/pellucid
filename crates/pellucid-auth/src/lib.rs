@@ -7,6 +7,8 @@
 pub mod clerk;
 pub mod endpoint_tiers;
 pub mod entitlement;
+pub mod hmac;
+pub mod identity;
 pub mod jwks;
 
 #[cfg(any(test, feature = "test-keys"))]
@@ -19,9 +21,11 @@ pub use endpoint_tiers::{
 pub use entitlement::{
     read_cache, write_cache, CacheError, ClerkEntitlementChecker, ConvexEntitlementSource,
     EntitlementCache, EntitlementFeatures, EntitlementSnapshot, EntitlementSource,
-    EntitlementSourceError, StaticEntitlementSource, CONVEX_INTERNAL_ENTITLEMENTS_PATH,
-    CONVEX_SHARED_SECRET_HEADER, DEFAULT_CACHE_TTL,
+    EntitlementSourceError, ResolveError, StaticEntitlementSource,
+    CONVEX_INTERNAL_ENTITLEMENTS_PATH, CONVEX_SHARED_SECRET_HEADER, DEFAULT_CACHE_TTL,
 };
+pub use hmac::{sign_user_id_hmac, verify_user_id_hmac};
+pub use identity::{IdentitySigner, IdentitySignerError};
 pub use jwks::{CachedJwks, JwksCache, JwksError, JwksFetcher, DEFAULT_TTL};
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.
