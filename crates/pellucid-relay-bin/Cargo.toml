@@ -5,13 +5,22 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "stream relay binary"
+description = "stream relay binary — AIS / OpenSky / RSS / OREF, seed scheduler, /health"
 
 [lints]
 workspace = true
+
+[lib]
+name = "pellucid_relay_bin"
+path = "src/lib.rs"
 
 [[bin]]
 name = "pellucid-relay-bin"
 path = "src/main.rs"
 
 [dependencies]
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]

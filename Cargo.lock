@@ -2967,6 +2967,11 @@ version = "0.1.0"
 [[package]]
 name = "pellucid-relay-bin"
 version = "0.1.0"
+dependencies = [
+ "thiserror 2.0.18",
+ "tracing",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "pellucid-seeders"
