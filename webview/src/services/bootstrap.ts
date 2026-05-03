@@ -154,7 +154,7 @@ export async function fetchBootstrapData(
 
   const internalAbort = new AbortController();
   const timer = setTimeout(() => internalAbort.abort(), budgetMs);
-  const signal = composeSignals(internalAbort.signal, opts.signal);
+  const signal = composeSignals(internalAbort, opts.signal);
 
   const startedAt = nowMs();
   let outcome: TierOutcome;
@@ -216,23 +216,29 @@ export async function fetchBootstrapData(
   return outcome;
 }
 
-/** Compose an internal signal with an optional external one.
- *  Falls back to plain internal signal when `AbortSignal.any` is
- *  unavailable (older runtimes). */
-function composeSignals(internal: AbortSignal, external?: AbortSignal): AbortSignal {
-  if (!external) return internal;
+/** Compose an internal controller's signal with an optional
+ *  external signal. Falls back to plain internal signal when
+ *  `AbortSignal.any` is unavailable (older runtimes). The
+ *  internal *controller* is required (not just its signal) so the
+ *  fallback path can `.abort()` on external abort. */
+function composeSignals(
+  internal: AbortController,
+  external?: AbortSignal,
+): AbortSignal {
+  if (!external) return internal.signal;
   // Bun + modern Node + Chrome ≥ 116 ship AbortSignal.any.
   const anyImpl = (AbortSignal as unknown as {
     any?: (sigs: AbortSignal[]) => AbortSignal;
   }).any;
-  if (typeof anyImpl === "function") return anyImpl([internal, external]);
+  if (typeof anyImpl === "function")
+    return anyImpl([internal.signal, external]);
   // Manual fan-in fallback.
   if (external.aborted) {
     internal.abort();
-    return internal;
+    return internal.signal;
   }
   external.addEventListener("abort", () => internal.abort(), { once: true });
-  return internal;
+  return internal.signal;
 }
 
 function nowMs(): number {

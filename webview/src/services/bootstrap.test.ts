@@ -129,8 +129,8 @@ describe("fetchBootstrapData — slow tier", () => {
         negative: [],
       }),
     });
-    expect(getHydratedData("fast-only")).toBe("F");
-    expect(getHydratedData("slow-only")).toBe("S");
+    expect(getHydratedData<string>("fast-only")).toBe("F");
+    expect(getHydratedData<string>("slow-only")).toBe("S");
     expect(getHydratedData("absent")).toBeUndefined();
   });
 });
