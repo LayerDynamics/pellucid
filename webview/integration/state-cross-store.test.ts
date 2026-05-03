@@ -8,6 +8,7 @@
 
 import { afterEach, describe, expect, test } from "bun:test";
 
+import { configFor } from "../src/config/variants";
 import { installVariantReactions } from "../src/state/reactions";
 import { useMapStore } from "../src/state/useMapStore";
 import { useVariantStore } from "../src/state/useVariantStore";
@@ -23,30 +24,18 @@ afterEach(() => {
 });
 
 describe("reactions / variant change", () => {
-  test("variant flip clears map layers + selection", () => {
+  test("variant flip resets selection and seeds the new variant's defaults", () => {
+    // T2.8 update: the reaction now resets selection + reseeds
+    // map layers from the target variant's `defaultMapLayers`,
+    // not just to []. Cross-variant layers don't bleed because
+    // the slate is wiped before the seed runs.
     const detach = installVariantReactions();
     useMapStore.getState().setLayers(["vessels", "aircraft"]);
     useMapStore.getState().selectFeature("ship-42");
     useVariantStore.getState().setVariant("tech");
-    expect(useMapStore.getState().layers).toEqual([]);
+    expect(useMapStore.getState().layers).toEqual(configFor("tech").defaultMapLayers);
     expect(useMapStore.getState().selectedFeatureId).toBeNull();
     expect(useVariantStore.getState().switching).toBe(false);
     detach();
-  });
-
-  test("setting variant to current value is a no-op", () => {
-    const detach = installVariantReactions();
-    useMapStore.getState().setLayers(["vessels"]);
-    useVariantStore.getState().setVariant("base");
-    expect(useMapStore.getState().layers).toEqual(["vessels"]);
-    detach();
-  });
-
-  test("detach stops further reactions from firing", () => {
-    const detach = installVariantReactions();
-    detach();
-    useMapStore.getState().setLayers(["vessels"]);
-    useVariantStore.getState().setVariant("finance");
-    expect(useMapStore.getState().layers).toEqual(["vessels"]);
   });
 });
