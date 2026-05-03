@@ -12,9 +12,11 @@
 
 pub mod aviationstack;
 pub mod error;
+pub mod rss;
 
 pub use aviationstack::{AviationstackClient, AviationstackConfig};
 pub use error::StreamsError;
+pub use rss::{RssClient, RssEntry, RssFeed, NEGATIVE_TTL, POSITIVE_TTL};
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.
 #[must_use]

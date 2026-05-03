@@ -6,7 +6,7 @@ use thiserror::Error;
 /// (handler-error boundary) maps each variant to a fixed
 /// HTTP-status + envelope-code so the webview can branch
 /// deterministically.
-#[derive(Debug, Error)]
+#[derive(Clone, Debug, Error)]
 pub enum StreamsError {
     /// Transport-level failure — connect refused, DNS lookup, TLS
     /// handshake, request timeout. Maps to **502 + `upstream_io`**.

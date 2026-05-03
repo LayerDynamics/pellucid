@@ -19,6 +19,10 @@ tracing = { workspace = true }
 async-trait = { workspace = true }
 tokio = { workspace = true }
 url = { workspace = true }
+feed-rs = { workspace = true }
+dashmap = { workspace = true }
+parking_lot = { workspace = true }
+pellucid-core = { path = "../pellucid-core" }
 pellucid-handlers = { path = "../pellucid-handlers" }
 
 [dev-dependencies]
