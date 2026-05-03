@@ -10,6 +10,8 @@
 pub mod atomic_publish;
 pub mod envelope;
 pub mod locks;
+pub mod registry;
+pub mod scheduler;
 pub mod theater_posture;
 
 pub use atomic_publish::{

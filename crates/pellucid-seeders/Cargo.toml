@@ -20,6 +20,7 @@ tokio = { workspace = true }
 async-trait = { workspace = true }
 uuid = { workspace = true }
 metrics = { workspace = true }
+parking_lot = { workspace = true }
 pellucid-core = { path = "../pellucid-core" }
 pellucid-db = { path = "../pellucid-db" }
 pellucid-cache = { path = "../pellucid-cache" }
