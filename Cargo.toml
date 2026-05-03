@@ -43,6 +43,7 @@ url = "2.5"
 feed-rs = "2"
 tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
 mini-moka = "0.10"
+md-5 = "0.10"
 bytes = "1.8"
 futures = "0.3"
 parking_lot = "0.12"

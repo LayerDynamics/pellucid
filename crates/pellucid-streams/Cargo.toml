@@ -25,7 +25,11 @@ parking_lot = { workspace = true }
 tokio-tungstenite = { workspace = true }
 futures = { workspace = true }
 mini-moka = { workspace = true }
+md-5 = { workspace = true }
+sqlx = { workspace = true }
 pellucid-core = { path = "../pellucid-core" }
+pellucid-cache = { path = "../pellucid-cache" }
+pellucid-db = { path = "../pellucid-db" }
 pellucid-handlers = { path = "../pellucid-handlers" }
 
 [dev-dependencies]
