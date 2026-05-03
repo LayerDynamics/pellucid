@@ -11,3 +11,18 @@ description = "seeder modules + scheduler + atomic_publish"
 workspace = true
 
 [dependencies]
+sqlx = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+uuid = { workspace = true }
+metrics = { workspace = true }
+pellucid-core = { path = "../pellucid-core" }
+pellucid-db = { path = "../pellucid-db" }
+pellucid-cache = { path = "../pellucid-cache" }
+
+[dev-dependencies]
+tokio = { workspace = true }
