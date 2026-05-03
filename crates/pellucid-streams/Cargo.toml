@@ -24,6 +24,7 @@ dashmap = { workspace = true }
 parking_lot = { workspace = true }
 tokio-tungstenite = { workspace = true }
 futures = { workspace = true }
+mini-moka = { workspace = true }
 pellucid-core = { path = "../pellucid-core" }
 pellucid-handlers = { path = "../pellucid-handlers" }
 
