@@ -3067,6 +3067,8 @@ dependencies = [
  "pellucid-cache",
  "pellucid-core",
  "pellucid-db",
+ "pellucid-streams",
+ "reqwest 0.12.28",
  "serde",
  "serde_json",
  "sqlx",
@@ -3074,6 +3076,7 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+ "wiremock",
 ]
 
 [[package]]

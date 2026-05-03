@@ -10,6 +10,7 @@
 pub mod atomic_publish;
 pub mod envelope;
 pub mod locks;
+pub mod theater_posture;
 
 pub use atomic_publish::{
     atomic_publish, PublishError, PublishOutcome, DEFAULT_LOCK_LEASE,

@@ -26,3 +26,6 @@ pellucid-cache = { path = "../pellucid-cache" }
 
 [dev-dependencies]
 tokio = { workspace = true }
+wiremock = { workspace = true }
+reqwest = { workspace = true }
+pellucid-streams = { path = "../pellucid-streams" }

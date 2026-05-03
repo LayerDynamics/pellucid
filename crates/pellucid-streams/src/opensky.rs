@@ -273,6 +273,42 @@ impl OpenSkyClient {
             Some(Instant::now() + RATE_LIMIT_COOLDOWN);
     }
 
+    /// Fetch the `/states/all` endpoint constrained to a bounding
+    /// box. Used by the H3-fix theater-posture seeder
+    /// (`pellucid-seeders::theater_posture`) which calls this
+    /// directly **in-process** — no HTTP loopback.
+    ///
+    /// `bbox` is `(lamin, lomin, lamax, lomax)` per the OpenSky
+    /// REST spec. Coordinates are decimal degrees; latitudes
+    /// in [-90, 90], longitudes in [-180, 180]. Out-of-range
+    /// values are rejected with `StreamsError::Parse`.
+    ///
+    /// # Errors
+    /// - [`StreamsError::Parse`] for invalid bbox values.
+    /// - Same as [`Self::fetch_path`] for transport / cache
+    ///   states.
+    pub async fn fetch_box(
+        &self,
+        bbox: (f64, f64, f64, f64),
+    ) -> Result<Option<OpenSkyResponse>, StreamsError> {
+        let (lamin, lomin, lamax, lomax) = bbox;
+        if !(-90.0..=90.0).contains(&lamin)
+            || !(-90.0..=90.0).contains(&lamax)
+            || !(-180.0..=180.0).contains(&lomin)
+            || !(-180.0..=180.0).contains(&lomax)
+            || lamin > lamax
+            || lomin > lomax
+        {
+            return Err(StreamsError::Parse(format!(
+                "invalid OpenSky bbox: ({lamin}, {lomin}, {lamax}, {lomax})"
+            )));
+        }
+        let path = format!(
+            "/states/all?lamin={lamin}&lomin={lomin}&lamax={lamax}&lomax={lomax}"
+        );
+        self.fetch_path(&path).await
+    }
+
     /// Fetch an OpenSky API path. Returns:
     /// - `Ok(Some(value))` — fresh data (from cache or upstream).
     /// - `Ok(None)` — negative sentinel, cooldown, or upstream
