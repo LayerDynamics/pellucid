@@ -10,13 +10,17 @@
 //! pass it through. Errors are wrapped in [`StreamsError`] so the
 //! gateway's stage 11 can map them to consistent envelope shapes.
 
+pub mod ais;
 pub mod aviationstack;
 pub mod error;
 pub mod rss;
+pub mod types;
 
+pub use ais::{AisClient, AisError, Backoff, WatermarkQueue, DEFAULT_CHANNEL_CAPACITY, DEFAULT_WS_URL};
 pub use aviationstack::{AviationstackClient, AviationstackConfig};
 pub use error::StreamsError;
 pub use rss::{RssClient, RssEntry, RssFeed, NEGATIVE_TTL, POSITIVE_TTL};
+pub use types::{AisEnvelope, AisMetadata, AisSubscribe};
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.
 #[must_use]

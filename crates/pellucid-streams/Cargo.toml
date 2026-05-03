@@ -22,9 +22,13 @@ url = { workspace = true }
 feed-rs = { workspace = true }
 dashmap = { workspace = true }
 parking_lot = { workspace = true }
+tokio-tungstenite = { workspace = true }
+futures = { workspace = true }
 pellucid-core = { path = "../pellucid-core" }
 pellucid-handlers = { path = "../pellucid-handlers" }
 
 [dev-dependencies]
 wiremock = { workspace = true }
 tokio = { workspace = true }
+tokio-tungstenite = { workspace = true }
+futures = { workspace = true }
