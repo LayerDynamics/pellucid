@@ -36,11 +36,48 @@ describe("check-cache-keys (unit)", () => {
     expect(report.filesScanned).toBe(0);
     expect(report.findings).toEqual([]);
   });
+
+  test("turbofish callee is recognised + missing field is flagged", () => {
+    // T2.10 fix: callees like `cached_fetch_json::<T, _, _>` were
+    // invisible to the original endsWith match — the post-T2.5
+    // production handler uses turbofish exclusively.
+    const report = lintDirectory(
+      join(repoRoot, "tools/test-fixtures/handlers-turbofish"),
+    );
+    expect(report.callsFound).toBe(1);
+    expect(report.findings.length).toBe(1);
+    const finding = report.findings[0]!;
+    expect(finding.cacheKey).toContain("NO_FIELD");
+    expect(finding.missingFields).toContain("flight");
+  });
+
+  test("trusted req.cache_key() method short-circuits the field check", () => {
+    // T2.10 fix: when the cache-key argument is a method call
+    // on a request receiver (`q.cache_key()` / `&key` from
+    // such a binding), the linter trusts the typed method as
+    // canonical. The fixture references `q.flight` + `q.date`;
+    // the inline string `aviation:status:{}:{}:v1` (a format
+    // template, not a placeholder pattern) doesn't include
+    // either as `{flight}`/`{date}`, but the trust path skips
+    // the comparison.
+    const report = lintDirectory(
+      join(repoRoot, "tools/test-fixtures/handlers-trusted"),
+    );
+    expect(report.callsFound).toBe(1);
+    expect(report.findings).toEqual([]);
+  });
 });
 
 describe("check-cache-keys (integration)", () => {
-  test("real pellucid-handlers/src lints clean (empty until T2.5)", () => {
+  test("real pellucid-handlers/src lints clean", () => {
+    // The aviation handler (T2.5) + bootstrap handler (T2.7)
+    // both call `cached_fetch_json` with a `&req.cache_key()`
+    // / `&key`-from-method binding — the trust path should
+    // make both pass.
     const report = lintDirectory(join(repoRoot, "crates/pellucid-handlers/src"));
     expect(report.findings).toEqual([]);
+    // Sanity: the linter actually FOUND the calls (was 0
+    // before turbofish detection was added).
+    expect(report.callsFound).toBeGreaterThanOrEqual(1);
   });
 });

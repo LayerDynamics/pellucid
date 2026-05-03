@@ -112,7 +112,12 @@ function collectLetBindings(fn: Parser.SyntaxNode): Map<string, Parser.SyntaxNod
   return bindings;
 }
 
-/** Collect every `req.<ident>` field-access where the receiver identifier is exactly "req". */
+/** Receiver names treated as "the request" for field-access scraping.
+ *  Every public Pellucid handler uses one of these conventions. */
+const REQUEST_RECEIVERS = new Set(["req", "request", "q", "query"]);
+
+/** Collect every `<receiver>.<ident>` field-access where the
+ *  receiver identifier is one of REQUEST_RECEIVERS. */
 function collectReqFieldAccesses(fn: Parser.SyntaxNode): Set<string> {
   const fields = new Set<string>();
   const stack: Parser.SyntaxNode[] = [fn];
@@ -121,7 +126,12 @@ function collectReqFieldAccesses(fn: Parser.SyntaxNode): Set<string> {
     if (cur.type === "field_expression") {
       const value = cur.childForFieldName("value");
       const field = cur.childForFieldName("field");
-      if (value && value.type === "identifier" && value.text === "req" && field) {
+      if (
+        value &&
+        value.type === "identifier" &&
+        REQUEST_RECEIVERS.has(value.text) &&
+        field
+      ) {
         fields.add(field.text);
       }
     }
@@ -130,6 +140,32 @@ function collectReqFieldAccesses(fn: Parser.SyntaxNode): Set<string> {
     }
   }
   return fields;
+}
+
+/** Strip turbofish from a callee text. Examples:
+ *   "cached_fetch_json"                              → "cached_fetch_json"
+ *   "cached_fetch_json::<FlightStatus, _, _>"        → "cached_fetch_json"
+ *   "pellucid_cache::cached_fetch_json::<T, _, _>"   → "pellucid_cache::cached_fetch_json"
+ */
+function stripTurbofish(text: string): string {
+  const idx = text.indexOf("::<");
+  return idx === -1 ? text : text.slice(0, idx);
+}
+
+/** Inspect the cache-key argument; return `true` iff it's a
+ *  method call on a request-receiver (e.g. `req.cache_key()` or
+ *  `q.cache_key()`). When so, the caller can trust the key
+ *  template to incorporate every request field — the typed
+ *  `cache_key` method is the canonical source of truth (lives
+ *  in the generated tree and round-trips through the
+ *  cache-key-template constant). */
+function isRequestKeyMethodCall(node: Parser.SyntaxNode): boolean {
+  if (node.type !== "call_expression") return false;
+  const fn = node.childForFieldName("function");
+  if (!fn || fn.type !== "field_expression") return false;
+  const recv = fn.childForFieldName("value");
+  if (!recv || recv.type !== "identifier") return false;
+  return REQUEST_RECEIVERS.has(recv.text);
 }
 
 /** Find each call expression whose callee name is `cached_fetch_json`. */
@@ -145,8 +181,11 @@ function findCachedFetchCalls(
     const enclosing = node.type === "function_item" ? node : fn;
     if (node.type === "call_expression") {
       const callee = node.childForFieldName("function");
-      if (callee && callee.text.endsWith("cached_fetch_json") && enclosing) {
-        out.push({ call: node, enclosing });
+      if (callee && enclosing) {
+        const calleeText = stripTurbofish(callee.text);
+        if (calleeText.endsWith("cached_fetch_json")) {
+          out.push({ call: node, enclosing });
+        }
       }
     }
     for (let i = 0; i < node.namedChildCount; i++) {
@@ -167,16 +206,60 @@ export function lintFile(parser: Parser, path: string, source: string): CacheKey
     const args = call.childForFieldName("arguments");
     if (!args) continue;
 
-    // Resolve the first argument: either an inline string literal, an
-    // identifier bound to one earlier in the function, or a `format!(...)`
-    // macro that contains the literal as its template.
+    // The cache-key argument is the THIRD positional argument to
+    // `cached_fetch_json(pool, registry, key, tier, fetcher)`.
+    // Tolerate the legacy 1-arg shape (used by the bad-fixture
+    // file) by also checking the first arg.
     let cacheKey: string | null = null;
-    const firstArg = args.namedChild(0);
-    if (firstArg) {
-      if (firstArg.type === "string_literal" || firstArg.type === "raw_string_literal") {
-        cacheKey = firstArg.text;
-      } else if (firstArg.type === "reference_expression") {
-        const inner = firstArg.namedChild(firstArg.namedChildCount - 1);
+    let trustedKeyMethodCall = false;
+    const candidates: Parser.SyntaxNode[] = [];
+    if (args.namedChildCount >= 3) candidates.push(args.namedChild(2)!);
+    if (args.namedChild(0)) candidates.push(args.namedChild(0)!);
+    for (const candidate of candidates) {
+      // Trust path: if the key argument is `&req.cache_key()` /
+      // `q.cache_key()` / similar, the typed method is the
+      // canonical source of truth for the template — skip the
+      // field-comparison check.
+      const inner =
+        candidate.type === "reference_expression"
+          ? candidate.namedChild(candidate.namedChildCount - 1) ?? candidate
+          : candidate;
+      if (inner && isRequestKeyMethodCall(inner)) {
+        trustedKeyMethodCall = true;
+        break;
+      }
+      // Or `&key` where `key` was bound from `req.cache_key()`
+      // earlier in the function.
+      if (candidate.type === "reference_expression") {
+        const refInner = candidate.namedChild(candidate.namedChildCount - 1);
+        if (refInner && refInner.type === "identifier") {
+          if (!letBindings.has(enclosing))
+            letBindings.set(enclosing, collectLetBindings(enclosing));
+          const init = letBindings.get(enclosing)!.get(refInner.text);
+          if (init && isRequestKeyMethodCall(init)) {
+            trustedKeyMethodCall = true;
+            break;
+          }
+        }
+      }
+    }
+    if (trustedKeyMethodCall) {
+      // Fully trusted — no findings to add for this call.
+      continue;
+    }
+
+    // Production signature is `cached_fetch_json(pool, registry, key, tier, fetcher)`
+    // → cache key at index 2. Legacy fixture shape uses 1-arg
+    // `cached_fetch_json(key, tier, fetcher)` → key at index 0.
+    // Try the production position first, fall back to the legacy one.
+    const keyArgCandidates: Parser.SyntaxNode[] = [];
+    if (args.namedChildCount >= 3) keyArgCandidates.push(args.namedChild(2)!);
+    if (args.namedChild(0)) keyArgCandidates.push(args.namedChild(0)!);
+    for (const arg of keyArgCandidates) {
+      if (arg.type === "string_literal" || arg.type === "raw_string_literal") {
+        cacheKey = arg.text;
+      } else if (arg.type === "reference_expression") {
+        const inner = arg.namedChild(arg.namedChildCount - 1);
         if (inner && inner.type === "identifier") {
           if (!letBindings.has(enclosing)) letBindings.set(enclosing, collectLetBindings(enclosing));
           const init = letBindings.get(enclosing)!.get(inner.text);
@@ -184,10 +267,13 @@ export function lintFile(parser: Parser, path: string, source: string): CacheKey
             const lits = collectStringLiterals(init);
             cacheKey = lits[0] ?? null;
           }
+        } else if (inner) {
+          const lits = collectStringLiterals(inner);
+          cacheKey = lits[0] ?? null;
         }
-      } else if (firstArg.type === "identifier") {
+      } else if (arg.type === "identifier") {
         if (!letBindings.has(enclosing)) letBindings.set(enclosing, collectLetBindings(enclosing));
-        const init = letBindings.get(enclosing)!.get(firstArg.text);
+        const init = letBindings.get(enclosing)!.get(arg.text);
         if (init) {
           const lits = collectStringLiterals(init);
           cacheKey = lits[0] ?? null;
@@ -195,9 +281,10 @@ export function lintFile(parser: Parser, path: string, source: string): CacheKey
       } else {
         // Fallback: collect any string literal nested under the arg
         // (covers `format!("…", …)` and other macro calls).
-        const lits = collectStringLiterals(firstArg);
+        const lits = collectStringLiterals(arg);
         cacheKey = lits[0] ?? null;
       }
+      if (cacheKey !== null) break;
     }
     if (cacheKey === null) continue;
 
