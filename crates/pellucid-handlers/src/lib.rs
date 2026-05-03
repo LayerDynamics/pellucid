@@ -18,6 +18,7 @@
 //!   single `Router` ready to hand to `pellucid_gateway::build_router`.
 
 pub mod aviation;
+pub mod bootstrap;
 pub mod generated;
 pub mod state;
 
@@ -28,7 +29,9 @@ use axum::Router;
 /// Compose every domain's routes into one `Router` ready to hand
 /// to `pellucid_gateway::build_router`.
 pub fn build_handlers(state: AppState) -> Router {
-    Router::new().merge(aviation::router(state))
+    Router::new()
+        .merge(aviation::router(state.clone()))
+        .merge(bootstrap::router(state))
 }
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.
