@@ -1,31 +1,57 @@
-//! pellucid-edge-bin
+//! pellucid-edge-bin entry point.
 //!
-//! See `docs/specs/SPEC-001-pellucid-stack-rebuild.md` §11 for this binary's
-//! role in the Pellucid workspace.
+//! Boots the public API surface:
+//!   1. Parse env via `Config::parse(ConfigSource::from_process())`.
+//!   2. `build_app` opens SQLite, wires the gateway + handlers.
+//!   3. Bind `tokio::net::TcpListener` on `cfg.listen_addr`.
+//!   4. Serve forever via `axum::serve`.
 //!
-//! Binary entry point — `println!` is the appropriate way to surface version
-//! and startup banners on stdout, so we locally allow the `print_stdout` lint
-//! that the workspace warns on for library code.
+//! `println!`/`eprintln!` are the appropriate way to surface
+//! startup banners + boot errors before the structured log
+//! subscriber is initialised.
 
-#![allow(clippy::print_stdout)]
+#![allow(clippy::print_stdout, clippy::print_stderr)]
 
-/// Returns the crate version string from `CARGO_PKG_VERSION`.
-fn version() -> &'static str {
-    env!("CARGO_PKG_VERSION")
-}
+use pellucid_edge_bin::{build_app, Config, ConfigSource};
 
-fn main() {
-    println!("{} {}", env!("CARGO_PKG_NAME"), version());
-}
+const EXIT_CONFIG: i32 = 78;
+const EXIT_RUNTIME: i32 = 1;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[tokio::main]
+async fn main() {
+    let src = ConfigSource::from_process();
+    let cfg = match Config::parse(&src) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("config error: {e}");
+            std::process::exit(EXIT_CONFIG);
+        }
+    };
 
-    #[test]
-    fn version_is_set() {
-        let v = version();
-        assert!(!v.is_empty(), "version must not be empty");
-        assert!(v.contains('.'), "expected semver with dot, got {v}");
+    let (app, _pool) = match build_app(&cfg).await {
+        Ok(pair) => pair,
+        Err(e) => {
+            eprintln!("boot error: {e}");
+            std::process::exit(EXIT_RUNTIME);
+        }
+    };
+
+    let listener = match tokio::net::TcpListener::bind(cfg.listen_addr).await {
+        Ok(l) => l,
+        Err(e) => {
+            eprintln!("listen on {} failed: {e}", cfg.listen_addr);
+            std::process::exit(EXIT_RUNTIME);
+        }
+    };
+    println!(
+        "{} {}: listening on {}",
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION"),
+        cfg.listen_addr,
+    );
+
+    if let Err(e) = axum::serve(listener, app).await {
+        eprintln!("server crashed: {e}");
+        std::process::exit(EXIT_RUNTIME);
     }
 }

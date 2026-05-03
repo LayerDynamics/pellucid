@@ -2979,6 +2979,25 @@ dependencies = [
 [[package]]
 name = "pellucid-edge-bin"
 version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "pellucid-cache",
+ "pellucid-core",
+ "pellucid-db",
+ "pellucid-gateway",
+ "pellucid-handlers",
+ "pellucid-streams",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tower",
+ "tracing",
+ "tracing-subscriber",
+ "wiremock",
+]
 
 [[package]]
 name = "pellucid-gateway"
