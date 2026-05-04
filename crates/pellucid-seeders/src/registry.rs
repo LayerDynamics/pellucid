@@ -55,9 +55,33 @@ pub struct RegistryEntry {
 /// Static registry of every production seeder. Mirrors the
 /// SPEC-001 §17.7 cadence set.
 pub const REGISTRY: &[RegistryEntry] = &[
+    // Markets domain (T3.8) — six per-symbol seeders, each on its
+    // own cadence per SPEC-001 §17.7. Quotes refresh every 5
+    // minutes; flow + COT seeders run hourly / daily because the
+    // upstream signals only update on those cadences.
     RegistryEntry {
-        name: "market",
+        name: "market-quotes",
         cadence: Cadence::every(Duration::from_secs(5 * 60)),
+    },
+    RegistryEntry {
+        name: "commodity-quotes",
+        cadence: Cadence::every(Duration::from_secs(5 * 60)),
+    },
+    RegistryEntry {
+        name: "crypto-quotes",
+        cadence: Cadence::every(Duration::from_secs(5 * 60)),
+    },
+    RegistryEntry {
+        name: "etf-flows",
+        cadence: Cadence::every(Duration::from_secs(60 * 60)),
+    },
+    RegistryEntry {
+        name: "gold-etf-flows",
+        cadence: Cadence::every(Duration::from_secs(60 * 60)),
+    },
+    RegistryEntry {
+        name: "cot",
+        cadence: Cadence::every(Duration::from_secs(24 * 60 * 60)),
     },
     RegistryEntry {
         name: "aviation",
@@ -127,10 +151,31 @@ mod tests {
 
     #[test]
     fn registry_includes_documented_cadences() {
-        // SPEC-001 §17.7 spot-check.
+        // SPEC-001 §17.7 spot-check across the markets domain
+        // (T3.8) and the existing seeders.
         assert_eq!(
-            lookup("market").unwrap().cadence.period,
+            lookup("market-quotes").unwrap().cadence.period,
             Duration::from_secs(5 * 60)
+        );
+        assert_eq!(
+            lookup("commodity-quotes").unwrap().cadence.period,
+            Duration::from_secs(5 * 60)
+        );
+        assert_eq!(
+            lookup("crypto-quotes").unwrap().cadence.period,
+            Duration::from_secs(5 * 60)
+        );
+        assert_eq!(
+            lookup("etf-flows").unwrap().cadence.period,
+            Duration::from_secs(60 * 60)
+        );
+        assert_eq!(
+            lookup("gold-etf-flows").unwrap().cadence.period,
+            Duration::from_secs(60 * 60)
+        );
+        assert_eq!(
+            lookup("cot").unwrap().cadence.period,
+            Duration::from_secs(24 * 60 * 60)
         );
         assert_eq!(
             lookup("aviation").unwrap().cadence.period,

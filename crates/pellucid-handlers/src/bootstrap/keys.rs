@@ -86,6 +86,7 @@ pub const FAST_KEYS: &[&str] = &[
     "market:fx-snapshot:v1",
     "market:commodities-snapshot:v1",
     "market:stocks-bootstrap:v1",
+    "market:crypto-snapshot:v1",
     // Military (live posture)
     "military:theater-posture:current:v1",
     "military:active-deployments:v1",
@@ -185,8 +186,11 @@ pub const SLOW_KEYS: &[&str] = &[
     // Maritime (vessel histories)
     "maritime:vessel-history:summary:v1",
     "maritime:ais-historical:30d:v1",
-    // Market (analyst summaries)
+    // Market (analyst summaries + flow + COT — T3.8 markets domain)
     "market:analyst-summary:weekly:v1",
+    "market:etf-flows:current:v1",
+    "market:gold-etf-flows:current:v1",
+    "market:cot-report:weekly:v1",
     // Military (deployment history)
     "military:deployment-history:v1",
     "military:basing-snapshot:v1",
@@ -228,7 +232,11 @@ pub const SLOW_KEYS: &[&str] = &[
 ];
 
 /// Total expected key count after concatenating both tiers.
-/// Pinned by SPEC-001 OP-4: `67 fast + 45 slow = 112 total`.
+/// SPEC-001 OP-4 originally pinned `67 fast + 45 slow = 112`.
+/// T3.8 markets domain adds: +1 FAST (`market:crypto-snapshot:v1`)
+/// and +3 SLOW (`market:etf-flows:current:v1`,
+/// `market:gold-etf-flows:current:v1`,
+/// `market:cot-report:weekly:v1`) → `68 + 48 = 116`.
 pub const TOTAL_KEYS: usize = FAST_KEYS.len() + SLOW_KEYS.len();
 
 /// Tier selector for the bootstrap query string.
@@ -277,18 +285,20 @@ mod tests {
     use std::collections::HashSet;
 
     #[test]
-    fn fast_tier_has_67_keys() {
-        assert_eq!(FAST_KEYS.len(), 67, "OP-4 pins FAST to 67 keys");
+    fn fast_tier_has_68_keys() {
+        // OP-4 originally 67; T3.8 markets adds market:crypto-snapshot:v1.
+        assert_eq!(FAST_KEYS.len(), 68);
     }
 
     #[test]
-    fn slow_tier_has_45_keys() {
-        assert_eq!(SLOW_KEYS.len(), 45, "OP-4 pins SLOW to 45 keys");
+    fn slow_tier_has_48_keys() {
+        // OP-4 originally 45; T3.8 markets adds etf-flows + gold-etf-flows + cot-report.
+        assert_eq!(SLOW_KEYS.len(), 48);
     }
 
     #[test]
-    fn total_keys_is_112() {
-        assert_eq!(TOTAL_KEYS, 112, "OP-4 pins total to 112 keys");
+    fn total_keys_is_116() {
+        assert_eq!(TOTAL_KEYS, 116);
     }
 
     #[test]
@@ -334,16 +344,16 @@ mod tests {
 
     #[test]
     fn tier_keys_returns_correct_slice() {
-        assert_eq!(Tier::Fast.keys().len(), 67);
-        assert_eq!(Tier::Slow.keys().len(), 45);
-        assert_eq!(Tier::Both.keys().len(), 112);
+        assert_eq!(Tier::Fast.keys().len(), FAST_KEYS.len());
+        assert_eq!(Tier::Slow.keys().len(), SLOW_KEYS.len());
+        assert_eq!(Tier::Both.keys().len(), TOTAL_KEYS);
     }
 
     #[test]
     fn tier_both_is_fast_then_slow() {
         let both = Tier::Both.keys();
-        assert_eq!(&both[..67], FAST_KEYS);
-        assert_eq!(&both[67..], SLOW_KEYS);
+        assert_eq!(&both[..FAST_KEYS.len()], FAST_KEYS);
+        assert_eq!(&both[FAST_KEYS.len()..], SLOW_KEYS);
     }
 
     #[test]

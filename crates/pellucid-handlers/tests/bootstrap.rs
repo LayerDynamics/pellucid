@@ -19,7 +19,7 @@ use tower::ServiceExt;
 use pellucid_cache::set_cached_json;
 use pellucid_core::Envelope;
 use pellucid_gateway::{build_router, GatewayConfig};
-use pellucid_handlers::bootstrap::keys::{FAST_KEYS, SLOW_KEYS};
+use pellucid_handlers::bootstrap::keys::{FAST_KEYS, SLOW_KEYS, TOTAL_KEYS};
 use pellucid_handlers::bootstrap::v1::BOOTSTRAP_PATH;
 use pellucid_handlers::{build_handlers, AppState};
 
@@ -61,10 +61,10 @@ fn both_request() -> Request<Body> {
 }
 
 #[tokio::test]
-async fn populate_50_request_67_returns_200_with_50_hits_and_17_missing() {
+async fn populate_50_request_full_fast_tier_returns_partial_hydration() {
     // Mirrors the plan's spec almost verbatim — the test the M4 fix
-    // is sized for. Requesting the FAST tier (67 keys) when only 50
-    // are populated must surface partial hydration with `missing[]`
+    // is sized for. Requesting the FAST tier when only 50 keys are
+    // populated must surface partial hydration with `missing[]`
     // populated, NOT trigger the 503 outage path.
     let state = wired_state().await;
     populate_first_n_fast_keys(&state, 50).await;
@@ -87,10 +87,11 @@ async fn populate_50_request_67_returns_200_with_50_hits_and_17_missing() {
         .get("missing")
         .and_then(Value::as_array)
         .expect("missing is an array");
+    let expected_missing = FAST_KEYS.len() - 50;
     assert_eq!(
         missing.len(),
-        67 - 50,
-        "expected 17 missing, got {}",
+        expected_missing,
+        "expected {expected_missing} missing, got {}",
         missing.len()
     );
 
@@ -103,7 +104,7 @@ async fn populate_50_request_67_returns_200_with_50_hits_and_17_missing() {
 }
 
 #[tokio::test]
-async fn empty_cache_request_67_returns_503_with_retry_after_m4_fix() {
+async fn empty_cache_full_fast_tier_returns_503_with_retry_after_m4_fix() {
     // The M4 invariant: requesting the FAST tier against an empty
     // cache surfaces the outage banner, not an empty 200 page.
     let state = wired_state().await;
@@ -137,7 +138,7 @@ async fn empty_cache_request_67_returns_503_with_retry_after_m4_fix() {
         parsed
             .pointer("/error/requested")
             .and_then(Value::as_u64),
-        Some(67),
+        Some(FAST_KEYS.len() as u64),
     );
 }
 
@@ -163,7 +164,7 @@ async fn fully_populated_request_67_returns_200_no_missing() {
 }
 
 #[tokio::test]
-async fn tier_both_yields_112_total() {
+async fn tier_both_yields_total_keys() {
     // Populate every fast key + every slow key, request `tier=both`.
     let state = wired_state().await;
     populate_first_n_fast_keys(&state, FAST_KEYS.len()).await;
@@ -181,8 +182,8 @@ async fn tier_both_yields_112_total() {
     let parsed: Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(
         parsed.pointer("/data").unwrap().as_object().unwrap().len(),
-        112,
-        "tier=both must hydrate all 112 keys"
+        TOTAL_KEYS,
+        "tier=both must hydrate every FAST + SLOW key"
     );
 }
 

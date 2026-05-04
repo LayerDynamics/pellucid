@@ -262,19 +262,19 @@ mod tests {
     #[test]
     fn resolve_default_tier_is_both() {
         let resolved = resolve_requested_keys(&q(None, None)).unwrap();
-        assert_eq!(resolved.len(), 112);
+        assert_eq!(resolved.len(), crate::bootstrap::keys::TOTAL_KEYS);
     }
 
     #[test]
-    fn resolve_fast_tier_has_67_keys() {
+    fn resolve_fast_tier_matches_fast_keys() {
         let resolved = resolve_requested_keys(&q(Some("fast"), None)).unwrap();
-        assert_eq!(resolved.len(), 67);
+        assert_eq!(resolved.len(), crate::bootstrap::keys::FAST_KEYS.len());
     }
 
     #[test]
-    fn resolve_slow_tier_has_45_keys() {
+    fn resolve_slow_tier_matches_slow_keys() {
         let resolved = resolve_requested_keys(&q(Some("slow"), None)).unwrap();
-        assert_eq!(resolved.len(), 45);
+        assert_eq!(resolved.len(), crate::bootstrap::keys::SLOW_KEYS.len());
     }
 
     #[test]
