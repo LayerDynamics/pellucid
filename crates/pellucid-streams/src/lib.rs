@@ -20,6 +20,7 @@ pub mod coingecko;
 pub mod eia;
 pub mod error;
 pub mod faa_notam;
+pub mod fred;
 pub mod gdelt;
 pub mod gcp_status;
 pub mod gie_agsi;
@@ -65,6 +66,7 @@ pub use cloudflare_radar::{
     CloudflareRadarClient, CloudflareRadarConfig, OutageAnnotation,
 };
 pub use eia::{EiaClient, EiaConfig, EiaQuery, EiaResponse, EiaRow};
+pub use fred::{FredClient, FredConfig, FredObservation, FredSeries};
 pub use gdelt::{GdeltArticle, GdeltClient, GdeltConfig};
 pub use gcp_status::{GcpIncident, GcpStatusClient, GcpStatusConfig};
 pub use gie_agsi::{GasStorageRow, GieAgsiClient, GieAgsiConfig};

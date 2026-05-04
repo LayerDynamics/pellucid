@@ -29,6 +29,7 @@ pub mod seed_github_trending;
 pub mod seed_hackernews_top;
 pub mod seed_huggingface_trending;
 pub mod seed_memory_market;
+pub mod seed_semiconductor_ppi;
 
 use thiserror::Error;
 

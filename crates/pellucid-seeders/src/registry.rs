@@ -224,6 +224,10 @@ pub const REGISTRY: &[RegistryEntry] = &[
         name: "memory-market",
         cadence: Cadence::every(Duration::from_secs(15 * 60)),
     },
+    RegistryEntry {
+        name: "semiconductor-ppi",
+        cadence: Cadence::every(Duration::from_secs(12 * 60 * 60)),
+    },
     // T3.8 expansion — maritime domain.
     RegistryEntry {
         name: "ais-snapshot",

@@ -236,6 +236,8 @@ pub const SLOW_KEYS: &[&str] = &[
     "telegram:channel-catalog:v1",
     // Thermal (anomaly history)
     "thermal:anomaly-history:30d:v1",
+    // Technology (T3.8 expansion — semiconductor PPI from FRED)
+    "technology:semiconductor-ppi:monthly:v1",
     // Trade (tariff catalog)
     "trade:tariff-catalog:v1",
     // Unrest (event archive)
@@ -269,6 +271,8 @@ pub const SLOW_KEYS: &[&str] = &[
 /// `technology:cloud-status:current:v1`,
 /// `technology:compute-spot-prices:current:v1`,
 /// `technology:memory-market-index:v1`) → `78 + 51 = 129`.
+/// FRED follow-up adds: +1 SLOW
+/// (`technology:semiconductor-ppi:monthly:v1`) → `78 + 52 = 130`.
 pub const TOTAL_KEYS: usize = FAST_KEYS.len() + SLOW_KEYS.len();
 
 /// Tier selector for the bootstrap query string.
@@ -327,15 +331,16 @@ mod tests {
     }
 
     #[test]
-    fn slow_tier_has_51_keys() {
+    fn slow_tier_has_52_keys() {
         // OP-4 originally 45; T3.8 markets +etf-flows +gold-etf-flows
-        // +cot-report; T3.8 energy +spr-status +iea-oil-stocks +jodi.
-        assert_eq!(SLOW_KEYS.len(), 51);
+        // +cot-report; T3.8 energy +spr-status +iea-oil-stocks +jodi;
+        // T3.8 expansion +semiconductor-ppi (FRED follow-up).
+        assert_eq!(SLOW_KEYS.len(), 52);
     }
 
     #[test]
-    fn total_keys_is_129() {
-        assert_eq!(TOTAL_KEYS, 129);
+    fn total_keys_is_130() {
+        assert_eq!(TOTAL_KEYS, 130);
     }
 
     #[test]
