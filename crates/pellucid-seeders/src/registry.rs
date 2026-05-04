@@ -97,6 +97,28 @@ pub const REGISTRY: &[RegistryEntry] = &[
         name: "gpsjam",
         cadence: Cadence::every(Duration::from_secs(60 * 60)),
     },
+    // Climate domain (T3.8) — five seeders covering the
+    // FAST-tier environmental-monitoring surface area.
+    RegistryEntry {
+        name: "climate-anomalies",
+        cadence: Cadence::every(Duration::from_secs(60 * 60)),
+    },
+    RegistryEntry {
+        name: "fire-detections",
+        cadence: Cadence::every(Duration::from_secs(15 * 60)),
+    },
+    RegistryEntry {
+        name: "earthquakes",
+        cadence: Cadence::every(Duration::from_secs(5 * 60)),
+    },
+    RegistryEntry {
+        name: "natural-events",
+        cadence: Cadence::every(Duration::from_secs(15 * 60)),
+    },
+    RegistryEntry {
+        name: "air-quality",
+        cadence: Cadence::every(Duration::from_secs(15 * 60)),
+    },
     RegistryEntry {
         name: "cyber",
         cadence: Cadence::every(Duration::from_secs(2 * 60 * 60)),
@@ -194,6 +216,26 @@ mod tests {
         assert_eq!(
             lookup("gpsjam").unwrap().cadence.period,
             Duration::from_secs(60 * 60)
+        );
+        assert_eq!(
+            lookup("climate-anomalies").unwrap().cadence.period,
+            Duration::from_secs(60 * 60)
+        );
+        assert_eq!(
+            lookup("fire-detections").unwrap().cadence.period,
+            Duration::from_secs(15 * 60)
+        );
+        assert_eq!(
+            lookup("earthquakes").unwrap().cadence.period,
+            Duration::from_secs(5 * 60)
+        );
+        assert_eq!(
+            lookup("natural-events").unwrap().cadence.period,
+            Duration::from_secs(15 * 60)
+        );
+        assert_eq!(
+            lookup("air-quality").unwrap().cadence.period,
+            Duration::from_secs(15 * 60)
         );
         assert_eq!(
             lookup("theater-posture").unwrap().cadence.period,

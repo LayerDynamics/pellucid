@@ -43,6 +43,7 @@ pub const FAST_KEYS: &[&str] = &[
     "climate:latest-anomaly:global:v1",
     "climate:hot-stations-24h:v1",
     "climate:noaa-alerts:current:v1",
+    "climate:air-quality:current:v1",
     // Conflict (events feed)
     "conflict:events-24h:v1",
     "conflict:hot-actors:24h:v1",
@@ -237,6 +238,8 @@ pub const SLOW_KEYS: &[&str] = &[
 /// and +3 SLOW (`market:etf-flows:current:v1`,
 /// `market:gold-etf-flows:current:v1`,
 /// `market:cot-report:weekly:v1`) → `68 + 48 = 116`.
+/// T3.8 climate domain adds: +1 FAST
+/// (`climate:air-quality:current:v1`) → `69 + 48 = 117`.
 pub const TOTAL_KEYS: usize = FAST_KEYS.len() + SLOW_KEYS.len();
 
 /// Tier selector for the bootstrap query string.
@@ -285,9 +288,10 @@ mod tests {
     use std::collections::HashSet;
 
     #[test]
-    fn fast_tier_has_68_keys() {
-        // OP-4 originally 67; T3.8 markets adds market:crypto-snapshot:v1.
-        assert_eq!(FAST_KEYS.len(), 68);
+    fn fast_tier_has_69_keys() {
+        // OP-4 originally 67; T3.8 markets +crypto-snapshot, T3.8
+        // climate +air-quality.
+        assert_eq!(FAST_KEYS.len(), 69);
     }
 
     #[test]
@@ -297,8 +301,8 @@ mod tests {
     }
 
     #[test]
-    fn total_keys_is_116() {
-        assert_eq!(TOTAL_KEYS, 116);
+    fn total_keys_is_117() {
+        assert_eq!(TOTAL_KEYS, 117);
     }
 
     #[test]
