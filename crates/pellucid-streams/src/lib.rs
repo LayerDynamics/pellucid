@@ -18,10 +18,15 @@ pub mod error;
 pub mod faa_notam;
 pub mod gpsjam;
 pub mod ja3;
+pub mod nasa_eonet;
+pub mod nasa_firms;
+pub mod noaa_ncei;
+pub mod openaq;
 pub mod opensky;
 pub mod oref;
 pub mod rss;
 pub mod types;
+pub mod usgs_earthquakes;
 pub mod yahoo_finance;
 
 pub use ais::{AisClient, AisError, Backoff, WatermarkQueue, DEFAULT_CHANNEL_CAPACITY, DEFAULT_WS_URL};
@@ -31,6 +36,15 @@ pub use coingecko::{CoinGeckoClient, CoinGeckoConfig, CryptoQuote};
 pub use error::StreamsError;
 pub use faa_notam::{FaaNotamClient, FaaNotamConfig, Notam};
 pub use gpsjam::{GpsjamClient, GpsjamConfig, JammingCell};
+pub use nasa_eonet::{EonetConfig, EventGeometry, NasaEonetClient, NaturalEvent};
+pub use nasa_firms::{FireDetection, NasaFirmsClient, NasaFirmsConfig};
+pub use noaa_ncei::{
+    NoaaNceiClient, NoaaNceiConfig, TemperatureAnomaly, TemperatureAnomalySeries,
+};
+pub use openaq::{AirMeasurement, AirQualityStation, OpenAqClient, OpenAqConfig};
+pub use usgs_earthquakes::{
+    EarthquakeEvent, FeedWindow, UsgsConfig, UsgsEarthquakesClient,
+};
 pub use ja3::{fingerprint as ja3_fingerprint, Ja3ClientHello, KNOWN_CHROME_121_JA3};
 pub use opensky::{OpenSkyClient, OpenSkyConfig, OpenSkyResponse};
 pub use oref::{OrefAlert, OrefClient, OrefConfig, OrefHistory, HISTORY_CACHE_KEY};
