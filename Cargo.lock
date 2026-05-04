@@ -3122,6 +3122,7 @@ dependencies = [
  "pellucid-core",
  "pellucid-db",
  "pellucid-gateway",
+ "pellucid-seeders",
  "pellucid-streams",
  "reqwest 0.12.28",
  "serde",

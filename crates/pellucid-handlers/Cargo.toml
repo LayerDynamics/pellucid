@@ -33,3 +33,4 @@ reqwest = { workspace = true }
 url = { workspace = true }
 async-trait = { workspace = true }
 pellucid-streams = { path = "../pellucid-streams" }
+pellucid-seeders = { path = "../pellucid-seeders" }
