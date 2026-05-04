@@ -26,6 +26,31 @@
 
 ---
 
+## 0.1 Current state (updated 2026-05-04)
+
+Snapshot of where the implementation stands against this plan. Update this section whenever a milestone gate clears or a decision lock-in changes.
+
+### Milestones cleared
+
+- **T0** — repo bootstrap, workspace, scaffolds, CI gates. Tagged via T0 Gate (commits leading up to `5c7779c`).
+- **M0 — Foundation** — `pellucid-core`, `pellucid-db`, `pellucid-cache`, Zustand stores, Radix base, Tauri sidecar with H1 token rotation, `<App>` 8-phase boot. M0 Gate cleared at `5c7779c T1.11: webview <App> 8-phase boot scaffold (M0 closes)`.
+- **M1 — Gateway + first vertical** — 14-stage Tower stack, Clerk JWT verify (T2.2), 3-arm entitlement (H2 fix, T2.3), HMAC identity signing (T2.4), aviation `get-flight-status` (T2.5), edge-bin minimum viable (T2.6), bootstrap two-tier hydration with M4 fix (T2.7), variant detection (T2.8), single tier-based gating (H4 fix, T2.9), `check-cache-keys.ts` real impl (M1 fix, T2.10), aviation panel skeleton (T2.11).
+- **M2 — Streams + seeders** — AIS (T3.1), OpenSky (T3.2), RSS (T3.3), OREF (T3.4) clients; `atomic_publish` (T3.5); scheduler (T3.6); H3 theater-posture direct call (T3.7); 30 high-priority seeders + 14 expansion seeders across markets / aviation / climate / conflict / cyber / energy / infra / intel / logistics / maritime / military / prediction / technology domains (T3.8 base + expansion + FRED follow-up); C1 relay startup gate (T3.9); relay-bin Axum server with L3 health cascade (T3.10, commit `2725d4d`); 30-key bootstrap hydration via real `atomic_publish` (T3.11, commit `27191ec`); Railway deployment manifests + `$PORT` env fallback (T3.12, commit `2a554e0`).
+
+### Deployment target
+
+OD-2 / OD-5 lock-in updated **2026-05-04**: Pellucid deploys to **Railway**, not Fly.io. The relay's C1 startup gate already treats `RAILWAY_PROJECT_ID` as a production indicator, and both binaries' `from_process` config readers fall back to `0.0.0.0:$PORT` so Railway's runtime port injection works without an env wrapper. Manifests under `deploy/railway/{relay,edge}/`. Every Fly.io reference below has been rewritten to Railway.
+
+### Next milestone
+
+**M3 — Panels (Spec §28 M3; week 10–18).** First family is **4.1 News / intel** (8 panels, week 10). Begin with `T4.1.0 — News/intel family scaffold` (line ~899): registry + shared sub-components (`NewsCard`, `IntelEntityChip`, `BreakingTicker`, `SignalSeverityBadge`). The cache keys those panels read are already populated by M2's seeders; M3's job is to ship the React components + data loaders + handlers + e2e visual goldens.
+
+### Outstanding M2 follow-ups (none blocking M3)
+
+- Production seeder factory wired into `pellucid-relay-bin::app::build_app` is currently empty (`seeder_jobs = vec![]`); the integration test passes a static set, but production should register every shipped seeder. Tracked here as a documented follow-up — M3 does not depend on it because each panel can hydrate via `atomic_publish` paths that are already verified end-to-end (T3.11).
+
+---
+
 ## 1. Universal Test Mandate
 
 The user specified **unit + integration + e2e for ALL methods**. Every task in this plan must satisfy this mandate. No task may be marked complete without all three tiers passing for the code it adds or modifies.
@@ -668,7 +693,7 @@ bunx playwright test
 
 ## Milestone 2 — Streams + seeders (Spec §28 M2; week 6–9)
 
-**Goal:** AIS, OpenSky, RSS, OREF stream clients in Rust; ~30 seeders; relay binary deployed to Fly.io with C1 fix; bootstrap returns hydrated data for 30 cache keys.
+**Goal:** AIS, OpenSky, RSS, OREF stream clients in Rust; ~30 seeders; relay binary deployed to Railway with C1 fix; bootstrap returns hydrated data for 30 cache keys.
 
 ### T3.1 — `pellucid-streams` AIS client [rust]
 **Deps:** T1.2
@@ -850,34 +875,35 @@ cargo nextest run -p pellucid-handlers --test bootstrap
 bunx playwright test e2e/boot/hydration.spec.ts
 ```
 
-### T3.12 — Fly.io deployment manifests [setup]
+### T3.12 — Railway deployment manifests [setup]
 **Deps:** T3.10, T2.6
-**Files:** `deploy/fly/edge.toml`, `deploy/fly/relay.toml`, `docker/Dockerfile.edge`, `docker/Dockerfile.relay`
-**Deliverable:** Two Fly apps configured (`pellucid-edge`, `pellucid-relay`). Multi-arch images build via `cargo zigbuild`. `flyctl deploy` succeeds for both.
+**Files:** `deploy/railway/relay/Dockerfile`, `deploy/railway/relay/railway.toml`, `deploy/railway/edge/Dockerfile`, `deploy/railway/edge/railway.toml`, `.dockerignore`. Plus `$PORT` env fallback in both binaries' `ConfigSource::from_process` (pure helper `resolve_listen_addr_from_env`).
+**Deliverable:** Two Railway services configured (`pellucid-edge`, `pellucid-relay`). Each has its own Dockerfile under `deploy/railway/<service>/`, two-stage build (rust:1.84-slim-bookworm builder → debian:bookworm-slim runtime, stripped binary, non-root uid 1000, `tini` PID 1). Railway sets `PORT` at runtime; the binary's `resolve_listen_addr_from_env` synthesises `0.0.0.0:$PORT` automatically. `railway up` succeeds for both.
 **Tests:**
-- Unit: TOML parses (`fly config validate`).
-- Integration: deploy to Fly **staging** environment via CI; smoke test hits edge `/api/health` and relay `/health`.
+- Unit: `resolve_listen_addr_from_env` covers explicit-wins-over-PORT, PORT-synthesises-address, no-env-yields-None, unparseable-PORT-falls-through, u16-overflow-falls-through, max-u16-valid (6 cases per binary, pure — no env mutation).
+- Integration: deploy to Railway **staging** project via CI; smoke test hits edge `/healthz` and relay `/health`.
 - E2E: `e2e/staging/smoke.spec.ts` — once per CI run, against staging URL.
 
 **Verify:**
 
 ```bash
-flyctl config validate -c deploy/fly/edge.toml
-flyctl config validate -c deploy/fly/relay.toml
-docker build -f docker/Dockerfile.edge -t pellucid-edge:test .
-docker build -f docker/Dockerfile.relay -t pellucid-relay:test .
+cargo test -p pellucid-relay-bin --lib config::
+cargo test -p pellucid-edge-bin --lib config::
+railway link              # links the local repo to the Railway project
+railway up -s pellucid-relay -c deploy/railway/relay/railway.toml
+railway up -s pellucid-edge  -c deploy/railway/edge/railway.toml
 ```
 
 ### M2 Gate [gate]
 
-Spec §28 M2 exit: relay deployed to Fly.io; 30 cache keys populated; bootstrap returns hydrated data; C1, H3 regression tests green.
+Spec §28 M2 exit: relay deployed to Railway; 30 cache keys populated; bootstrap returns hydrated data; C1, H3 regression tests green.
 
 ```bash
 just check
 cargo nextest run --workspace
 bunx playwright test
-flyctl status -a pellucid-relay-staging   # must be healthy
-flyctl status -a pellucid-edge-staging    # must be healthy
+railway status -s pellucid-relay  # must be healthy
+railway status -s pellucid-edge   # must be healthy
 ```
 
 ---
@@ -1484,16 +1510,16 @@ cargo audit && bun audit
 
 ### T7.1 — Production deploy [setup]
 **Deps:** M5
-**Files:** `deploy/fly/edge-prod.toml` (3 regions: iad, fra, syd), `deploy/fly/relay-prod.toml` (single region with secondary failover).
-**Deliverable:** Production Fly apps live. Litestream replicating to Cloudflare R2 every 60 s.
+**Files:** `deploy/railway/edge/railway.prod.toml` (3 regions: us-east, eu-west, ap-southeast), `deploy/railway/relay/railway.prod.toml` (single region closest to upstreams, secondary failover).
+**Deliverable:** Production Railway services live. Litestream replicating to Cloudflare R2 every 60 s.
 **Tests:**
 - Integration: `e2e/staging/full.spec.ts` against staging URL passes.
 - E2E: `e2e/prod/smoke.spec.ts` — read-only checks against production health endpoints.
 **Verify:**
 
 ```bash
-flyctl deploy -c deploy/fly/edge-prod.toml --image-label v1.0.0
-flyctl deploy -c deploy/fly/relay-prod.toml --image-label v1.0.0
+railway up -s pellucid-edge  -e production -c deploy/railway/edge/railway.prod.toml
+railway up -s pellucid-relay -e production -c deploy/railway/relay/railway.prod.toml
 bunx playwright test e2e/prod/smoke.spec.ts
 ```
 
@@ -1513,7 +1539,7 @@ bash tools/test-installers.sh
 
 ### T7.3 — DNS cutover [setup]
 **Deps:** T7.1
-**Files:** DNS records + Fly certs.
+**Files:** DNS records + Railway custom-domain certs.
 **Deliverable:** `worldmonitor.app` and `api.worldmonitor.app` (and variant subdomains) point at Pellucid.
 **Tests:** `e2e/dns-cutover.spec.ts` polls all expected hostnames; asserts certificate chain.
 **Verify:**
@@ -1618,10 +1644,10 @@ These are unresolved at plan write-time. Each is owned by `User` per the spec lo
 | ID | Decision | Default | Resolve by |
 |---|---|---|---|
 | OD-1 | ML backend default — `ort` vs `candle` | `ort` | start of T5.1 |
-| OD-2 | Hosted edge cloud — Fly.io vs Railway vs self-host | Fly.io | start of T3.12 |
+| OD-2 | Hosted edge cloud — Fly.io vs Railway vs self-host | **Railway** (locked 2026-05-04) | resolved |
 | OD-3 | Litestream replica destination | Cloudflare R2 | start of T7.1 |
 | OD-4 | LiteFS adoption | Deferred | post-GA |
-| OD-5 | Web SPA tenancy — single Fly app vs per-variant | Single app, hostname routing | start of T3.12 |
+| OD-5 | Web SPA tenancy — single Railway service vs per-variant | **Single service, hostname routing** (locked 2026-05-04) | resolved |
 | OD-6 | Telegram client — `grammers-client` vs `tdlib` | `grammers-client` | start of T4.5.0 |
 | OD-7 | Variant `happy` retention | Keep | M3 |
 | OD-8 | Pricing page rebuild | v1.1 | M5 |
@@ -1676,7 +1702,7 @@ Resume `/lore:execute` from any of these checkpoints:
 
 Before T7.1 (production deploy), the user must:
 
-1. Provision Fly.io org + tokens; set `FLY_API_TOKEN` in CI secrets.
+1. Provision Railway project + token; set `RAILWAY_TOKEN` in CI secrets and link the local repo via `railway link`.
 2. Provision Cloudflare R2 bucket; set Litestream env vars.
 3. Provision Clerk production instance; set `CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY`.
 4. Provision Dodo production account; set `DODO_PAYMENTS_API_KEY` + `DODO_PAYMENTS_WEBHOOK_SECRET` + `DODO_IDENTITY_SIGNING_SECRET`.

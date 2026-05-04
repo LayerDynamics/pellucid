@@ -67,8 +67,8 @@ A v1 release that does not satisfy each row (or explicitly defers it to v1.x wit
 | Bundler | Vite 6 (+ `@tauri-apps/plugin-vite`) |
 | Local + edge canonical store | SQLite 3.46+ (with `JSON1`, `FTS5`, `R*Tree`, `sqlite-vec`, `sqlite-zstd` extensions) |
 | Non-public-facing systems | Rust (Cargo workspace, Tokio, Axum, Reqwest, Rusqlite/SQLx, ort/candle for ML) |
-| Public-facing API (rebuilt, retained) | Rust binary on Fly.io / Railway / self-host (Axum + Tower) |
-| Hosted web SPA at `worldmonitor.app` | Same Vite-built React bundle as Tauri webview, served from Fly/Cloudflare Pages with CDN |
+| Public-facing API (rebuilt, retained) | Rust binary on **Railway** (or self-host) — Axum + Tower |
+| Hosted web SPA at `worldmonitor.app` | Same Vite-built React bundle as Tauri webview, served from Railway/Cloudflare Pages with CDN |
 | Auth | Clerk (retained external SaaS) |
 | Payments | Dodo (retained external SaaS) |
 | Plan/entitlement DB + webhook receiver | Convex (retained — pragmatic; owns billing plumbing) |
@@ -150,8 +150,8 @@ A v1 release that does not satisfy each row (or explicitly defers it to v1.x wit
        │     ~/Library/Application│                              ┌─────────────────┐ │
        │     Support/pellucid.db) │                              │ pellucid-edge   │ │
        │                          │                              │  -bin (Rust)    │ │
-       └─────────┬────────────────┘                              │  Fly.io / Rail- │ │
-                 │                                               │  way / self-h.  │ │
+       └─────────┬────────────────┘                              │  Railway        │ │
+                 │                                               │  (or self-host) │ │
                  │ optional cloud sync (entitlements,            │  Axum + Tower   │ │
                  │  shared layouts) over HTTPS                   │  api.worldmoni- │ │
                  ▼                                               │  tor.app        │ │
@@ -170,7 +170,7 @@ A v1 release that does not satisfy each row (or explicitly defers it to v1.x wit
        ┌──────────────────────┐                                           │          │
        │ pellucid-relay-bin   │ ◄─── x-relay-key Bearer (req'd in prod)   │          │
        │ (Rust)               │                                           │          │
-       │ Fly.io / Railway     │                                           │          │
+       │ Railway              │                                           │          │
        │  - AIS WS            │      writes envelope                      │          │
        │  - OpenSky OAuth2    │ ────────────────────────────────────────► ┘          │
        │  - RSS allowlist     │                                                      │
@@ -187,8 +187,8 @@ A v1 release that does not satisfy each row (or explicitly defers it to v1.x wit
 Three deployable Rust binaries:
 
 1. **`pellucid-sidecar-bin`** — spawned by Tauri main, listens on `127.0.0.1:<dyn-port>`, serves the local UI.
-2. **`pellucid-edge-bin`** — deployed to Fly.io / Railway / self-host, fronts `api.worldmonitor.app` and serves the hosted web SPA's RPC calls.
-3. **`pellucid-relay-bin`** — deployed to Fly.io / Railway, runs the stream clients and seed loops, writes envelopes to the same canonical SQLite (server-side replica).
+2. **`pellucid-edge-bin`** — deployed to **Railway** (or self-host), fronts `api.worldmonitor.app` and serves the hosted web SPA's RPC calls.
+3. **`pellucid-relay-bin`** — deployed to **Railway**, runs the stream clients and seed loops, writes envelopes to the same canonical SQLite (server-side replica).
 
 A fourth in-process Rust target — `pellucid-tauri` — is the Tauri 2 host (system tray, updater, vault, IPC commands).
 
@@ -1266,11 +1266,11 @@ Pre-push hook fails if any of the three diverge from the script output. **(M5 fi
 
 ### 27.2 Hosted
 
-- `worldmonitor.app` apex → `pellucid-edge-bin` on Fly.io (3 regions: iad, fra, syd).
+- `worldmonitor.app` apex → `pellucid-edge-bin` on Railway (3 regions: us-east, eu-west, ap-southeast).
 - `tech.worldmonitor.app`, `finance.worldmonitor.app`, `commodity.worldmonitor.app`, `happy.worldmonitor.app` → same binary, hostname-resolved variant.
 - `api.worldmonitor.app` → same binary, separate route map.
 - Litestream replicating SQLite to Cloudflare R2 every 60 s.
-- Relay binary on Fly.io, single region (closest to upstreams), with secondary failover.
+- Relay binary on Railway, single region (closest to upstreams), with secondary failover.
 
 ### 27.3 Container images
 
@@ -1313,7 +1313,7 @@ Pre-push hook fails if any of the three diverge from the script output. **(M5 fi
 - `atomic_publish` (§7.4) + tests.
 - Regression test: H3 (no HTTP loopback).
 
-**Exit criteria**: relay deployed to Fly.io; 30 cache keys populated; bootstrap returns hydrated data.
+**Exit criteria**: relay deployed to Railway; 30 cache keys populated; bootstrap returns hydrated data.
 
 ### Milestone 3 — Panels (the long stretch) (week 10–18)
 
@@ -1356,7 +1356,7 @@ Pre-push hook fails if any of the three diverge from the script output. **(M5 fi
 
 ### Milestone 6 — GA (week 25)
 
-- Production deploy of `pellucid-edge-bin` to Fly.io 3-region.
+- Production deploy of `pellucid-edge-bin` to Railway 3-region.
 - Release-signed desktop builds.
 - DNS cutover from WorldMonitor.
 - Public RPC docs published at `docs.worldmonitor.app` from generated OpenAPI.
@@ -1389,10 +1389,10 @@ These are decisions the spec does not lock — list them here so they're tracked
 | ID | Decision | Owner | Default chosen | Override deadline |
 |---|---|---|---|---|
 | OD-1 | ML backend default — `ort` vs `candle` | User | `ort` (per spec §18.1) | M4 start |
-| OD-2 | Hosted edge cloud — Fly.io vs Railway vs self-host | User | Fly.io 3-region | M5 start |
+| OD-2 | Hosted edge cloud — Fly.io vs Railway vs self-host | User | **Railway 3-region (locked 2026-05-04)** | resolved |
 | OD-3 | Litestream replica destination — Cloudflare R2 vs S3 vs B2 | User | Cloudflare R2 | M5 start |
 | OD-4 | LiteFS adoption for read replicas | User | Deferred to v1.x | v1 GA |
-| OD-5 | Web SPA tenancy — single Fly app with hostname routing vs per-variant Fly app | User | Single app, hostname routing | M5 start |
+| OD-5 | Web SPA tenancy — single service with hostname routing vs per-variant | User | **Single Railway service, hostname routing (locked 2026-05-04)** | resolved |
 | OD-6 | Telegram client — `grammers-client` vs `tdlib` Rust binding | User | `grammers-client` | M3 week 14 |
 | OD-7 | Variant `happy` retention — was it experimental? Keep or sunset? | User | Keep (parity) | M3 |
 | OD-8 | Pricing page rebuild — included in v1 or v1.1? | User | v1.1 | M5 |
