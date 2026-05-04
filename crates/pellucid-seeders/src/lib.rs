@@ -17,6 +17,7 @@ pub mod envelope;
 pub mod infra;
 pub mod intel;
 pub mod locks;
+pub mod maritime;
 pub mod markets;
 pub mod prediction;
 pub mod registry;

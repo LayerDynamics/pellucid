@@ -224,6 +224,19 @@ pub const REGISTRY: &[RegistryEntry] = &[
         name: "memory-market",
         cadence: Cadence::every(Duration::from_secs(15 * 60)),
     },
+    // T3.8 expansion — maritime domain.
+    RegistryEntry {
+        name: "ais-snapshot",
+        cadence: Cadence::every(Duration::from_secs(5 * 60)),
+    },
+    RegistryEntry {
+        name: "chokepoint-status",
+        cadence: Cadence::every(Duration::from_secs(5 * 60)),
+    },
+    RegistryEntry {
+        name: "maritime-incidents",
+        cadence: Cadence::every(Duration::from_secs(15 * 60)),
+    },
     RegistryEntry {
         name: "cyber",
         cadence: Cadence::every(Duration::from_secs(2 * 60 * 60)),

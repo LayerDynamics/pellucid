@@ -28,6 +28,7 @@ pub mod hacker_news;
 pub mod huggingface;
 pub mod ja3;
 pub mod jodi;
+pub mod maritime_state;
 pub mod metaculus;
 pub mod oss_insight;
 pub mod vantage_compute;
@@ -70,6 +71,9 @@ pub use gie_agsi::{GasStorageRow, GieAgsiClient, GieAgsiConfig};
 pub use hacker_news::{HackerNewsClient, HackerNewsConfig, HnStory};
 pub use huggingface::{HfModel, HfSortBy, HuggingFaceClient, HuggingFaceConfig};
 pub use jodi::{JodiClient, JodiConfig, JodiDataset, JodiRow};
+pub use maritime_state::{
+    MaritimeState, VesselFix, DEFAULT_FIX_TTL, DEFAULT_PRUNE_INTERVAL,
+};
 pub use metaculus::{MetaculusClient, MetaculusConfig, MetaculusQuestion};
 pub use nvd::{NvdClient, NvdConfig, NvdResponse, NvdVulnerability};
 pub use oss_insight::{OssInsightClient, OssInsightConfig, TrendingPeriod, TrendingRepo};
