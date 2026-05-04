@@ -141,6 +141,31 @@ pub const REGISTRY: &[RegistryEntry] = &[
         name: "acled",
         cadence: Cadence::every(Duration::from_secs(60 * 60)),
     },
+    // Energy domain (T3.8) — six seeders covering oil + gas.
+    RegistryEntry {
+        name: "oil-inventories",
+        cadence: Cadence::every(Duration::from_secs(60 * 60)),
+    },
+    RegistryEntry {
+        name: "fuel-prices",
+        cadence: Cadence::every(Duration::from_secs(60 * 60)),
+    },
+    RegistryEntry {
+        name: "spr-policies",
+        cadence: Cadence::every(Duration::from_secs(6 * 60 * 60)),
+    },
+    RegistryEntry {
+        name: "iea-oil-stocks",
+        cadence: Cadence::every(Duration::from_secs(12 * 60 * 60)),
+    },
+    RegistryEntry {
+        name: "jodi",
+        cadence: Cadence::every(Duration::from_secs(6 * 60 * 60)),
+    },
+    RegistryEntry {
+        name: "gie-gas-storage",
+        cadence: Cadence::every(Duration::from_secs(60 * 60)),
+    },
     RegistryEntry {
         name: "cyber",
         cadence: Cadence::every(Duration::from_secs(2 * 60 * 60)),
@@ -277,6 +302,30 @@ mod tests {
         );
         assert_eq!(
             lookup("acled").unwrap().cadence.period,
+            Duration::from_secs(60 * 60)
+        );
+        assert_eq!(
+            lookup("oil-inventories").unwrap().cadence.period,
+            Duration::from_secs(60 * 60)
+        );
+        assert_eq!(
+            lookup("fuel-prices").unwrap().cadence.period,
+            Duration::from_secs(60 * 60)
+        );
+        assert_eq!(
+            lookup("spr-policies").unwrap().cadence.period,
+            Duration::from_secs(6 * 60 * 60)
+        );
+        assert_eq!(
+            lookup("iea-oil-stocks").unwrap().cadence.period,
+            Duration::from_secs(12 * 60 * 60)
+        );
+        assert_eq!(
+            lookup("jodi").unwrap().cadence.period,
+            Duration::from_secs(6 * 60 * 60)
+        );
+        assert_eq!(
+            lookup("gie-gas-storage").unwrap().cadence.period,
             Duration::from_secs(60 * 60)
         );
         assert_eq!(

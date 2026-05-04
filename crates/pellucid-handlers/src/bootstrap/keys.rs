@@ -63,9 +63,11 @@ pub const FAST_KEYS: &[&str] = &[
     // Economic (live indicators)
     "economic:fred-latest:UNRATE:v1",
     "economic:fred-latest:CPIAUCSL:v1",
-    // EIA (current energy ticker)
+    // EIA (current energy ticker) + T3.8 energy domain additions
     "eia:petroleum-stocks:latest:v1",
     "eia:nat-gas-spot:latest:v1",
+    "energy:fuel-prices:current:v1",
+    "energy:gie-gas-storage:current:v1",
     // Forecast (now-cast)
     "forecast:now-cast:summary:v1",
     // Health (current surveillance)
@@ -168,8 +170,11 @@ pub const SLOW_KEYS: &[&str] = &[
     // Economic (long-series indicators)
     "economic:indicator-series:monthly:v1",
     "economic:fred-long-series:UNRATE:v1",
-    // EIA (weekly stocks)
+    // EIA (weekly stocks) + T3.8 energy domain additions
     "eia:petroleum-stocks:weekly:v1",
+    "energy:spr-status:current:v1",
+    "energy:iea-oil-stocks:monthly:v1",
+    "energy:jodi:latest:v1",
     // Enrichment (entity catalogs)
     "enrichment:entity-catalog:v1",
     "enrichment:gazetteer:v1",
@@ -243,6 +248,12 @@ pub const SLOW_KEYS: &[&str] = &[
 /// (`climate:air-quality:current:v1`) → `69 + 48 = 117`.
 /// T3.8 conflict domain adds: +1 FAST
 /// (`conflict:iran-events:24h:v1`) → `70 + 48 = 118`.
+/// T3.8 energy domain adds: +2 FAST
+/// (`energy:fuel-prices:current:v1`,
+/// `energy:gie-gas-storage:current:v1`) and +3 SLOW
+/// (`energy:spr-status:current:v1`,
+/// `energy:iea-oil-stocks:monthly:v1`,
+/// `energy:jodi:latest:v1`) → `72 + 51 = 123`.
 pub const TOTAL_KEYS: usize = FAST_KEYS.len() + SLOW_KEYS.len();
 
 /// Tier selector for the bootstrap query string.
@@ -291,21 +302,23 @@ mod tests {
     use std::collections::HashSet;
 
     #[test]
-    fn fast_tier_has_70_keys() {
+    fn fast_tier_has_72_keys() {
         // OP-4 originally 67; T3.8 markets +crypto-snapshot, T3.8
-        // climate +air-quality, T3.8 conflict +iran-events.
-        assert_eq!(FAST_KEYS.len(), 70);
+        // climate +air-quality, T3.8 conflict +iran-events, T3.8
+        // energy +fuel-prices +gie-gas-storage.
+        assert_eq!(FAST_KEYS.len(), 72);
     }
 
     #[test]
-    fn slow_tier_has_48_keys() {
-        // OP-4 originally 45; T3.8 markets adds etf-flows + gold-etf-flows + cot-report.
-        assert_eq!(SLOW_KEYS.len(), 48);
+    fn slow_tier_has_51_keys() {
+        // OP-4 originally 45; T3.8 markets +etf-flows +gold-etf-flows
+        // +cot-report; T3.8 energy +spr-status +iea-oil-stocks +jodi.
+        assert_eq!(SLOW_KEYS.len(), 51);
     }
 
     #[test]
-    fn total_keys_is_118() {
-        assert_eq!(TOTAL_KEYS, 118);
+    fn total_keys_is_123() {
+        assert_eq!(TOTAL_KEYS, 123);
     }
 
     #[test]
