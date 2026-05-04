@@ -70,18 +70,47 @@ pub struct ConfigSource {
     pub aviationstack_base_url: Option<String>,
 }
 
+/// Resolve the listen-address source from the two env layers
+/// the edge binary honours. Pure — takes already-read env
+/// values so tests don't have to mutate process env.
+///
+/// 1. `explicit` (`PELLUCID_LISTEN_ADDR`) — canonical
+///    `host:port` knob. Wins when set.
+/// 2. `port_raw` (`PORT`) — Railway / Render / Heroku / Cloud
+///    Run convention; just an integer. Synthesises
+///    `0.0.0.0:<PORT>` when `explicit` is unset and the value
+///    parses as a `u16`.
+///
+/// An unparseable `PORT` falls through to `None` — the caller
+/// then applies the default address rather than failing boot.
+#[must_use]
+pub fn resolve_listen_addr_from_env(
+    explicit: Option<String>,
+    port_raw: Option<String>,
+) -> Option<String> {
+    if let Some(addr) = explicit {
+        return Some(addr);
+    }
+    port_raw
+        .and_then(|raw| raw.parse::<u16>().ok())
+        .map(|port| format!("0.0.0.0:{port}"))
+}
+
 impl ConfigSource {
     /// Read the live process env. The binary's `main` calls this
     /// once at boot; tests construct `ConfigSource` directly.
     ///
-    /// Carries a localised `#[allow(clippy::disallowed_methods)]`
-    /// — same pattern as `pellucid-relay-bin::startup_check::
-    /// from_process`. This is the canonical env-reading boundary.
+    /// Listen-address resolution is delegated to
+    /// [`resolve_listen_addr_from_env`] so the env-fallback rule
+    /// is unit-testable without touching process state.
     #[must_use]
     #[allow(clippy::disallowed_methods)]
     pub fn from_process() -> Self {
         Self {
-            listen_addr: std::env::var(env_names::PELLUCID_LISTEN_ADDR).ok(),
+            listen_addr: resolve_listen_addr_from_env(
+                std::env::var(env_names::PELLUCID_LISTEN_ADDR).ok(),
+                std::env::var("PORT").ok(),
+            ),
             db_url: std::env::var(env_names::PELLUCID_DB_URL).ok(),
             aviationstack_api_key: std::env::var(env_names::AVIATIONSTACK_API_KEY).ok(),
             aviationstack_base_url: std::env::var(env_names::AVIATIONSTACK_BASE_URL).ok(),
@@ -138,6 +167,53 @@ impl Config {
 #[allow(clippy::panic, clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn resolve_listen_addr_explicit_wins_over_port() {
+        let resolved = resolve_listen_addr_from_env(
+            Some("127.0.0.1:9999".into()),
+            Some("9210".into()),
+        );
+        assert_eq!(resolved.as_deref(), Some("127.0.0.1:9999"));
+    }
+
+    #[test]
+    fn resolve_listen_addr_synthesises_from_port_when_explicit_absent() {
+        let resolved = resolve_listen_addr_from_env(None, Some("9210".into()));
+        assert_eq!(resolved.as_deref(), Some("0.0.0.0:9210"));
+    }
+
+    #[test]
+    fn resolve_listen_addr_returns_none_for_no_env() {
+        let resolved = resolve_listen_addr_from_env(None, None);
+        assert!(resolved.is_none());
+    }
+
+    #[test]
+    fn resolve_listen_addr_unparseable_port_falls_through_to_none() {
+        let resolved =
+            resolve_listen_addr_from_env(None, Some("not-a-number".into()));
+        assert!(resolved.is_none());
+        // Parser then applies the documented edge default.
+        let src = ConfigSource {
+            listen_addr: resolved,
+            ..ConfigSource::default()
+        };
+        let cfg = Config::parse(&src).unwrap();
+        assert_eq!(cfg.listen_addr.to_string(), "0.0.0.0:8080");
+    }
+
+    #[test]
+    fn resolve_listen_addr_overflowing_port_falls_through_to_none() {
+        let resolved = resolve_listen_addr_from_env(None, Some("70000".into()));
+        assert!(resolved.is_none());
+    }
+
+    #[test]
+    fn resolve_listen_addr_max_u16_port_is_valid() {
+        let resolved = resolve_listen_addr_from_env(None, Some("65535".into()));
+        assert_eq!(resolved.as_deref(), Some("0.0.0.0:65535"));
+    }
 
     #[test]
     fn defaults_apply_when_source_is_empty() {

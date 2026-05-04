@@ -1,0 +1,60 @@
+# Railway service config — pellucid-relay
+#
+# Point the Railway service at this file via the dashboard
+# "Config-as-code Path" setting:
+#   deploy/railway/relay/railway.toml
+#
+# ## Service variables (set in Railway dashboard before deploy)
+#
+# Required:
+#   RELAY_SHARED_SECRET     — gates the /opensky/* proxy. The
+#                             C1 startup gate exits 78 if this
+#                             is missing while RAILWAY_PROJECT_ID
+#                             is present (always true on Railway).
+#   OPENSKY_CLIENT_ID       — OAuth2 client id for OpenSky.
+#   OPENSKY_CLIENT_SECRET   — OAuth2 client secret for OpenSky.
+#   AIS_API_KEY             — aisstream.io subscribe key.
+#
+# Optional (with defaults set under [deploy.envs] below):
+#   PELLUCID_DB_URL         — default points at the mounted Volume.
+#   RUST_LOG                — default `info,...`.
+#   PELLUCID_PROD           — default `true`. Reinforces the C1
+#                             gate's production assertion.
+#
+# ## Volume
+#
+# Attach a Railway Volume to this service in the dashboard with
+# mount path `/data`. The default `PELLUCID_DB_URL` below stores
+# the SQLite database there so it survives deploys.
+#
+# ## Port
+#
+# Railway sets `PORT` at runtime. `pellucid-relay-bin` reads it
+# automatically (see `resolve_listen_addr_from_env`), so we do
+# NOT pin `PELLUCID_RELAY_LISTEN_ADDR` here — let Railway pick
+# the public port and the binary will bind `0.0.0.0:$PORT`.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "deploy/railway/relay/Dockerfile"
+
+[deploy]
+# `tini` is the entrypoint; the binary reads PORT itself.
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+numReplicas = 1
+# Railway honours SIGTERM with the configured grace period.
+# 10s matches the relay's `Config::shutdown_grace` plus a
+# safety margin for the AIS WebSocket close handshake.
+sleepApplication = false
+
+[deploy.envs]
+# Default DB path — assumes the dashboard attaches a Volume at /data.
+PELLUCID_DB_URL = "sqlite:///data/pellucid-relay.db?mode=rwc"
+# Reinforce the prod assertion in the C1 gate. Railway's
+# `RAILWAY_PROJECT_ID` already trips production detection, so
+# this is belt-and-braces.
+PELLUCID_PROD = "true"
+RUST_LOG = "info,pellucid_relay_bin=info,pellucid_streams=info"

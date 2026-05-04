@@ -1,0 +1,42 @@
+# Build context filter for Docker builds (used by Railway when
+# building the relay + edge images from `deploy/railway/*`).
+# Without this filter the context balloons to gigabytes
+# (`target/` alone is multi-GB after a workspace build).
+
+# Rust build output.
+target/
+**/target/
+
+# Node + webview artefacts — irrelevant to the server images.
+node_modules/
+**/node_modules/
+webview/dist/
+webview/.cache/
+
+# Tauri host + sidecar — neither ships in a server container.
+crates/pellucid-tauri/target/
+crates/pellucid-sidecar-bin/target/
+
+# Local SQLite databases / WAL / SHM files.
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Editor + OS scratch.
+.git/
+.github/
+.vscode/
+.idea/
+.DS_Store
+
+# Convex generated client + secrets.
+convex/_generated/
+.env
+.env.*
+
+# Test + coverage artefacts.
+coverage/
+.cache/
+*.log

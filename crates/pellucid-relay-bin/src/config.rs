@@ -52,14 +52,46 @@ pub struct ConfigSource {
     pub ais_api_key: Option<String>,
 }
 
+/// Resolve the listen-address source from the two env layers
+/// the relay binary honours. Pure — takes already-read env
+/// values so tests don't have to mutate process env.
+///
+/// 1. `explicit` (`PELLUCID_RELAY_LISTEN_ADDR`) — canonical
+///    `host:port` knob. Wins when set.
+/// 2. `port_raw` (`PORT`) — Railway / Render / Heroku / Cloud
+///    Run convention; just an integer. Synthesises
+///    `0.0.0.0:<PORT>` when `explicit` is unset and the value
+///    parses as a `u16`.
+///
+/// An unparseable `PORT` falls through to `None` — the caller
+/// then applies the default address rather than failing boot.
+#[must_use]
+pub fn resolve_listen_addr_from_env(
+    explicit: Option<String>,
+    port_raw: Option<String>,
+) -> Option<String> {
+    if let Some(addr) = explicit {
+        return Some(addr);
+    }
+    port_raw
+        .and_then(|raw| raw.parse::<u16>().ok())
+        .map(|port| format!("0.0.0.0:{port}"))
+}
+
 impl ConfigSource {
     /// Build a source from the process env. Single boundary —
-    /// every other code path reads `Config`.
+    /// every other code path reads `Config`. Listen-address
+    /// resolution is delegated to [`resolve_listen_addr_from_env`]
+    /// so the env-fallback rule is unit-testable without
+    /// touching process state.
     #[must_use]
     #[allow(clippy::disallowed_methods)]
     pub fn from_process() -> Self {
         Self {
-            listen_addr: std::env::var("PELLUCID_RELAY_LISTEN_ADDR").ok(),
+            listen_addr: resolve_listen_addr_from_env(
+                std::env::var("PELLUCID_RELAY_LISTEN_ADDR").ok(),
+                std::env::var("PORT").ok(),
+            ),
             db_url: std::env::var("PELLUCID_DB_URL").ok(),
             relay_shared_secret: std::env::var("RELAY_SHARED_SECRET").ok(),
             opensky_client_id: std::env::var("OPENSKY_CLIENT_ID").ok(),
@@ -132,6 +164,56 @@ impl Config {
 #[allow(clippy::panic, clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn resolve_listen_addr_explicit_wins_over_port() {
+        let resolved = resolve_listen_addr_from_env(
+            Some("127.0.0.1:9999".into()),
+            Some("8421".into()),
+        );
+        assert_eq!(resolved.as_deref(), Some("127.0.0.1:9999"));
+    }
+
+    #[test]
+    fn resolve_listen_addr_synthesises_from_port_when_explicit_absent() {
+        let resolved = resolve_listen_addr_from_env(None, Some("8421".into()));
+        assert_eq!(resolved.as_deref(), Some("0.0.0.0:8421"));
+    }
+
+    #[test]
+    fn resolve_listen_addr_returns_none_for_no_env() {
+        let resolved = resolve_listen_addr_from_env(None, None);
+        assert!(resolved.is_none());
+    }
+
+    #[test]
+    fn resolve_listen_addr_unparseable_port_falls_through_to_none() {
+        // `PORT=not-a-number` must NOT poison boot — the resolver
+        // returns `None` so `Config::parse` applies the default
+        // `0.0.0.0:3004`.
+        let resolved =
+            resolve_listen_addr_from_env(None, Some("not-a-number".into()));
+        assert!(resolved.is_none());
+        let src = ConfigSource {
+            listen_addr: resolved,
+            ..ConfigSource::default()
+        };
+        let cfg = Config::parse(&src).unwrap();
+        assert_eq!(cfg.listen_addr.to_string(), "0.0.0.0:3004");
+    }
+
+    #[test]
+    fn resolve_listen_addr_overflowing_port_falls_through_to_none() {
+        // u16 max is 65535; 70000 must not synthesise an address.
+        let resolved = resolve_listen_addr_from_env(None, Some("70000".into()));
+        assert!(resolved.is_none());
+    }
+
+    #[test]
+    fn resolve_listen_addr_max_u16_port_is_valid() {
+        let resolved = resolve_listen_addr_from_env(None, Some("65535".into()));
+        assert_eq!(resolved.as_deref(), Some("0.0.0.0:65535"));
+    }
 
     #[test]
     fn parse_default_source_uses_documented_defaults() {

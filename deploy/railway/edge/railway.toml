@@ -1,0 +1,57 @@
+# Railway service config — pellucid-edge
+#
+# Point the Railway service at this file via the dashboard
+# "Config-as-code Path" setting:
+#   deploy/railway/edge/railway.toml
+#
+# ## Service variables (set in Railway dashboard before deploy)
+#
+# Required:
+#   CLERK_JWT_ISSUER       — JWKS issuer URL for token verify.
+#   CLERK_JWT_AUDIENCE     — expected `aud` claim.
+#   RELAY_SHARED_SECRET    — auth header for /opensky/* upstream
+#                             calls; must equal the relay app's
+#                             value.
+#   AVIATIONSTACK_API_KEY  — aviation handler upstream key.
+#   CONVEX_DEPLOY_KEY      — Convex Cloud read key (entitlement
+#                             cache fallback).
+#
+# Optional:
+#   PELLUCID_DB_URL        — default points at the mounted Volume.
+#   PELLUCID_RELAY_BASE_URL — internal URL of the relay service.
+#                             Use the Railway `RAILWAY_PRIVATE_DOMAIN`
+#                             reference to wire the two services
+#                             over the private IPv6 network:
+#                                 http://${{relay.RAILWAY_PRIVATE_DOMAIN}}:3004
+#   AVIATIONSTACK_BASE_URL — defaults to https://api.aviationstack.com/v1.
+#   RUST_LOG               — default `info,...`.
+#
+# ## Volume
+#
+# Attach a Railway Volume mounted at `/data` to persist the
+# edge service's SQLite database across deploys.
+#
+# ## Port
+#
+# Railway sets `PORT` at runtime. `pellucid-edge-bin` binds
+# `0.0.0.0:$PORT` via `resolve_listen_addr_from_env`, so leave
+# `PELLUCID_LISTEN_ADDR` unset.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "deploy/railway/edge/Dockerfile"
+
+[deploy]
+# `pellucid-edge-bin` mounts its healthcheck at `/healthz` (see
+# `crates/pellucid-edge-bin/src/middleware.rs:HEALTHCHECK_PATH`).
+healthcheckPath = "/healthz"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+numReplicas = 1
+sleepApplication = false
+
+[deploy.envs]
+PELLUCID_DB_URL = "sqlite:///data/pellucid-edge.db?mode=rwc"
+PELLUCID_PROD = "true"
+RUST_LOG = "info,pellucid_edge_bin=info,pellucid_gateway=info,pellucid_handlers=info"
