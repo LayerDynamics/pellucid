@@ -237,6 +237,21 @@ pub const REGISTRY: &[RegistryEntry] = &[
         name: "maritime-incidents",
         cadence: Cadence::every(Duration::from_secs(15 * 60)),
     },
+    // T3.8 expansion — military deployments (theater-posture
+    // is in `theater_posture/` already).
+    RegistryEntry {
+        name: "active-deployments",
+        cadence: Cadence::every(Duration::from_secs(15 * 60)),
+    },
+    // T3.8 expansion — logistics domain.
+    RegistryEntry {
+        name: "supply-chain-stress",
+        cadence: Cadence::every(Duration::from_secs(15 * 60)),
+    },
+    RegistryEntry {
+        name: "port-congestion",
+        cadence: Cadence::every(Duration::from_secs(5 * 60)),
+    },
     RegistryEntry {
         name: "cyber",
         cadence: Cadence::every(Duration::from_secs(2 * 60 * 60)),
