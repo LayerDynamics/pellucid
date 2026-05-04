@@ -83,13 +83,19 @@ pub const REGISTRY: &[RegistryEntry] = &[
         name: "cot",
         cadence: Cadence::every(Duration::from_secs(24 * 60 * 60)),
     },
+    // Aviation domain (T3.8) — three seeders covering the
+    // FAST-tier airspace surface area.
     RegistryEntry {
-        name: "aviation",
+        name: "aviation-status",
         cadence: Cadence::every(Duration::from_secs(30 * 60)),
     },
     RegistryEntry {
         name: "notam",
         cadence: Cadence::every(Duration::from_secs(2 * 60 * 60)),
+    },
+    RegistryEntry {
+        name: "gpsjam",
+        cadence: Cadence::every(Duration::from_secs(60 * 60)),
     },
     RegistryEntry {
         name: "cyber",
@@ -178,8 +184,16 @@ mod tests {
             Duration::from_secs(24 * 60 * 60)
         );
         assert_eq!(
-            lookup("aviation").unwrap().cadence.period,
+            lookup("aviation-status").unwrap().cadence.period,
             Duration::from_secs(30 * 60)
+        );
+        assert_eq!(
+            lookup("notam").unwrap().cadence.period,
+            Duration::from_secs(2 * 60 * 60)
+        );
+        assert_eq!(
+            lookup("gpsjam").unwrap().cadence.period,
+            Duration::from_secs(60 * 60)
         );
         assert_eq!(
             lookup("theater-posture").unwrap().cadence.period,

@@ -8,6 +8,7 @@
 //! foundation.
 
 pub mod atomic_publish;
+pub mod aviation;
 pub mod envelope;
 pub mod locks;
 pub mod markets;
