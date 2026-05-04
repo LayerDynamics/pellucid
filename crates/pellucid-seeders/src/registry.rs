@@ -189,6 +189,15 @@ pub const REGISTRY: &[RegistryEntry] = &[
         name: "forecasts",
         cadence: Cadence::every(Duration::from_secs(15 * 60)),
     },
+    // T3.8 expansion — cyber NVD seeders (CISA KEV is in infra/).
+    RegistryEntry {
+        name: "cyber-incident-feed",
+        cadence: Cadence::every(Duration::from_secs(60 * 60)),
+    },
+    RegistryEntry {
+        name: "cve-trending",
+        cadence: Cadence::every(Duration::from_secs(60 * 60)),
+    },
     RegistryEntry {
         name: "cyber",
         cadence: Cadence::every(Duration::from_secs(2 * 60 * 60)),
