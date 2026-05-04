@@ -14,6 +14,8 @@ pub mod acled;
 pub mod ais;
 pub mod aviationstack;
 pub mod cftc_cot;
+pub mod cisa_kev;
+pub mod cloudflare_radar;
 pub mod coingecko;
 pub mod eia;
 pub mod error;
@@ -23,13 +25,16 @@ pub mod gie_agsi;
 pub mod gpsjam;
 pub mod ja3;
 pub mod jodi;
+pub mod metaculus;
 pub mod nasa_eonet;
 pub mod nasa_firms;
 pub mod noaa_ncei;
 pub mod openaq;
 pub mod opensky;
 pub mod oref;
+pub mod polymarket;
 pub mod rss;
+pub mod telegram_public;
 pub mod types;
 pub mod ucdp;
 pub mod usgs_earthquakes;
@@ -48,10 +53,17 @@ pub use noaa_ncei::{
     NoaaNceiClient, NoaaNceiConfig, TemperatureAnomaly, TemperatureAnomalySeries,
 };
 pub use acled::{AcledClient, AcledConfig, AcledEvent};
+pub use cisa_kev::{CisaKevClient, CisaKevConfig, KevCatalog, KevVulnerability};
+pub use cloudflare_radar::{
+    CloudflareRadarClient, CloudflareRadarConfig, OutageAnnotation,
+};
 pub use eia::{EiaClient, EiaConfig, EiaQuery, EiaResponse, EiaRow};
 pub use gdelt::{GdeltArticle, GdeltClient, GdeltConfig};
 pub use gie_agsi::{GasStorageRow, GieAgsiClient, GieAgsiConfig};
 pub use jodi::{JodiClient, JodiConfig, JodiDataset, JodiRow};
+pub use metaculus::{MetaculusClient, MetaculusConfig, MetaculusQuestion};
+pub use polymarket::{PolymarketClient, PolymarketConfig, PredictionMarket};
+pub use telegram_public::{TelegramMessage, TelegramPublicClient, TelegramPublicConfig};
 pub use openaq::{AirMeasurement, AirQualityStation, OpenAqClient, OpenAqConfig};
 pub use ucdp::{UcdpClient, UcdpConfig, UcdpEvent, UcdpPage};
 pub use usgs_earthquakes::{

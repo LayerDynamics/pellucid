@@ -166,6 +166,29 @@ pub const REGISTRY: &[RegistryEntry] = &[
         name: "gie-gas-storage",
         cadence: Cadence::every(Duration::from_secs(60 * 60)),
     },
+    // Infra domain (T3.8) — two seeders.
+    RegistryEntry {
+        name: "internet-outages",
+        cadence: Cadence::every(Duration::from_secs(60 * 60)),
+    },
+    RegistryEntry {
+        name: "security-advisories",
+        cadence: Cadence::every(Duration::from_secs(60 * 60)),
+    },
+    // Intel domain (T3.8) — minimal Telegram preview scrape.
+    RegistryEntry {
+        name: "telegram-intel-min",
+        cadence: Cadence::every(Duration::from_secs(15 * 60)),
+    },
+    // Prediction domain (T3.8) — Polymarket + Metaculus.
+    RegistryEntry {
+        name: "polymarket",
+        cadence: Cadence::every(Duration::from_secs(15 * 60)),
+    },
+    RegistryEntry {
+        name: "forecasts",
+        cadence: Cadence::every(Duration::from_secs(15 * 60)),
+    },
     RegistryEntry {
         name: "cyber",
         cadence: Cadence::every(Duration::from_secs(2 * 60 * 60)),
@@ -327,6 +350,26 @@ mod tests {
         assert_eq!(
             lookup("gie-gas-storage").unwrap().cadence.period,
             Duration::from_secs(60 * 60)
+        );
+        assert_eq!(
+            lookup("internet-outages").unwrap().cadence.period,
+            Duration::from_secs(60 * 60)
+        );
+        assert_eq!(
+            lookup("security-advisories").unwrap().cadence.period,
+            Duration::from_secs(60 * 60)
+        );
+        assert_eq!(
+            lookup("telegram-intel-min").unwrap().cadence.period,
+            Duration::from_secs(15 * 60)
+        );
+        assert_eq!(
+            lookup("polymarket").unwrap().cadence.period,
+            Duration::from_secs(15 * 60)
+        );
+        assert_eq!(
+            lookup("forecasts").unwrap().cadence.period,
+            Duration::from_secs(15 * 60)
         );
         assert_eq!(
             lookup("theater-posture").unwrap().cadence.period,
