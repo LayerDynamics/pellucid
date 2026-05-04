@@ -19,8 +19,30 @@ name = "pellucid-relay-bin"
 path = "src/main.rs"
 
 [dependencies]
+async-trait = { workspace = true }
+axum = { workspace = true }
+metrics = { workspace = true }
+metrics-exporter-prometheus = { workspace = true }
+parking_lot = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
 thiserror = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+url = { workspace = true }
+pellucid-core = { path = "../pellucid-core" }
+pellucid-db = { path = "../pellucid-db" }
+pellucid-cache = { path = "../pellucid-cache" }
+pellucid-streams = { path = "../pellucid-streams" }
+pellucid-seeders = { path = "../pellucid-seeders" }
 
 [dev-dependencies]
+tokio = { workspace = true }
+reqwest = { workspace = true }
+serde_json = { workspace = true }
+tower = { workspace = true }
+wiremock = { workspace = true }
