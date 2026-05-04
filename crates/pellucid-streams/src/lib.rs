@@ -10,12 +10,14 @@
 //! pass it through. Errors are wrapped in [`StreamsError`] so the
 //! gateway's stage 11 can map them to consistent envelope shapes.
 
+pub mod acled;
 pub mod ais;
 pub mod aviationstack;
 pub mod cftc_cot;
 pub mod coingecko;
 pub mod error;
 pub mod faa_notam;
+pub mod gdelt;
 pub mod gpsjam;
 pub mod ja3;
 pub mod nasa_eonet;
@@ -26,6 +28,7 @@ pub mod opensky;
 pub mod oref;
 pub mod rss;
 pub mod types;
+pub mod ucdp;
 pub mod usgs_earthquakes;
 pub mod yahoo_finance;
 
@@ -41,7 +44,10 @@ pub use nasa_firms::{FireDetection, NasaFirmsClient, NasaFirmsConfig};
 pub use noaa_ncei::{
     NoaaNceiClient, NoaaNceiConfig, TemperatureAnomaly, TemperatureAnomalySeries,
 };
+pub use acled::{AcledClient, AcledConfig, AcledEvent};
+pub use gdelt::{GdeltArticle, GdeltClient, GdeltConfig};
 pub use openaq::{AirMeasurement, AirQualityStation, OpenAqClient, OpenAqConfig};
+pub use ucdp::{UcdpClient, UcdpConfig, UcdpEvent, UcdpPage};
 pub use usgs_earthquakes::{
     EarthquakeEvent, FeedWindow, UsgsConfig, UsgsEarthquakesClient,
 };

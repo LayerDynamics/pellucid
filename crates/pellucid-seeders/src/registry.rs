@@ -119,6 +119,28 @@ pub const REGISTRY: &[RegistryEntry] = &[
         name: "air-quality",
         cadence: Cadence::every(Duration::from_secs(15 * 60)),
     },
+    // Conflict domain (T3.8) — five seeders covering the
+    // FAST-tier geopolitical-incident surface area.
+    RegistryEntry {
+        name: "ucdp-events",
+        cadence: Cadence::every(Duration::from_secs(60 * 60)),
+    },
+    RegistryEntry {
+        name: "gdelt-intel",
+        cadence: Cadence::every(Duration::from_secs(15 * 60)),
+    },
+    RegistryEntry {
+        name: "iran-events",
+        cadence: Cadence::every(Duration::from_secs(15 * 60)),
+    },
+    RegistryEntry {
+        name: "unrest-events",
+        cadence: Cadence::every(Duration::from_secs(15 * 60)),
+    },
+    RegistryEntry {
+        name: "acled",
+        cadence: Cadence::every(Duration::from_secs(60 * 60)),
+    },
     RegistryEntry {
         name: "cyber",
         cadence: Cadence::every(Duration::from_secs(2 * 60 * 60)),
@@ -236,6 +258,26 @@ mod tests {
         assert_eq!(
             lookup("air-quality").unwrap().cadence.period,
             Duration::from_secs(15 * 60)
+        );
+        assert_eq!(
+            lookup("ucdp-events").unwrap().cadence.period,
+            Duration::from_secs(60 * 60)
+        );
+        assert_eq!(
+            lookup("gdelt-intel").unwrap().cadence.period,
+            Duration::from_secs(15 * 60)
+        );
+        assert_eq!(
+            lookup("iran-events").unwrap().cadence.period,
+            Duration::from_secs(15 * 60)
+        );
+        assert_eq!(
+            lookup("unrest-events").unwrap().cadence.period,
+            Duration::from_secs(15 * 60)
+        );
+        assert_eq!(
+            lookup("acled").unwrap().cadence.period,
+            Duration::from_secs(60 * 60)
         );
         assert_eq!(
             lookup("theater-posture").unwrap().cadence.period,

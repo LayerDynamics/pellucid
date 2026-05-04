@@ -48,6 +48,7 @@ pub const FAST_KEYS: &[&str] = &[
     "conflict:events-24h:v1",
     "conflict:hot-actors:24h:v1",
     "conflict:incident-feed:v1",
+    "conflict:iran-events:24h:v1",
     // Consumer prices (latest CPI)
     "consumer-prices:latest-cpi:US:v1",
     "consumer-prices:latest-cpi:EU:v1",
@@ -240,6 +241,8 @@ pub const SLOW_KEYS: &[&str] = &[
 /// `market:cot-report:weekly:v1`) → `68 + 48 = 116`.
 /// T3.8 climate domain adds: +1 FAST
 /// (`climate:air-quality:current:v1`) → `69 + 48 = 117`.
+/// T3.8 conflict domain adds: +1 FAST
+/// (`conflict:iran-events:24h:v1`) → `70 + 48 = 118`.
 pub const TOTAL_KEYS: usize = FAST_KEYS.len() + SLOW_KEYS.len();
 
 /// Tier selector for the bootstrap query string.
@@ -288,10 +291,10 @@ mod tests {
     use std::collections::HashSet;
 
     #[test]
-    fn fast_tier_has_69_keys() {
+    fn fast_tier_has_70_keys() {
         // OP-4 originally 67; T3.8 markets +crypto-snapshot, T3.8
-        // climate +air-quality.
-        assert_eq!(FAST_KEYS.len(), 69);
+        // climate +air-quality, T3.8 conflict +iran-events.
+        assert_eq!(FAST_KEYS.len(), 70);
     }
 
     #[test]
@@ -301,8 +304,8 @@ mod tests {
     }
 
     #[test]
-    fn total_keys_is_117() {
-        assert_eq!(TOTAL_KEYS, 117);
+    fn total_keys_is_118() {
+        assert_eq!(TOTAL_KEYS, 118);
     }
 
     #[test]
