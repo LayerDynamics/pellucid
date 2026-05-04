@@ -42,16 +42,17 @@ RUN apt-get update \
         tini \
  && rm -rf /var/lib/apt/lists/*
 
-# Match Railway Volumes' default uid:gid (0:0) is fine, but a
-# dedicated non-root user is safer.
-RUN useradd --uid 1000 --create-home --shell /usr/sbin/nologin pellucid \
- && mkdir -p /data \
- && chown pellucid:pellucid /data
+# Railway provisions Volumes owned by root:root. We deliberately
+# stay as root inside the container so the binary can read and
+# write the volume mount at /data — Railway's container kernel
+# namespace already isolates the service. (A non-root user would
+# need an entrypoint shim that chowns /data each boot, which adds
+# moving parts without buying isolation we don't already have.)
+RUN mkdir -p /data
 
 COPY --from=builder /build/target/release/pellucid-relay-bin /usr/local/bin/pellucid-relay-bin
 RUN chmod 755 /usr/local/bin/pellucid-relay-bin
 
-USER pellucid
 WORKDIR /data
 
 # `tini` reaps zombies + forwards SIGTERM/SIGINT so the relay's

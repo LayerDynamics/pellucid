@@ -32,14 +32,15 @@ RUN apt-get update \
         tini \
  && rm -rf /var/lib/apt/lists/*
 
-RUN useradd --uid 1000 --create-home --shell /usr/sbin/nologin pellucid \
- && mkdir -p /data \
- && chown pellucid:pellucid /data
+# Railway Volumes are owned by root:root; stay as root inside
+# the container so SQLite at /data is writable. The container
+# kernel namespace provides isolation; running non-root here
+# would force an entrypoint shim that chowns /data each boot.
+RUN mkdir -p /data
 
 COPY --from=builder /build/target/release/pellucid-edge-bin /usr/local/bin/pellucid-edge-bin
 RUN chmod 755 /usr/local/bin/pellucid-edge-bin
 
-USER pellucid
 WORKDIR /data
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/pellucid-edge-bin"]
