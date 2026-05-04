@@ -198,6 +198,32 @@ pub const REGISTRY: &[RegistryEntry] = &[
         name: "cve-trending",
         cadence: Cadence::every(Duration::from_secs(60 * 60)),
     },
+    // T3.8 expansion — technology domain (HN / GitHub / AI /
+    // cloud / compute / memory).
+    RegistryEntry {
+        name: "hackernews-top",
+        cadence: Cadence::every(Duration::from_secs(15 * 60)),
+    },
+    RegistryEntry {
+        name: "github-trending",
+        cadence: Cadence::every(Duration::from_secs(60 * 60)),
+    },
+    RegistryEntry {
+        name: "huggingface-trending",
+        cadence: Cadence::every(Duration::from_secs(60 * 60)),
+    },
+    RegistryEntry {
+        name: "cloud-status",
+        cadence: Cadence::every(Duration::from_secs(15 * 60)),
+    },
+    RegistryEntry {
+        name: "compute-spot-prices",
+        cadence: Cadence::every(Duration::from_secs(60 * 60)),
+    },
+    RegistryEntry {
+        name: "memory-market",
+        cadence: Cadence::every(Duration::from_secs(15 * 60)),
+    },
     RegistryEntry {
         name: "cyber",
         cadence: Cadence::every(Duration::from_secs(2 * 60 * 60)),

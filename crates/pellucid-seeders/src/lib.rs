@@ -21,6 +21,7 @@ pub mod markets;
 pub mod prediction;
 pub mod registry;
 pub mod scheduler;
+pub mod technology;
 pub mod theater_posture;
 
 pub use atomic_publish::{

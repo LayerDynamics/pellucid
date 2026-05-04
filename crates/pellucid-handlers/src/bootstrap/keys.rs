@@ -146,6 +146,14 @@ pub const FAST_KEYS: &[&str] = &[
     "wildfire:active-perimeters:current:v1",
     // YouTube (live channel feed — embedded panels)
     "youtube:channel-feed:current:v1",
+    // Technology domain (T3.8 expansion) — covers AI / cloud /
+    // compute pricing / memory market signals.
+    "technology:hn-top-stories:v1",
+    "technology:github-trending:v1",
+    "technology:ai-models-trending:v1",
+    "technology:cloud-status:current:v1",
+    "technology:compute-spot-prices:current:v1",
+    "technology:memory-market-index:v1",
 ];
 
 /// 45 lower-cadence cache keys served at the SLOW tier.
@@ -254,6 +262,13 @@ pub const SLOW_KEYS: &[&str] = &[
 /// (`energy:spr-status:current:v1`,
 /// `energy:iea-oil-stocks:monthly:v1`,
 /// `energy:jodi:latest:v1`) → `72 + 51 = 123`.
+/// T3.8 expansion (technology domain) adds: +6 FAST
+/// (`technology:hn-top-stories:v1`,
+/// `technology:github-trending:v1`,
+/// `technology:ai-models-trending:v1`,
+/// `technology:cloud-status:current:v1`,
+/// `technology:compute-spot-prices:current:v1`,
+/// `technology:memory-market-index:v1`) → `78 + 51 = 129`.
 pub const TOTAL_KEYS: usize = FAST_KEYS.len() + SLOW_KEYS.len();
 
 /// Tier selector for the bootstrap query string.
@@ -302,11 +317,13 @@ mod tests {
     use std::collections::HashSet;
 
     #[test]
-    fn fast_tier_has_72_keys() {
+    fn fast_tier_has_78_keys() {
         // OP-4 originally 67; T3.8 markets +crypto-snapshot, T3.8
         // climate +air-quality, T3.8 conflict +iran-events, T3.8
-        // energy +fuel-prices +gie-gas-storage.
-        assert_eq!(FAST_KEYS.len(), 72);
+        // energy +fuel-prices +gie-gas-storage, T3.8 expansion
+        // (technology) +hn +github +ai-models +cloud-status
+        // +compute-spot +memory-market.
+        assert_eq!(FAST_KEYS.len(), 78);
     }
 
     #[test]
@@ -317,8 +334,8 @@ mod tests {
     }
 
     #[test]
-    fn total_keys_is_123() {
-        assert_eq!(TOTAL_KEYS, 123);
+    fn total_keys_is_129() {
+        assert_eq!(TOTAL_KEYS, 129);
     }
 
     #[test]
