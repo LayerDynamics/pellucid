@@ -67,8 +67,13 @@ Thumbs.db
 *.log
 logs/
 
-# Generated artifacts (regenerated via `bun run gen` / build scripts)
-crates/pellucid-handlers/src/generated/
+# Generated artifacts (regenerated via `bun run gen` / build scripts).
+# The Rust generated tree at `crates/pellucid-handlers/src/generated/`
+# is committed because `pellucid-codegen` references its
+# `.proto.sha256` via `include_str!` at compile time and the workspace
+# must build from a clean clone (Railway / CI / fresh dev box) without
+# requiring the sebuf plugin on PATH. Re-running `bun run gen` simply
+# overwrites the tracked files; `git diff` then surfaces drift.
 webview/src/generated/
 docs/api/openapi.json
 
