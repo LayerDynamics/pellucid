@@ -3,6 +3,7 @@
 pub mod analyze_stock;
 pub mod backtest_stock;
 pub mod breadth;
+pub mod etf_flows;
 pub mod list_market_quotes;
 
 use axum::Router;
@@ -30,6 +31,11 @@ pub const BACKTEST_STOCK_PATH: &str = "/api/market/v1/backtest-stock";
 /// Anonymous tier — breadth is a public surface.
 pub const BREADTH_PATH: &str = "/api/market/v1/breadth";
 
+/// Path for the etf-flows endpoint. Matches the loader at
+/// `webview/src/data/loaders/market/etf-flows.ts` (T4.2.5).
+/// Anonymous tier — public surface.
+pub const ETF_FLOWS_PATH: &str = "/api/market/v1/etf-flows";
+
 /// Build the v1 router.
 pub fn router(state: AppState) -> Router {
     Router::new()
@@ -47,6 +53,10 @@ pub fn router(state: AppState) -> Router {
         )
         .route(
             BREADTH_PATH,
-            axum::routing::get(breadth::handler).with_state(state),
+            axum::routing::get(breadth::handler).with_state(state.clone()),
+        )
+        .route(
+            ETF_FLOWS_PATH,
+            axum::routing::get(etf_flows::handler).with_state(state),
         )
 }
