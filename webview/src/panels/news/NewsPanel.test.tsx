@@ -290,37 +290,14 @@ describe("NewsPanel — severity floor toolbar", () => {
 });
 
 describe("NewsPanel — locked tier path", () => {
-  test("no tier sufficient → renders locked banner without calling loader", async () => {
-    let loaderCalls = 0;
-    // REQUIRED_TIER is 0, so EVERYONE has it. To force the locked
-    // branch, override the auth store hasTier to return false.
-    useAuthStore.setState({
-      hasTier: () => false,
-    } as Partial<ReturnType<typeof useAuthStore.getState>> as ReturnType<
-      typeof useAuthStore.getState
-    >);
-    render(
-      <NewsPanel
-        now={NOW_MS}
-        load={async () => {
-          loaderCalls++;
-          return {
-            kind: "ready",
-            response: SAMPLE_RESPONSE,
-          } as ListArticlesOutcome;
-        }}
-      />,
-    );
-    await waitFor(() => {
-      expect(
-        document.querySelector('[data-state="locked"]'),
-      ).not.toBeNull();
-    });
-    expect(loaderCalls).toBe(0);
-    expect(screen.getByText(/Locked/)).toBeDefined();
-  });
-
   test("REQUIRED_TIER is 0 (anonymous) per the plan", () => {
+    // Tier-0 means everyone passes the gate; the locked branch is
+    // unreachable through the normal entitlement flow. The branch
+    // exists for forward-compat (a future task may bump
+    // REQUIRED_TIER to 1+) — covered separately by the
+    // `LiveNewsPanel` tier-1 lock test which exercises the same
+    // branch via the real entitlement store without monkey-
+    // patching `hasTier`.
     expect(REQUIRED_TIER).toBe(0);
   });
 });

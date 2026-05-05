@@ -18,6 +18,8 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 async-trait = { workspace = true }
+async-stream = { workspace = true }
+futures = { workspace = true }
 sqlx = { workspace = true }
 pellucid-core = { path = "../pellucid-core" }
 pellucid-cache = { path = "../pellucid-cache" }
