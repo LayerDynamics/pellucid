@@ -1,6 +1,7 @@
 //! `market/v1/*` route module.
 
 pub mod analyze_stock;
+pub mod backtest_stock;
 pub mod list_market_quotes;
 
 use axum::Router;
@@ -18,6 +19,11 @@ pub const LIST_MARKET_QUOTES_PATH: &str = "/api/market/v1/list-market-quotes";
 /// call uses.
 pub const ANALYZE_STOCK_PATH: &str = "/api/market/v1/analyze-stock";
 
+/// Path for the backtest-stock endpoint. Matches the loader at
+/// `webview/src/data/loaders/market/backtest-stock.ts` (T4.2.3).
+/// Tier-2 gated — see [`backtest_stock::REQUIRED_TIER`].
+pub const BACKTEST_STOCK_PATH: &str = "/api/market/v1/backtest-stock";
+
 /// Build the v1 router.
 pub fn router(state: AppState) -> Router {
     Router::new()
@@ -27,6 +33,10 @@ pub fn router(state: AppState) -> Router {
         )
         .route(
             ANALYZE_STOCK_PATH,
-            axum::routing::get(analyze_stock::handler).with_state(state),
+            axum::routing::get(analyze_stock::handler).with_state(state.clone()),
+        )
+        .route(
+            BACKTEST_STOCK_PATH,
+            axum::routing::get(backtest_stock::handler).with_state(state),
         )
 }
