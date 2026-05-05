@@ -21,6 +21,7 @@ pub mod aviation;
 pub mod bootstrap;
 pub mod generated;
 pub mod intelligence;
+pub mod market;
 pub mod news;
 pub mod state;
 pub mod telegram;
@@ -36,6 +37,7 @@ pub fn build_handlers(state: AppState) -> Router {
         .merge(aviation::router(state.clone()))
         .merge(bootstrap::router(state.clone()))
         .merge(intelligence::router(state.clone()))
+        .merge(market::router(state.clone()))
         .merge(news::router(state.clone()))
         .merge(telegram::router(state))
 }
