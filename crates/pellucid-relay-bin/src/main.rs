@@ -51,6 +51,7 @@ pub const EXIT_REFUSED: u8 = 78; // EX_CONFIG (BSD sysexits)
 pub const EXIT_RUNTIME: u8 = 70; // EX_SOFTWARE (BSD sysexits)
 
 fn main() -> ExitCode {
+    install_crypto_provider();
     let env = StartupEnv::from_process();
     match ensure_safe_to_boot(&env) {
         Ok(BootDecision::Authorized) => {
@@ -101,6 +102,32 @@ fn main() -> ExitCode {
     match runtime.block_on(run(config)) {
         Ok(()) => ExitCode::SUCCESS,
         Err(code) => ExitCode::from(code),
+    }
+}
+
+/// Install the rustls process-wide `CryptoProvider`.
+///
+/// rustls 0.23 refuses to auto-pick a provider when more than
+/// one is reachable via the dep graph (we end up with both
+/// `aws-lc-rs` from hyper-rustls and `ring` paths via transitive
+/// crates). Without this call, the first TLS handshake panics
+/// the worker thread — which is exactly what AIS WebSocket
+/// connections to aisstream.io did on Railway as soon as
+/// `AIS_API_KEY` was set and the producer task tried to dial.
+///
+/// `install_default()` returns `Err` if a provider is already
+/// installed (e.g. if a library beat us to it). That's fine —
+/// we just log and continue.
+fn install_crypto_provider() {
+    if rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .is_err()
+    {
+        eprintln!(
+            "{} {}: CryptoProvider already installed (continuing)",
+            env!("CARGO_PKG_NAME"),
+            env!("CARGO_PKG_VERSION"),
+        );
     }
 }
 

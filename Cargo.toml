@@ -61,6 +61,13 @@ jsonwebtoken = "9"
 hmac = "0.12"
 sha2 = "0.10"
 subtle = "2.6"
+# Direct rustls dep so the binaries can call
+# `rustls::crypto::aws_lc_rs::default_provider().install_default()`
+# at boot. With multiple TLS-using crates (reqwest, sqlx, tokio-
+# tungstenite, hyper-rustls) the auto-detect heuristic in rustls
+# 0.23 fails — every binary that opens a TLS connection must
+# install the provider explicitly once.
+rustls = { version = "0.23", default-features = false, features = ["aws-lc-rs"] }
 
 # desktop secrets
 keyring = { version = "3", default-features = false, features = ["apple-native", "linux-native", "windows-native", "sync-secret-service"] }
