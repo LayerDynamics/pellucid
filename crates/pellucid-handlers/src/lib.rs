@@ -23,6 +23,7 @@ pub mod generated;
 pub mod intelligence;
 pub mod news;
 pub mod state;
+pub mod telegram;
 
 pub use state::{AppState, AppStateError, FlightStatusUpstream};
 
@@ -35,7 +36,8 @@ pub fn build_handlers(state: AppState) -> Router {
         .merge(aviation::router(state.clone()))
         .merge(bootstrap::router(state.clone()))
         .merge(intelligence::router(state.clone()))
-        .merge(news::router(state))
+        .merge(news::router(state.clone()))
+        .merge(telegram::router(state))
 }
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.
