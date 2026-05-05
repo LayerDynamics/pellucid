@@ -20,6 +20,7 @@
 pub mod aviation;
 pub mod bootstrap;
 pub mod generated;
+pub mod news;
 pub mod state;
 
 pub use state::{AppState, AppStateError, FlightStatusUpstream};
@@ -31,7 +32,8 @@ use axum::Router;
 pub fn build_handlers(state: AppState) -> Router {
     Router::new()
         .merge(aviation::router(state.clone()))
-        .merge(bootstrap::router(state))
+        .merge(bootstrap::router(state.clone()))
+        .merge(news::router(state))
 }
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.

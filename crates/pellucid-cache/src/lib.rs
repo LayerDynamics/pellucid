@@ -30,7 +30,7 @@ pub mod rate_limit;
 
 pub use batch::{BatchHit, get_cached_json_batch};
 pub use coalesce::{CoalesceRegistry, cached_fetch_json};
-pub use kv::{CacheHit, KvCache, set_cached_json, set_negative_sentinel};
+pub use kv::{CacheHit, KvCache, get_cached_json, set_cached_json, set_negative_sentinel};
 pub use negative::DEFAULT_NEGATIVE_TTL_MS;
 pub use rate_limit::{
     BucketConfig, BucketKind, RateLimitConfig, RateLimitDecision, check_rate_limit,

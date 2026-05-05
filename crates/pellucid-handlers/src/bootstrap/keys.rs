@@ -102,6 +102,8 @@ pub const FAST_KEYS: &[&str] = &[
     "news:signals:v1",
     "news:gaps:v1",
     "news:trending-sources:v1",
+    // News articles list (T4.1.1 NewsPanel — `news/v1/list-articles`).
+    "news:articles:list:v1",
     // Notification channels (live status)
     "notification-channels:active:v1",
     // OAuth (active session count — admin)
@@ -273,6 +275,8 @@ pub const SLOW_KEYS: &[&str] = &[
 /// `technology:memory-market-index:v1`) → `78 + 51 = 129`.
 /// FRED follow-up adds: +1 SLOW
 /// (`technology:semiconductor-ppi:monthly:v1`) → `78 + 52 = 130`.
+/// T4.1.1 NewsPanel adds: +1 FAST
+/// (`news:articles:list:v1`) → `79 + 52 = 131`.
 pub const TOTAL_KEYS: usize = FAST_KEYS.len() + SLOW_KEYS.len();
 
 /// Tier selector for the bootstrap query string.
@@ -321,13 +325,13 @@ mod tests {
     use std::collections::HashSet;
 
     #[test]
-    fn fast_tier_has_78_keys() {
+    fn fast_tier_has_79_keys() {
         // OP-4 originally 67; T3.8 markets +crypto-snapshot, T3.8
         // climate +air-quality, T3.8 conflict +iran-events, T3.8
         // energy +fuel-prices +gie-gas-storage, T3.8 expansion
         // (technology) +hn +github +ai-models +cloud-status
-        // +compute-spot +memory-market.
-        assert_eq!(FAST_KEYS.len(), 78);
+        // +compute-spot +memory-market; T4.1.1 +news-articles-list.
+        assert_eq!(FAST_KEYS.len(), 79);
     }
 
     #[test]
@@ -339,8 +343,8 @@ mod tests {
     }
 
     #[test]
-    fn total_keys_is_130() {
-        assert_eq!(TOTAL_KEYS, 130);
+    fn total_keys_is_131() {
+        assert_eq!(TOTAL_KEYS, 131);
     }
 
     #[test]
