@@ -83,6 +83,15 @@ pub const REGISTRY: &[RegistryEntry] = &[
         name: "cot",
         cadence: Cadence::every(Duration::from_secs(24 * 60 * 60)),
     },
+    // T4.2.3 — daily SLOW-tier history snapshot for the broad-
+    // market basket. Powers richer market analytics; the
+    // backtest handler reads market:stocks-bootstrap:v1 today
+    // but the history slot enables walk-forward strategies in
+    // M4 without another seeder change.
+    RegistryEntry {
+        name: "market-history",
+        cadence: Cadence::every(Duration::from_secs(24 * 60 * 60)),
+    },
     // Aviation domain (T3.8) — three seeders covering the
     // FAST-tier airspace surface area.
     RegistryEntry {

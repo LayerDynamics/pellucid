@@ -208,6 +208,7 @@ pub const SLOW_KEYS: &[&str] = &[
     "market:etf-flows:current:v1",
     "market:gold-etf-flows:current:v1",
     "market:cot-report:weekly:v1",
+    "market:history:default-basket:v1",
     // Military (deployment history)
     "military:deployment-history:v1",
     "military:basing-snapshot:v1",
@@ -335,16 +336,17 @@ mod tests {
     }
 
     #[test]
-    fn slow_tier_has_52_keys() {
+    fn slow_tier_has_53_keys() {
         // OP-4 originally 45; T3.8 markets +etf-flows +gold-etf-flows
         // +cot-report; T3.8 energy +spr-status +iea-oil-stocks +jodi;
-        // T3.8 expansion +semiconductor-ppi (FRED follow-up).
-        assert_eq!(SLOW_KEYS.len(), 52);
+        // T3.8 expansion +semiconductor-ppi (FRED follow-up); T4.2.3
+        // +market-history (default basket).
+        assert_eq!(SLOW_KEYS.len(), 53);
     }
 
     #[test]
-    fn total_keys_is_131() {
-        assert_eq!(TOTAL_KEYS, 131);
+    fn total_keys_is_132() {
+        assert_eq!(TOTAL_KEYS, 132);
     }
 
     #[test]

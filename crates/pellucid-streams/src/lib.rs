@@ -92,7 +92,7 @@ pub use opensky::{OpenSkyClient, OpenSkyConfig, OpenSkyResponse};
 pub use oref::{OrefAlert, OrefClient, OrefConfig, OrefHistory, HISTORY_CACHE_KEY};
 pub use rss::{RssClient, RssEntry, RssFeed, NEGATIVE_TTL, POSITIVE_TTL};
 pub use types::{AisEnvelope, AisMetadata, AisSubscribe};
-pub use yahoo_finance::{YahooFinanceClient, YahooFinanceConfig, YahooQuote};
+pub use yahoo_finance::{YahooBar, YahooFinanceClient, YahooFinanceConfig, YahooQuote};
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.
 #[must_use]

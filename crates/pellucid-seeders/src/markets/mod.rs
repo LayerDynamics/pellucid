@@ -28,6 +28,7 @@ pub mod seed_cot;
 pub mod seed_crypto_quotes;
 pub mod seed_etf_flows;
 pub mod seed_gold_etf_flows;
+pub mod seed_market_history;
 pub mod seed_market_quotes;
 
 use thiserror::Error;

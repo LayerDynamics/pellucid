@@ -176,6 +176,68 @@ impl YahooFinanceClient {
         );
         Url::parse(&raw).map_err(|e| StreamsError::Parse(format!("yahoo url: {e}")))
     }
+
+    /// Fetch the historical OHLC bar series for `symbol` over
+    /// the supplied `interval` (`1d`, `1h`, …) and `range`
+    /// (`1mo`, `3mo`, `1y`, …).
+    ///
+    /// Returns `Ok(Vec::new())` when the upstream returns no
+    /// `result[]` rows (Yahoo's "no such symbol" shape) or when
+    /// the bars array is missing — the seeder treats that as
+    /// "no upstream data" and surfaces it as `EmptyUpstream`.
+    ///
+    /// # Errors
+    /// - [`StreamsError::Io`] for transport failures.
+    /// - [`StreamsError::Status`] for non-2xx responses.
+    /// - [`StreamsError::Parse`] for unparseable bodies.
+    pub async fn fetch_history(
+        &self,
+        symbol: &str,
+        interval: &str,
+        range: &str,
+    ) -> Result<Vec<YahooBar>, StreamsError> {
+        let url = self.build_history_url(symbol, interval, range)?;
+        let resp = self
+            .http
+            .get(url)
+            .header("user-agent", &self.config.user_agent)
+            .header("accept", "application/json")
+            .send()
+            .await?;
+        let status = resp.status();
+        if !status.is_success() {
+            return Err(StreamsError::Status {
+                status: status.as_u16(),
+            });
+        }
+        let body: HistoryResponse = resp
+            .json()
+            .await
+            .map_err(|e| StreamsError::Parse(e.to_string()))?;
+        if let Some(err) = body.chart.error {
+            return Err(StreamsError::Parse(format!(
+                "yahoo error: code={} description={}",
+                err.code, err.description
+            )));
+        }
+        let Some(first) = body.chart.result.into_iter().next() else {
+            return Ok(Vec::new());
+        };
+        Ok(YahooBar::from_history(first))
+    }
+
+    fn build_history_url(
+        &self,
+        symbol: &str,
+        interval: &str,
+        range: &str,
+    ) -> Result<Url, StreamsError> {
+        let raw = format!(
+            "{}/v8/finance/chart/{}?interval={}&range={}",
+            self.config.base_url, symbol, interval, range
+        );
+        Url::parse(&raw).map_err(|e| StreamsError::Parse(format!("yahoo url: {e}")))
+    }
 }
 
 /// Distilled per-symbol response — only the fields Pellucid
@@ -254,6 +316,107 @@ struct ChartError {
 #[derive(Debug, Deserialize)]
 struct ChartResult {
     meta: ChartMeta,
+}
+
+/// One historical OHLC bar — wall-clock seconds + open / high /
+/// low / close / volume.
+#[derive(Clone, Debug, PartialEq)]
+pub struct YahooBar {
+    /// Wall-clock seconds at the bar's open. Yahoo emits these
+    /// as exchange-local 9:30 ET ticks for `interval=1d`.
+    pub time_secs: i64,
+    /// Open price.
+    pub open: f64,
+    /// Highest traded price during the bar.
+    pub high: f64,
+    /// Lowest traded price during the bar.
+    pub low: f64,
+    /// Close price.
+    pub close: f64,
+    /// Volume (shares / contracts) — `None` when Yahoo has no
+    /// reported volume (some FX / index symbols).
+    pub volume: Option<i64>,
+}
+
+impl YahooBar {
+    /// Project a `chart.result[0]` row's parallel arrays into
+    /// `Vec<YahooBar>`. Drops any index whose `close` is `null`
+    /// (Yahoo emits `null` for non-trading days inside the
+    /// requested range — including them would skew the
+    /// downstream backtest math).
+    fn from_history(raw: HistoryResult) -> Vec<Self> {
+        let timestamps = raw.timestamp.unwrap_or_default();
+        let Some(quote) = raw.indicators.quote.into_iter().next() else {
+            return Vec::new();
+        };
+        let n = timestamps.len();
+        let mut out: Vec<Self> = Vec::with_capacity(n);
+        for i in 0..n {
+            let close = quote.close.get(i).copied().flatten();
+            let open = quote.open.get(i).copied().flatten();
+            let high = quote.high.get(i).copied().flatten();
+            let low = quote.low.get(i).copied().flatten();
+            let volume = quote.volume.get(i).copied().flatten();
+            // Drop bars whose close is missing — Yahoo's
+            // "non-trading day" rows surface as JSON `null`
+            // entries inside the parallel arrays.
+            let (Some(close), Some(open), Some(high), Some(low), Some(time)) =
+                (close, open, high, low, timestamps.get(i).copied())
+            else {
+                continue;
+            };
+            out.push(Self {
+                time_secs: time,
+                open,
+                high,
+                low,
+                close,
+                volume,
+            });
+        }
+        out
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct HistoryResponse {
+    chart: HistoryEnvelope,
+}
+
+#[derive(Debug, Deserialize)]
+struct HistoryEnvelope {
+    #[serde(default)]
+    result: Vec<HistoryResult>,
+    #[serde(default)]
+    error: Option<ChartError>,
+}
+
+#[derive(Debug, Deserialize)]
+struct HistoryResult {
+    #[serde(default)]
+    timestamp: Option<Vec<i64>>,
+    #[serde(default)]
+    indicators: HistoryIndicators,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct HistoryIndicators {
+    #[serde(default)]
+    quote: Vec<HistoryQuoteSeries>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct HistoryQuoteSeries {
+    #[serde(default)]
+    open: Vec<Option<f64>>,
+    #[serde(default)]
+    high: Vec<Option<f64>>,
+    #[serde(default)]
+    low: Vec<Option<f64>>,
+    #[serde(default)]
+    close: Vec<Option<f64>>,
+    #[serde(default)]
+    volume: Vec<Option<i64>>,
 }
 
 #[derive(Debug, Default, Deserialize)]
