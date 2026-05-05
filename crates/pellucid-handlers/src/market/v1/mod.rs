@@ -2,6 +2,7 @@
 
 pub mod analyze_stock;
 pub mod backtest_stock;
+pub mod breadth;
 pub mod list_market_quotes;
 
 use axum::Router;
@@ -24,6 +25,11 @@ pub const ANALYZE_STOCK_PATH: &str = "/api/market/v1/analyze-stock";
 /// Tier-2 gated — see [`backtest_stock::REQUIRED_TIER`].
 pub const BACKTEST_STOCK_PATH: &str = "/api/market/v1/backtest-stock";
 
+/// Path for the breadth endpoint. Matches the loader at
+/// `webview/src/data/loaders/market/breadth.ts` (T4.2.4).
+/// Anonymous tier — breadth is a public surface.
+pub const BREADTH_PATH: &str = "/api/market/v1/breadth";
+
 /// Build the v1 router.
 pub fn router(state: AppState) -> Router {
     Router::new()
@@ -37,6 +43,10 @@ pub fn router(state: AppState) -> Router {
         )
         .route(
             BACKTEST_STOCK_PATH,
-            axum::routing::get(backtest_stock::handler).with_state(state),
+            axum::routing::get(backtest_stock::handler).with_state(state.clone()),
+        )
+        .route(
+            BREADTH_PATH,
+            axum::routing::get(breadth::handler).with_state(state),
         )
 }
