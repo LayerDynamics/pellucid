@@ -20,6 +20,7 @@
 pub mod aviation;
 pub mod bootstrap;
 pub mod climate;
+pub mod conflict;
 pub mod consumer_prices;
 pub mod economic;
 pub mod energy;
@@ -28,9 +29,14 @@ pub mod generated;
 pub mod infra;
 pub mod intelligence;
 pub mod market;
+pub mod military;
 pub mod news;
+pub mod sanctions;
 pub mod state;
+pub mod supply_chain;
 pub mod telegram;
+pub mod thermal;
+pub mod trade;
 
 pub use state::{AppState, AppStateError, FlightStatusUpstream};
 
@@ -43,6 +49,7 @@ pub fn build_handlers(state: AppState) -> Router {
         .merge(aviation::router(state.clone()))
         .merge(bootstrap::router(state.clone()))
         .merge(climate::router(state.clone()))
+        .merge(conflict::router(state.clone()))
         .merge(consumer_prices::router(state.clone()))
         .merge(economic::router(state.clone()))
         .merge(energy::router(state.clone()))
@@ -50,8 +57,13 @@ pub fn build_handlers(state: AppState) -> Router {
         .merge(infra::router(state.clone()))
         .merge(intelligence::router(state.clone()))
         .merge(market::router(state.clone()))
+        .merge(military::router(state.clone()))
         .merge(news::router(state.clone()))
-        .merge(telegram::router(state))
+        .merge(sanctions::router(state.clone()))
+        .merge(supply_chain::router(state.clone()))
+        .merge(telegram::router(state.clone()))
+        .merge(thermal::router(state.clone()))
+        .merge(trade::router(state))
 }
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.

@@ -6,6 +6,7 @@
 //! free signal is news coverage of deployments via GDELT.
 
 pub mod seed_active_deployments;
+pub mod seed_defense_patents;
 
 use thiserror::Error;
 

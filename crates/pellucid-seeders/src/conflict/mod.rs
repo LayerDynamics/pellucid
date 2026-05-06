@@ -14,6 +14,7 @@
 pub mod seed_acled;
 pub mod seed_gdelt_intel;
 pub mod seed_iran_events;
+pub mod seed_thermal_anomalies;
 pub mod seed_ucdp_events;
 pub mod seed_unrest_events;
 

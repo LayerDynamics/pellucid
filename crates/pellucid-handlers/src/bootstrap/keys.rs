@@ -242,6 +242,8 @@ pub const SLOW_KEYS: &[&str] = &[
     "resilience:cii-history:30d:v1",
     // Sanctions (full entity list)
     "sanctions:entity-list:full:v1",
+    // Defense (T4.5 patent-trends snapshot)
+    "defense:patent-trends:v1",
     // Scenario (full library)
     "scenario:library:v1",
     // Seismology (historical fault catalog)
@@ -350,7 +352,7 @@ mod tests {
     }
 
     #[test]
-    fn slow_tier_has_64_keys() {
+    fn slow_tier_has_65_keys() {
         // OP-4 originally 45; T3.8 markets +etf-flows +gold-etf-flows
         // +cot-report; T3.8 energy +spr-status +iea-oil-stocks +jodi;
         // T3.8 expansion +semiconductor-ppi (FRED follow-up); T4.2.3
@@ -358,13 +360,14 @@ mod tests {
         // +yield-curve; T4.2.11 +liquidity-shifts; T4.3 macro/economy
         // +6 (financial-stress, national-debt, big-mac, fao-food,
         // gulf-economies, grocery-basket); T4.4 energy +2
-        // (hormuz-transits, renewable-mix).
-        assert_eq!(SLOW_KEYS.len(), 64);
+        // (hormuz-transits, renewable-mix); T4.5 defense +1
+        // (patent-trends).
+        assert_eq!(SLOW_KEYS.len(), 65);
     }
 
     #[test]
-    fn total_keys_is_144() {
-        assert_eq!(TOTAL_KEYS, 144);
+    fn total_keys_is_145() {
+        assert_eq!(TOTAL_KEYS, 145);
     }
 
     #[test]

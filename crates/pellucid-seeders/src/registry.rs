@@ -312,6 +312,25 @@ pub const REGISTRY: &[RegistryEntry] = &[
         name: "active-deployments",
         cadence: Cadence::every(Duration::from_secs(15 * 60)),
     },
+    // T4.5 geo/military expansion — defense patents (weekly
+    // SLOW), thermal anomalies (15 min FAST), sanctions
+    // additions (30 min FAST), tariff alerts (30 min FAST).
+    RegistryEntry {
+        name: "defense-patents",
+        cadence: Cadence::every(Duration::from_secs(7 * 24 * 60 * 60)),
+    },
+    RegistryEntry {
+        name: "thermal-anomalies",
+        cadence: Cadence::every(Duration::from_secs(15 * 60)),
+    },
+    RegistryEntry {
+        name: "sanctions-recent",
+        cadence: Cadence::every(Duration::from_secs(30 * 60)),
+    },
+    RegistryEntry {
+        name: "tariff-alerts",
+        cadence: Cadence::every(Duration::from_secs(30 * 60)),
+    },
     // T3.8 expansion — logistics domain.
     RegistryEntry {
         name: "supply-chain-stress",
@@ -540,8 +559,7 @@ mod tests {
 
     #[test]
     fn cadence_with_initial_delay_overrides() {
-        let c = Cadence::every(Duration::from_secs(60))
-            .with_initial_delay(Duration::from_secs(10));
+        let c = Cadence::every(Duration::from_secs(60)).with_initial_delay(Duration::from_secs(10));
         assert_eq!(c.initial_delay, Duration::from_secs(10));
     }
 
