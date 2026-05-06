@@ -3,6 +3,7 @@
 pub mod analyze_stock;
 pub mod backtest_stock;
 pub mod breadth;
+pub mod cot;
 pub mod etf_flows;
 pub mod fear_greed;
 pub mod list_market_quotes;
@@ -43,6 +44,11 @@ pub const ETF_FLOWS_PATH: &str = "/api/market/v1/etf-flows";
 /// FAST cache slots only.
 pub const FEAR_GREED_PATH: &str = "/api/market/v1/fear-greed";
 
+/// Path for the COT positioning endpoint. Matches the loader at
+/// `webview/src/data/loaders/market/cot.ts` (T4.2.7). Anonymous
+/// tier — CFTC public data.
+pub const COT_PATH: &str = "/api/market/v1/cot";
+
 /// Build the v1 router.
 pub fn router(state: AppState) -> Router {
     Router::new()
@@ -68,6 +74,10 @@ pub fn router(state: AppState) -> Router {
         )
         .route(
             FEAR_GREED_PATH,
-            axum::routing::get(fear_greed::handler).with_state(state),
+            axum::routing::get(fear_greed::handler).with_state(state.clone()),
+        )
+        .route(
+            COT_PATH,
+            axum::routing::get(cot::handler).with_state(state),
         )
 }
