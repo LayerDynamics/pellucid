@@ -132,8 +132,7 @@ pub async fn run_cycle(
         },
         data: serde_json::to_value(&snapshot).unwrap_or(serde_json::Value::Null),
     };
-    let outcome =
-        atomic_publish(pool, "supply-chain", CACHE_KEY, &envelope, TTL).await?;
+    let outcome = atomic_publish(pool, "supply-chain", CACHE_KEY, &envelope, TTL).await?;
     Ok(outcome)
 }
 
@@ -166,8 +165,7 @@ mod tests {
             _q: &str,
             _t: &str,
             _m: u32,
-        ) -> Result<Vec<FetchedGdeltArticle>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Vec<FetchedGdeltArticle>, Box<dyn std::error::Error + Send + Sync>> {
             Ok(self.rows.clone())
         }
     }
@@ -198,12 +196,11 @@ mod tests {
         let _ = run_cycle(&pool, &fetcher, &SupplyChainStressConfig::default())
             .await
             .unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         assert_eq!(
             parsed.pointer("/data/article_count").unwrap().as_u64(),

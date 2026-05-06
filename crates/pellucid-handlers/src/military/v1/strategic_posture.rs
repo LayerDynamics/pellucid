@@ -97,7 +97,9 @@ mod tests {
             "rows": [{ "theater": "EUCOM", "force": "USAREUR", "readiness": "C-1", "headcount": 25000 }],
             "assembled_at_ms": 1_700_000_000_000_i64,
         });
-        set_cached_json(&pool, CACHE_KEY, &Envelope::new(snap), 60_000).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &Envelope::new(snap), 60_000)
+            .await
+            .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()
@@ -108,7 +110,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         let parsed: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(parsed.pointer("/total").and_then(Value::as_u64), Some(1));
     }

@@ -18,8 +18,8 @@ use tokio::task::JoinHandle;
 use tracing::info;
 
 use pellucid_streams::{
-    AisClient, MaritimeState, DEFAULT_CHANNEL_CAPACITY, DEFAULT_FIX_TTL,
-    DEFAULT_PRUNE_INTERVAL, DEFAULT_WS_URL,
+    AisClient, MaritimeState, DEFAULT_CHANNEL_CAPACITY, DEFAULT_FIX_TTL, DEFAULT_PRUNE_INTERVAL,
+    DEFAULT_WS_URL,
 };
 
 /// Handles for cooperative shutdown.
@@ -40,10 +40,7 @@ pub struct AisHandles {
 /// When `ais_api_key` is `None` the function returns `None`
 /// — the relay can boot without AIS in dev mode.
 #[must_use]
-pub fn spawn(
-    ais_api_key: Option<String>,
-    state: MaritimeState,
-) -> Option<AisHandles> {
+pub fn spawn(ais_api_key: Option<String>, state: MaritimeState) -> Option<AisHandles> {
     let api_key = ais_api_key?;
     let client = AisClient::new(DEFAULT_WS_URL, api_key, DEFAULT_CHANNEL_CAPACITY);
     let rx = client.subscribe();

@@ -37,9 +37,7 @@ use pellucid_streams::types::{AisEnvelope, AisSubscribe};
 ///
 /// Returns `(ws_url, captured_subscribe)`. The captured handle is
 /// populated as soon as the test client sends its handshake.
-async fn spawn_ws_server(
-    frames_to_push: Vec<String>,
-) -> (String, Arc<Mutex<Option<String>>>) {
+async fn spawn_ws_server(frames_to_push: Vec<String>) -> (String, Arc<Mutex<Option<String>>>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
     let captured: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
@@ -92,12 +90,11 @@ async fn client_receives_replayed_frames_in_order() {
     ];
     let (ws_url, captured) = spawn_ws_server(frames.clone()).await;
 
-    let client = AisClient::new(&ws_url, "integration-test-key", 32)
-        .with_backoff(Backoff {
-            initial_ms: 50,
-            max_ms: 200,
-            reset_after_ms: 10_000,
-        });
+    let client = AisClient::new(&ws_url, "integration-test-key", 32).with_backoff(Backoff {
+        initial_ms: 50,
+        max_ms: 200,
+        reset_after_ms: 10_000,
+    });
     let mut rx = client.subscribe();
     // Spawn the run loop; it will exit when every consumer drops.
     let runner = tokio::spawn(client.run());
@@ -141,11 +138,10 @@ async fn client_decodes_envelope_metadata_byte_faithfully() {
     let mut rx = client.subscribe();
     let runner = tokio::spawn(client.run());
 
-    let env: AisEnvelope =
-        tokio::time::timeout(Duration::from_secs(2), rx.recv())
-            .await
-            .unwrap()
-            .unwrap();
+    let env: AisEnvelope = tokio::time::timeout(Duration::from_secs(2), rx.recv())
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(env.message_type, "PositionReport");
     assert_eq!(env.metadata.mmsi, 367_999_999);
     assert!(env.metadata.ship_name.unwrap().starts_with("VESSEL-"));

@@ -148,8 +148,8 @@ impl GieAgsiClient {
         to_date: &str,
     ) -> Result<Url, StreamsError> {
         let raw = format!("{}/api", self.config.base_url);
-        let mut url = Url::parse(&raw)
-            .map_err(|e| StreamsError::Parse(format!("agsi url: {e}")))?;
+        let mut url =
+            Url::parse(&raw).map_err(|e| StreamsError::Parse(format!("agsi url: {e}")))?;
         {
             let mut q = url.query_pairs_mut();
             q.append_pair("country", country);
@@ -379,8 +379,7 @@ mod tests {
     fn parse_value_f64_handles_string_number_null() {
         assert!((parse_value_f64(&Value::String("214.55".into())) - 214.55).abs() < 1e-6);
         assert!(
-            (parse_value_f64(&Value::Number(serde_json::Number::from_f64(91.7).unwrap()))
-                - 91.7)
+            (parse_value_f64(&Value::Number(serde_json::Number::from_f64(91.7).unwrap())) - 91.7)
                 .abs()
                 < 1e-9
         );

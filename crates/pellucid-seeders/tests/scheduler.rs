@@ -12,9 +12,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use pellucid_seeders::registry::Cadence;
-use pellucid_seeders::scheduler::{
-    job, run_scheduler, CycleFn, SchedulerStats, SeederCycleError,
-};
+use pellucid_seeders::scheduler::{job, run_scheduler, CycleFn, SchedulerStats, SeederCycleError};
 
 fn ok_cycle(counter: Arc<AtomicUsize>) -> CycleFn {
     Box::new(move || {

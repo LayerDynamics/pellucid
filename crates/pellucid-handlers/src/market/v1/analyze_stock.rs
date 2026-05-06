@@ -376,8 +376,8 @@ pub async fn handler(
     };
 
     let inner = unwrap_envelope_data(value);
-    let payload: SnapshotPayload = serde_json::from_value(inner)
-        .map_err(|e| HandlerError::Shape(e.to_string()))?;
+    let payload: SnapshotPayload =
+        serde_json::from_value(inner).map_err(|e| HandlerError::Shape(e.to_string()))?;
 
     let basket_prices: Vec<f64> = payload.rows.iter().map(|r| r.price).collect();
     let row = payload

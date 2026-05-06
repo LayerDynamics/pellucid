@@ -8,9 +8,7 @@ use serde_json::Value;
 
 use pellucid_cache::get_cached_json;
 
-use crate::economic::v1::shared::{
-    decode_optional, HandlerError, DEFAULT_RETRY_AFTER_SECS,
-};
+use crate::economic::v1::shared::{decode_optional, HandlerError, DEFAULT_RETRY_AFTER_SECS};
 use crate::state::AppState;
 
 use super::{cloud_status, cyber_incidents, internet_outages};
@@ -87,13 +85,24 @@ pub async fn handler(
         let incidents = cloud
             .rows
             .iter()
-            .filter(|r| !matches!(r.status.to_ascii_lowercase().as_str(), "operational" | "ok" | "green" | "available"))
+            .filter(|r| {
+                !matches!(
+                    r.status.to_ascii_lowercase().as_str(),
+                    "operational" | "ok" | "green" | "available"
+                )
+            })
             .count();
         tiles.push(InfraTile {
             code: "CLOUD".into(),
             label: "Cloud incidents".into(),
             value: format!("{incidents}/{total}"),
-            tone: if incidents == 0 { "positive".into() } else if incidents <= 2 { "neutral".into() } else { "negative".into() },
+            tone: if incidents == 0 {
+                "positive".into()
+            } else if incidents <= 2 {
+                "neutral".into()
+            } else {
+                "negative".into()
+            },
         });
     }
     if let Some(outage) = outage {
@@ -102,20 +111,35 @@ pub async fn handler(
             code: "GRID".into(),
             label: "Network outages".into(),
             value: n.to_string(),
-            tone: if n == 0 { "positive".into() } else { "negative".into() },
+            tone: if n == 0 {
+                "positive".into()
+            } else {
+                "negative".into()
+            },
         });
     }
     if let Some(inc) = inc {
         let high = inc
             .rows
             .iter()
-            .filter(|r| matches!(r.severity.to_ascii_lowercase().as_str(), "high" | "critical" | "extreme"))
+            .filter(|r| {
+                matches!(
+                    r.severity.to_ascii_lowercase().as_str(),
+                    "high" | "critical" | "extreme"
+                )
+            })
             .count();
         tiles.push(InfraTile {
             code: "CYBER".into(),
             label: "High-severity cyber".into(),
             value: high.to_string(),
-            tone: if high == 0 { "positive".into() } else if high <= 2 { "neutral".into() } else { "negative".into() },
+            tone: if high == 0 {
+                "positive".into()
+            } else if high <= 2 {
+                "neutral".into()
+            } else {
+                "negative".into()
+            },
         });
     }
 
@@ -147,14 +171,23 @@ mod tests {
     async fn migrated() -> (axum::Router, pellucid_db::Pool) {
         let state = AppState::for_tests_async().await.unwrap();
         let pool = state.pool.clone();
-        let app = axum::Router::new().route(SUMMARY_PATH, axum::routing::get(handler).with_state(state));
+        let app =
+            axum::Router::new().route(SUMMARY_PATH, axum::routing::get(handler).with_state(state));
         (app, pool)
     }
 
     #[tokio::test]
     async fn returns_503_when_all_empty() {
         let (app, _) = migrated().await;
-        let resp = app.oneshot(Request::builder().uri(SUMMARY_PATH).body(Body::empty()).unwrap()).await.unwrap();
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .uri(SUMMARY_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
         assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
     }
 
@@ -168,13 +201,34 @@ mod tests {
             ],
             "assembled_at_ms": 1_700_000_000_000_i64,
         });
-        set_cached_json(&pool, cloud_status::CACHE_KEY, &Envelope::new(snap), 60_000).await.unwrap();
-        let resp = app.oneshot(Request::builder().uri(SUMMARY_PATH).body(Body::empty()).unwrap()).await.unwrap();
+        set_cached_json(&pool, cloud_status::CACHE_KEY, &Envelope::new(snap), 60_000)
+            .await
+            .unwrap();
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .uri(SUMMARY_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         let parsed: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(parsed.pointer("/availableTiles").and_then(Value::as_u64), Some(1));
-        assert_eq!(parsed.pointer("/tiles/0/code").and_then(Value::as_str), Some("CLOUD"));
-        assert_eq!(parsed.pointer("/tiles/0/value").and_then(Value::as_str), Some("1/2"));
+        assert_eq!(
+            parsed.pointer("/availableTiles").and_then(Value::as_u64),
+            Some(1)
+        );
+        assert_eq!(
+            parsed.pointer("/tiles/0/code").and_then(Value::as_str),
+            Some("CLOUD")
+        );
+        assert_eq!(
+            parsed.pointer("/tiles/0/value").and_then(Value::as_str),
+            Some("1/2")
+        );
     }
 }

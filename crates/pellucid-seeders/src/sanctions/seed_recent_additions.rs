@@ -143,8 +143,7 @@ mod tests {
     impl SanctionsFetcher for StaticFetcher {
         async fn fetch_additions(
             &self,
-        ) -> Result<Vec<FetchedSanctionRow>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Vec<FetchedSanctionRow>, Box<dyn std::error::Error + Send + Sync>> {
             Ok(self.rows.clone())
         }
     }
@@ -176,12 +175,11 @@ mod tests {
             ],
         };
         let _ = run_cycle(&pool, &fetcher).await.unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let auths: Vec<&str> = parsed
             .pointer("/data/rows")

@@ -197,7 +197,11 @@ fn epoch_days_to_ymd(days: i64) -> (u16, u8, u8) {
     // Same Hinnant algorithm as seed_aviation_status::epoch_days_to_ymd
     // but typed for u16/u8 (gpsjam's path layout).
     let days = days + 719_468;
-    let era = if days >= 0 { days / 146_097 } else { (days - 146_096) / 146_097 };
+    let era = if days >= 0 {
+        days / 146_097
+    } else {
+        (days - 146_096) / 146_097
+    };
     let doe = (days - era * 146_097) as u64;
     let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
     let y = yoe as i64 + era * 400;
@@ -258,8 +262,7 @@ mod tests {
             year: u16,
             month: u8,
             day: u8,
-        ) -> Result<Option<Vec<FetchedCell>>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Option<Vec<FetchedCell>>, Box<dyn std::error::Error + Send + Sync>> {
             match self.responses.get(&(year, month, day)) {
                 Some(v) => Ok(v.clone()),
                 None => Err("upstream missing fixture for this date".into()),
@@ -321,19 +324,21 @@ mod tests {
             .unwrap();
         assert!(outcome.bytes_written > 0);
 
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 3);
         assert_eq!(rows[0].get("h3").unwrap().as_str().unwrap(), "b");
         assert_eq!(rows[1].get("h3").unwrap().as_str().unwrap(), "c");
         assert_eq!(rows[2].get("h3").unwrap().as_str().unwrap(), "a");
-        assert_eq!(parsed.pointer("/data/total_cells").unwrap().as_u64(), Some(3));
+        assert_eq!(
+            parsed.pointer("/data/total_cells").unwrap().as_u64(),
+            Some(3)
+        );
         assert_eq!(
             parsed.pointer("/data/source_date/0").unwrap().as_u64(),
             Some(2026)
@@ -354,12 +359,11 @@ mod tests {
             .await
             .unwrap();
         assert!(outcome.bytes_written > 0);
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         // source_date should be yesterday.
         assert_eq!(
@@ -383,12 +387,11 @@ mod tests {
         let _ = run_cycle(&pool, &fetcher, &config_with_target((2026, 5, 4)))
             .await
             .unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 1);
@@ -410,18 +413,20 @@ mod tests {
             min_samples: DEFAULT_MIN_SAMPLES,
         };
         let _ = run_cycle(&pool, &fetcher, &cfg).await.unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 10);
         // The top row must be cell-0999 (highest bad_pos_pct).
         assert_eq!(rows[0].get("h3").unwrap().as_str().unwrap(), "cell-0999");
-        assert_eq!(parsed.pointer("/data/total_cells").unwrap().as_u64(), Some(1000));
+        assert_eq!(
+            parsed.pointer("/data/total_cells").unwrap().as_u64(),
+            Some(1000)
+        );
     }
 
     #[tokio::test]

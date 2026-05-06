@@ -179,7 +179,8 @@ mod tests {
                 _f: &str,
                 _d: &str,
                 _o: &str,
-            ) -> Result<Option<FlightStatus>, Box<dyn std::error::Error + Send + Sync>> {
+            ) -> Result<Option<FlightStatus>, Box<dyn std::error::Error + Send + Sync>>
+            {
                 Ok(Some(FlightStatus {
                     flight: "FX1".into(),
                     ..FlightStatus::default()

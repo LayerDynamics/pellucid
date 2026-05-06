@@ -217,8 +217,8 @@ pub async fn handler(
     };
 
     let inner = unwrap_envelope_data(value);
-    let payload: SnapshotPayload = serde_json::from_value(inner)
-        .map_err(|e| HandlerError::Shape(e.to_string()))?;
+    let payload: SnapshotPayload =
+        serde_json::from_value(inner).map_err(|e| HandlerError::Shape(e.to_string()))?;
 
     let owned: Vec<SeederRowOwned> = payload
         .rows
@@ -351,7 +351,9 @@ mod tests {
             ("tether", "usdt", 1.001, 0.0, 100_000_000_000.0, 0.1),
             ("usd-coin", "usdc", 0.998, 0.0, 30_000_000_000.0, -0.2),
         ]));
-        set_cached_json(&pool, CACHE_KEY, &env, 60_000).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &env, 60_000)
+            .await
+            .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()
@@ -376,9 +378,7 @@ mod tests {
     #[tokio::test]
     async fn handler_marks_stale_response() {
         let (app, pool) = migrated_router().await;
-        let env = Envelope::new(snapshot(&[
-            ("tether", "usdt", 1.0, 0.0, 1.0, 0.0),
-        ]));
+        let env = Envelope::new(snapshot(&[("tether", "usdt", 1.0, 0.0, 1.0, 0.0)]));
         set_cached_json(&pool, CACHE_KEY, &env, 0).await.unwrap();
         tokio::time::sleep(std::time::Duration::from_millis(20)).await;
         let resp = app
@@ -401,7 +401,9 @@ mod tests {
     async fn handler_returns_502_on_shape_mismatch() {
         let (app, pool) = migrated_router().await;
         let bad = Envelope::new(serde_json::json!({ "rows": "not-an-array" }));
-        set_cached_json(&pool, CACHE_KEY, &bad, 60_000).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &bad, 60_000)
+            .await
+            .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()

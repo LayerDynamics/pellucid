@@ -45,9 +45,7 @@ pub const SOURCE_VERSION: &str = "etf-flows-yahoo-volume-v1";
 pub const CASCADE_GROUP: &str = "markets-etf-flows";
 
 /// Default basket — broad-market US ETFs.
-pub const DEFAULT_SYMBOLS: &[&str] = &[
-    "SPY", "QQQ", "DIA", "IWM", "VTI", "EFA", "EEM", "AGG",
-];
+pub const DEFAULT_SYMBOLS: &[&str] = &["SPY", "QQQ", "DIA", "IWM", "VTI", "EFA", "EEM", "AGG"];
 
 /// Run-time configuration.
 #[derive(Clone, Debug)]
@@ -337,26 +335,19 @@ mod tests {
         let pool = open_in_memory().await.unwrap();
         let fetcher = StaticFetcher {
             series: vec![
-                series(
-                    "SPY",
-                    &[(520.0, 1_000_000.0), (524.0, 2_000_000.0)],
-                ),
-                series(
-                    "QQQ",
-                    &[(456.0, 800_000.0), (460.0, 900_000.0)],
-                ),
+                series("SPY", &[(520.0, 1_000_000.0), (524.0, 2_000_000.0)]),
+                series("QQQ", &[(456.0, 800_000.0), (460.0, 900_000.0)]),
             ],
         };
         let outcome = run_cycle(&pool, &fetcher, &EtfFlowsConfig::default())
             .await
             .unwrap();
         assert!(outcome.bytes_written > 0);
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 2);

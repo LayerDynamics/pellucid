@@ -9,8 +9,8 @@
 use std::path::Path;
 use std::str::FromStr;
 
-use sqlx::ConnectOptions;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous};
+use sqlx::ConnectOptions;
 
 use crate::error::Result;
 use crate::migrate;

@@ -59,11 +59,18 @@ mod tests {
     async fn unmapped_path_defaults_to_anonymous() {
         let rules = Arc::new(RouteEntitlementRules::new());
         let resp = router(rules)
-            .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/x")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         assert_eq!(&body[..], b"Anonymous");
     }
 
@@ -72,10 +79,17 @@ mod tests {
         let mut rules = RouteEntitlementRules::new();
         rules.require("/y", Tier::Tier2);
         let resp = router(Arc::new(rules))
-            .oneshot(AxumRequest::builder().uri("/y").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/y")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         assert_eq!(&body[..], b"Tier2");
     }
 
@@ -87,15 +101,29 @@ mod tests {
         let r = router(Arc::new(rules));
         let a = r
             .clone()
-            .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/x")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         let b = r
-            .oneshot(AxumRequest::builder().uri("/y").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/y")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
-        let body_a = axum::body::to_bytes(a.into_body(), 1_000_000).await.unwrap();
-        let body_b = axum::body::to_bytes(b.into_body(), 1_000_000).await.unwrap();
+        let body_a = axum::body::to_bytes(a.into_body(), 1_000_000)
+            .await
+            .unwrap();
+        let body_b = axum::body::to_bytes(b.into_body(), 1_000_000)
+            .await
+            .unwrap();
         assert_eq!(&body_a[..], b"Free");
         assert_eq!(&body_b[..], b"Tier1");
     }

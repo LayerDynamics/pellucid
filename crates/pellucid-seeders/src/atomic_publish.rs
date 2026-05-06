@@ -47,9 +47,7 @@ pub const SEED_META_MIN_TTL_MS: i64 = 7 * 24 * 60 * 60 * 1_000;
 pub enum PublishError {
     /// Lock held by another live publisher. Caller should retry
     /// after `expires_at_ms`.
-    #[error(
-        "seed lock for domain {domain} held by another publisher until {expires_at_ms} ms"
-    )]
+    #[error("seed lock for domain {domain} held by another publisher until {expires_at_ms} ms")]
     AlreadyPublishing {
         /// Domain the caller tried to publish into.
         domain: String,
@@ -259,35 +257,45 @@ mod tests {
     async fn publish_writes_canonical_row_and_seed_meta() {
         let pool = open_in_memory().await.unwrap();
         let env = envelope();
-        let outcome =
-            atomic_publish(&pool, "aviation", "aviation:foo:v1", &env, Duration::from_secs(60))
-                .await
-                .unwrap();
+        let outcome = atomic_publish(
+            &pool,
+            "aviation",
+            "aviation:foo:v1",
+            &env,
+            Duration::from_secs(60),
+        )
+        .await
+        .unwrap();
         assert!(outcome.bytes_written > 0);
 
         // Canonical row exists.
         assert_eq!(count_kv(&pool, "aviation:foo:v1").await, 1);
         // No staging row remains.
-        let any_staging: i64 = sqlx::query("SELECT COUNT(*) FROM kv_envelope WHERE cache_key LIKE 'aviation:foo:v1:staging:%'")
-            .fetch_one(&pool)
-            .await
-            .unwrap()
-            .get(0);
+        let any_staging: i64 = sqlx::query(
+            "SELECT COUNT(*) FROM kv_envelope WHERE cache_key LIKE 'aviation:foo:v1:staging:%'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap()
+        .get(0);
         assert_eq!(any_staging, 0);
 
         // seed_meta row exists with the right run_id + cascade group.
-        let row = sqlx::query("SELECT last_run_id, cascade_group FROM seed_meta WHERE cache_key = ?")
-            .bind("aviation:foo:v1")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+        let row =
+            sqlx::query("SELECT last_run_id, cascade_group FROM seed_meta WHERE cache_key = ?")
+                .bind("aviation:foo:v1")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
         let last_run: String = row.get(0);
         assert_eq!(last_run, outcome.run_id);
         let cascade: String = row.get(1);
         assert_eq!(cascade, "aviation");
 
         // Lock released.
-        let holder = crate::locks::current_holder(&pool, "aviation").await.unwrap();
+        let holder = crate::locks::current_holder(&pool, "aviation")
+            .await
+            .unwrap();
         assert_eq!(holder, None);
     }
 
@@ -296,12 +304,20 @@ mod tests {
         let pool = open_in_memory().await.unwrap();
         let mut env = envelope();
         env.seed.ttl_ms = 0; // invalid
-        let err = atomic_publish(&pool, "aviation", "aviation:foo:v1", &env, Duration::from_secs(60))
-            .await
-            .unwrap_err();
+        let err = atomic_publish(
+            &pool,
+            "aviation",
+            "aviation:foo:v1",
+            &env,
+            Duration::from_secs(60),
+        )
+        .await
+        .unwrap_err();
         assert!(matches!(err, PublishError::Validation(_)));
         // Lock must be released even on failure.
-        let holder = crate::locks::current_holder(&pool, "aviation").await.unwrap();
+        let holder = crate::locks::current_holder(&pool, "aviation")
+            .await
+            .unwrap();
         assert_eq!(holder, None);
     }
 
@@ -320,11 +336,20 @@ mod tests {
         assert_eq!(other_outcome, crate::locks::LockOutcome::Acquired);
 
         let env = envelope();
-        let err = atomic_publish(&pool, "aviation", "aviation:foo:v1", &env, Duration::from_secs(60))
-            .await
-            .unwrap_err();
+        let err = atomic_publish(
+            &pool,
+            "aviation",
+            "aviation:foo:v1",
+            &env,
+            Duration::from_secs(60),
+        )
+        .await
+        .unwrap_err();
         match err {
-            PublishError::AlreadyPublishing { domain, expires_at_ms } => {
+            PublishError::AlreadyPublishing {
+                domain,
+                expires_at_ms,
+            } => {
                 assert_eq!(domain, "aviation");
                 assert!(expires_at_ms > now_ms());
             }
@@ -332,7 +357,9 @@ mod tests {
         }
 
         // Other holder still owns the lock.
-        let holder = crate::locks::current_holder(&pool, "aviation").await.unwrap();
+        let holder = crate::locks::current_holder(&pool, "aviation")
+            .await
+            .unwrap();
         assert_eq!(holder, Some("other-run".into()));
     }
 
@@ -344,9 +371,15 @@ mod tests {
         env.data = serde_json::json!({
             "blob": "x".repeat(crate::envelope::MAX_ENVELOPE_BYTES)
         });
-        let err = atomic_publish(&pool, "aviation", "aviation:foo:v1", &env, Duration::from_secs(60))
-            .await
-            .unwrap_err();
+        let err = atomic_publish(
+            &pool,
+            "aviation",
+            "aviation:foo:v1",
+            &env,
+            Duration::from_secs(60),
+        )
+        .await
+        .unwrap_err();
         assert!(matches!(
             err,
             PublishError::Validation(EnvelopeError::SizeExceeded { .. })
@@ -357,16 +390,28 @@ mod tests {
     async fn publish_overwrites_previous_canonical_row() {
         let pool = open_in_memory().await.unwrap();
         let env_v1 = envelope();
-        let _ = atomic_publish(&pool, "aviation", "aviation:foo:v1", &env_v1, Duration::from_secs(60))
-            .await
-            .unwrap();
+        let _ = atomic_publish(
+            &pool,
+            "aviation",
+            "aviation:foo:v1",
+            &env_v1,
+            Duration::from_secs(60),
+        )
+        .await
+        .unwrap();
 
         let mut env_v2 = envelope();
         env_v2.seed.source_version = "test-v2".into();
         env_v2.data = serde_json::json!({"items": [10]});
-        let _ = atomic_publish(&pool, "aviation", "aviation:foo:v1", &env_v2, Duration::from_secs(60))
-            .await
-            .unwrap();
+        let _ = atomic_publish(
+            &pool,
+            "aviation",
+            "aviation:foo:v1",
+            &env_v2,
+            Duration::from_secs(60),
+        )
+        .await
+        .unwrap();
 
         let row = sqlx::query("SELECT source_version FROM seed_meta WHERE cache_key = ?")
             .bind("aviation:foo:v1")
@@ -382,9 +427,15 @@ mod tests {
         let pool = open_in_memory().await.unwrap();
         let env = envelope();
         // Short cache TTL (5 min) — meta TTL should still be ≥ 7 d.
-        let _ = atomic_publish(&pool, "aviation", "aviation:foo:v1", &env, Duration::from_secs(300))
-            .await
-            .unwrap();
+        let _ = atomic_publish(
+            &pool,
+            "aviation",
+            "aviation:foo:v1",
+            &env,
+            Duration::from_secs(300),
+        )
+        .await
+        .unwrap();
         let row = sqlx::query("SELECT ttl_ms FROM seed_meta WHERE cache_key = ?")
             .bind("aviation:foo:v1")
             .fetch_one(&pool)

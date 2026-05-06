@@ -253,8 +253,12 @@ mod tests {
     }
 
     /// One row of the C1 truth table.
-    type TruthRow =
-        (Option<&'static str>, bool, bool, Result<BootDecision, StartupError>);
+    type TruthRow = (
+        Option<&'static str>,
+        bool,
+        bool,
+        Result<BootDecision, StartupError>,
+    );
 
     #[test]
     fn full_truth_table_exhaustive() {
@@ -267,14 +271,39 @@ mod tests {
             (Some("s"), false, true, Ok(BootDecision::Authorized)),
             (Some("s"), true, false, Ok(BootDecision::Authorized)),
             (Some("s"), true, true, Ok(BootDecision::Authorized)),
-            (Some(""), false, false, Err(StartupError::MissingSecretNoBypass)),
-            (Some(""), false, true, Err(StartupError::MissingSecretInProduction)),
+            (
+                Some(""),
+                false,
+                false,
+                Err(StartupError::MissingSecretNoBypass),
+            ),
+            (
+                Some(""),
+                false,
+                true,
+                Err(StartupError::MissingSecretInProduction),
+            ),
             (Some(""), true, false, Ok(BootDecision::UnauthDevMode)),
-            (Some(""), true, true, Err(StartupError::UnauthRefusedInProduction)),
+            (
+                Some(""),
+                true,
+                true,
+                Err(StartupError::UnauthRefusedInProduction),
+            ),
             (None, false, false, Err(StartupError::MissingSecretNoBypass)),
-            (None, false, true, Err(StartupError::MissingSecretInProduction)),
+            (
+                None,
+                false,
+                true,
+                Err(StartupError::MissingSecretInProduction),
+            ),
             (None, true, false, Ok(BootDecision::UnauthDevMode)),
-            (None, true, true, Err(StartupError::UnauthRefusedInProduction)),
+            (
+                None,
+                true,
+                true,
+                Err(StartupError::UnauthRefusedInProduction),
+            ),
         ];
         for (secret, allow, prod, expected) in cases {
             let got = ensure_safe_to_boot(&env(*secret, *allow, *prod));

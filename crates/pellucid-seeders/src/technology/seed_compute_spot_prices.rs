@@ -61,7 +61,10 @@ impl Default for ComputeSpotPricesConfig {
     fn default() -> Self {
         Self {
             region: DEFAULT_REGION.to_string(),
-            instance_types: DEFAULT_INSTANCE_TYPES.iter().map(|s| (*s).to_string()).collect(),
+            instance_types: DEFAULT_INSTANCE_TYPES
+                .iter()
+                .map(|s| (*s).to_string())
+                .collect(),
         }
     }
 }
@@ -190,8 +193,7 @@ pub async fn run_cycle(
         },
         data: serde_json::to_value(&snapshot).unwrap_or(serde_json::Value::Null),
     };
-    let outcome =
-        atomic_publish(pool, "technology", CACHE_KEY, &envelope, TTL).await?;
+    let outcome = atomic_publish(pool, "technology", CACHE_KEY, &envelope, TTL).await?;
     Ok(outcome)
 }
 
@@ -212,8 +214,7 @@ mod tests {
             &self,
             _region: &str,
             _instance_types: &[&str],
-        ) -> Result<Vec<FetchedPricing>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Vec<FetchedPricing>, Box<dyn std::error::Error + Send + Sync>> {
             Ok(self.rows.clone())
         }
     }
@@ -245,12 +246,11 @@ mod tests {
         let _ = run_cycle(&pool, &fetcher, &ComputeSpotPricesConfig::default())
             .await
             .unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 1);
@@ -272,12 +272,11 @@ mod tests {
         let _ = run_cycle(&pool, &fetcher, &ComputeSpotPricesConfig::default())
             .await
             .unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let ratio = parsed.pointer("/data/rows/0/spot_discount_ratio").unwrap();
         assert!((ratio.as_f64().unwrap() - 0.0).abs() < 1e-9);

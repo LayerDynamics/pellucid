@@ -113,7 +113,10 @@ impl NasaFirmsClient {
                 status: status.as_u16(),
             });
         }
-        let body = resp.text().await.map_err(|e| StreamsError::Io(e.to_string()))?;
+        let body = resp
+            .text()
+            .await
+            .map_err(|e| StreamsError::Io(e.to_string()))?;
         parse_csv(&body)
     }
 }
@@ -227,7 +230,9 @@ latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,satellite,confidence,
     async fn fetch_global_24h_parses_two_rows() {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
-            .and(path("/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Global_24h.csv"))
+            .and(path(
+                "/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Global_24h.csv",
+            ))
             .respond_with(ResponseTemplate::new(200).set_body_string(SAMPLE_CSV))
             .mount(&server)
             .await;
@@ -251,7 +256,9 @@ latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,satellite,confidence,
         let server = MockServer::start().await;
         let csv = "latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,satellite,confidence,version,bright_ti5,frp,daynight\nbad,bad,0,0,0,2026-05-04,0123,N,h,2.0,0,0,N\n40.0,-118.0,0,0,0,2026-05-04,0123,N,h,2.0,0,0,N\n";
         Mock::given(method("GET"))
-            .and(path("/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Global_24h.csv"))
+            .and(path(
+                "/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Global_24h.csv",
+            ))
             .respond_with(ResponseTemplate::new(200).set_body_string(csv))
             .mount(&server)
             .await;
@@ -267,7 +274,9 @@ latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,satellite,confidence,
         // CSV missing `frp`.
         let csv = "latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,satellite,confidence,version,bright_ti5,daynight\n40.0,-118.0,300,0,0,2026-05-04,0123,N,h,2,310,N\n";
         Mock::given(method("GET"))
-            .and(path("/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Global_24h.csv"))
+            .and(path(
+                "/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Global_24h.csv",
+            ))
             .respond_with(ResponseTemplate::new(200).set_body_string(csv))
             .mount(&server)
             .await;
@@ -280,7 +289,9 @@ latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,satellite,confidence,
     async fn fetch_global_24h_5xx_yields_status_error() {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
-            .and(path("/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Global_24h.csv"))
+            .and(path(
+                "/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Global_24h.csv",
+            ))
             .respond_with(ResponseTemplate::new(503))
             .mount(&server)
             .await;
@@ -307,7 +318,9 @@ latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,satellite,confidence,
     async fn fetch_global_24h_empty_body_yields_parse() {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
-            .and(path("/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Global_24h.csv"))
+            .and(path(
+                "/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Global_24h.csv",
+            ))
             .respond_with(ResponseTemplate::new(200).set_body_string(""))
             .mount(&server)
             .await;

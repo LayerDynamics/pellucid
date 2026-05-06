@@ -44,9 +44,7 @@ struct Snap {
     assembled_at_ms: i64,
 }
 
-pub async fn handler(
-    State(state): State<AppState>,
-) -> Result<Json<GulfResponse>, HandlerError> {
+pub async fn handler(State(state): State<AppState>) -> Result<Json<GulfResponse>, HandlerError> {
     let raw = get_cached_json::<Value>(&state.pool, CACHE_KEY)
         .await
         .map_err(|e| HandlerError::Cache(e.to_string()))?;
@@ -83,7 +81,12 @@ mod tests {
     async fn returns_503_when_empty() {
         let (app, _) = migrated().await;
         let resp = app
-            .oneshot(Request::builder().uri(GULF_ECONOMIES_PATH).body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri(GULF_ECONOMIES_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
@@ -105,10 +108,17 @@ mod tests {
             .await
             .unwrap();
         let resp = app
-            .oneshot(Request::builder().uri(GULF_ECONOMIES_PATH).body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri(GULF_ECONOMIES_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert!(parsed.pointer("/rows/0/gdpUsdBillion").is_some());
         assert!(parsed.pointer("/rows/0/policyRatePct").is_some());

@@ -163,19 +163,14 @@ mod tests {
     async fn run_cycle_writes_sorted_by_abs_delta() {
         let pool = open_in_memory().await.unwrap();
         let fetcher = StaticFetcher {
-            rows: vec![
-                f("a", 0.5, 0.02),
-                f("b", 0.4, -0.08),
-                f("c", 0.7, 0.05),
-            ],
+            rows: vec![f("a", 0.5, 0.02), f("b", 0.4, -0.08), f("c", 0.7, 0.05)],
         };
         let _ = run_cycle(&pool, &fetcher).await.unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let ids: Vec<&str> = parsed
             .pointer("/data/rows")

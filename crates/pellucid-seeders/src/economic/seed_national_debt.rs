@@ -98,7 +98,9 @@ pub async fn run_cycle(
         })
         .collect();
     history.sort_by(|a, b| a.period.cmp(&b.period));
-    let latest = history.last().cloned().expect("non-empty after check");
+    let Some(latest) = history.last().cloned() else {
+        return Err(EconomicSeederError::EmptyUpstream);
+    };
     let qoq = if history.len() >= 2 {
         latest.total_billion_usd - history[history.len() - 2].total_billion_usd
     } else {
@@ -143,8 +145,7 @@ mod tests {
         async fn fetch_history(
             &self,
             _n: usize,
-        ) -> Result<Vec<FetchedDebtRow>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Vec<FetchedDebtRow>, Box<dyn std::error::Error + Send + Sync>> {
             Ok(self.rows.clone())
         }
     }
@@ -173,16 +174,16 @@ mod tests {
             ],
         };
         let _ = run_cycle(&pool, &fetcher, 8).await.unwrap();
-        let row: (String,) = sqlx::query_as(
-            "SELECT payload FROM kv_envelope WHERE cache_key = ?",
-        )
-        .bind(CACHE_KEY)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         assert_eq!(
-            parsed.pointer("/data/latest/period").and_then(serde_json::Value::as_str),
+            parsed
+                .pointer("/data/latest/period")
+                .and_then(serde_json::Value::as_str),
             Some("2026-Q1"),
         );
         // QoQ = 35400 - 35000 = 400.

@@ -81,7 +81,12 @@ mod tests {
     async fn returns_503_when_empty() {
         let (app, _) = migrated().await;
         let resp = app
-            .oneshot(Request::builder().uri(FUEL_PRICES_PATH).body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri(FUEL_PRICES_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
@@ -103,10 +108,17 @@ mod tests {
             .await
             .unwrap();
         let resp = app
-            .oneshot(Request::builder().uri(FUEL_PRICES_PATH).body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri(FUEL_PRICES_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert!(parsed.pointer("/rows/0/usdPerGallon").is_some());
         assert_eq!(parsed.pointer("/total").and_then(Value::as_u64), Some(1));

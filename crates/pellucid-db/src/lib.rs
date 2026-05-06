@@ -17,7 +17,7 @@ pub mod pool;
 
 pub use error::DbError;
 pub use migrate::migrate;
-pub use pool::{Pool, SqliteOpenOptions, open, open_in_memory, pragmas};
+pub use pool::{open, open_in_memory, pragmas, Pool, SqliteOpenOptions};
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.
 #[must_use]

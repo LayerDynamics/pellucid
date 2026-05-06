@@ -274,12 +274,11 @@ mod tests {
             .await
             .unwrap();
         assert!(outcome.bytes_written > 0);
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 2);
@@ -287,11 +286,7 @@ mod tests {
             rows[0].get("location").unwrap().as_str().unwrap(),
             "Downtown LA"
         );
-        let m0 = rows[0]
-            .get("measurements")
-            .unwrap()
-            .as_array()
-            .unwrap();
+        let m0 = rows[0].get("measurements").unwrap().as_array().unwrap();
         assert_eq!(m0.len(), 1);
         assert_eq!(m0[0].get("parameter").unwrap().as_str().unwrap(), "pm25");
     }
@@ -346,14 +341,17 @@ mod tests {
             limit: 50,
         };
         let _ = run_cycle(&pool, &fetcher, &cfg).await.unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
-        let countries = parsed.pointer("/data/countries").unwrap().as_array().unwrap();
+        let countries = parsed
+            .pointer("/data/countries")
+            .unwrap()
+            .as_array()
+            .unwrap();
         assert_eq!(countries.len(), 2);
     }
 }

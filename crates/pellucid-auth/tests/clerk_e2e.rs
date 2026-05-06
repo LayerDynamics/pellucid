@@ -82,7 +82,10 @@ async fn unsigned_token_is_rejected_via_jwks_server() {
 
     let err = verifier.verify(&unsigned).await.unwrap_err();
     assert!(
-        matches!(err, ClerkVerifyError::Malformed | ClerkVerifyError::BadSignature),
+        matches!(
+            err,
+            ClerkVerifyError::Malformed | ClerkVerifyError::BadSignature
+        ),
         "got {err:?}"
     );
 }
@@ -194,11 +197,8 @@ async fn jwks_server_returns_garbage_body_propagates_as_jwks_error() {
 #[tokio::test]
 async fn jwks_unreachable_url_propagates_as_jwks_error() {
     // 127.0.0.1:1 is the canonical "nothing listening here" address.
-    let verifier = ClerkJwtVerifier::new(
-        "http://127.0.0.1:1/.well-known/jwks.json",
-        ISSUER,
-    )
-    .with_leeway(0);
+    let verifier =
+        ClerkJwtVerifier::new("http://127.0.0.1:1/.well-known/jwks.json", ISSUER).with_leeway(0);
 
     let token = sign_with_fixture(json!({
         "sub": "user_x",

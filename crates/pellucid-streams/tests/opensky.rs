@@ -65,9 +65,9 @@ async fn one_hundred_concurrent_fetches_refresh_token_exactly_once() {
     let mut joins = Vec::with_capacity(100);
     for _ in 0..100 {
         let c = client.clone();
-        joins.push(tokio::spawn(async move {
-            c.fetch_path("/states/all").await
-        }));
+        joins.push(tokio::spawn(
+            async move { c.fetch_path("/states/all").await },
+        ));
     }
     for j in joins {
         let result = j.await.unwrap();
@@ -202,7 +202,10 @@ async fn token_refresh_failure_propagates() {
         .await;
     let client = wired_client(&server).await;
     let err = client.fetch_path("/states/all").await.unwrap_err();
-    assert!(matches!(err, StreamsError::Status { status: 401 }), "got {err:?}");
+    assert!(
+        matches!(err, StreamsError::Status { status: 401 }),
+        "got {err:?}"
+    );
 }
 
 #[tokio::test]

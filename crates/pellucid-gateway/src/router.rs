@@ -143,11 +143,19 @@ mod tests {
     #[tokio::test]
     async fn full_pipeline_returns_handler_body_on_happy_path() {
         let resp = build()
-            .oneshot(Request::builder().uri("/api/echo").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/api/echo")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        assert_eq!(resp.headers().get("x-pellucid-stack").unwrap(), "pellucid-gateway/1");
+        assert_eq!(
+            resp.headers().get("x-pellucid-stack").unwrap(),
+            "pellucid-gateway/1"
+        );
         assert!(resp.headers().get("etag").is_some());
         assert_eq!(resp.headers().get("cache-control").unwrap(), "no-store");
     }
@@ -175,10 +183,18 @@ mod tests {
     #[tokio::test]
     async fn router_404s_unmapped_path() {
         let resp = build()
-            .oneshot(Request::builder().uri("/api/missing").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/api/missing")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
-        assert_eq!(resp.headers().get("x-pellucid-stack").unwrap(), "pellucid-gateway/1");
+        assert_eq!(
+            resp.headers().get("x-pellucid-stack").unwrap(),
+            "pellucid-gateway/1"
+        );
     }
 }

@@ -259,7 +259,10 @@ mod tests {
             },
             reqwest::Client::new(),
         );
-        let res = client.fetch_flight("XX1", "2026-04-25", "AAA").await.unwrap();
+        let res = client
+            .fetch_flight("XX1", "2026-04-25", "AAA")
+            .await
+            .unwrap();
         assert!(res.is_none(), "empty data array must surface as Ok(None)");
     }
 
@@ -282,7 +285,10 @@ mod tests {
             .fetch_flight("AA1", "2026-04-25", "JFK")
             .await
             .unwrap_err();
-        assert!(matches!(err, StreamsError::Status { status: 503 }), "got {err:?}");
+        assert!(
+            matches!(err, StreamsError::Status { status: 503 }),
+            "got {err:?}"
+        );
     }
 
     #[tokio::test]
@@ -290,9 +296,7 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/v1/flights"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_string("not json {{{"),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_string("not json {{{"))
             .mount(&server)
             .await;
         let client = AviationstackClient::new(

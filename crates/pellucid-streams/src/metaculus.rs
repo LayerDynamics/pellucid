@@ -126,13 +126,17 @@ impl MetaculusClient {
             .json()
             .await
             .map_err(|e| StreamsError::Parse(e.to_string()))?;
-        Ok(body.results.into_iter().map(MetaculusQuestion::from_raw).collect())
+        Ok(body
+            .results
+            .into_iter()
+            .map(MetaculusQuestion::from_raw)
+            .collect())
     }
 
     fn build_url(&self, limit: u32) -> Result<Url, StreamsError> {
         let raw = format!("{}/api2/questions/", self.config.base_url);
-        let mut url = Url::parse(&raw)
-            .map_err(|e| StreamsError::Parse(format!("metaculus url: {e}")))?;
+        let mut url =
+            Url::parse(&raw).map_err(|e| StreamsError::Parse(format!("metaculus url: {e}")))?;
         {
             let mut q = url.query_pairs_mut();
             q.append_pair("status", "open");

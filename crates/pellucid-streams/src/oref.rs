@@ -48,8 +48,7 @@ use pellucid_db::Pool;
 use crate::error::StreamsError;
 
 /// Default OREF alert endpoint.
-pub const DEFAULT_OREF_URL: &str =
-    "https://www.oref.org.il/WarningMessages/alert/alerts.json";
+pub const DEFAULT_OREF_URL: &str = "https://www.oref.org.il/WarningMessages/alert/alerts.json";
 
 /// `kv_envelope` key the history is persisted under.
 pub const HISTORY_CACHE_KEY: &str = "relay:oref:history:v1";
@@ -286,10 +285,7 @@ pub fn parse_oref_body(body: &str) -> Result<Option<Vec<OrefAlert>>, StreamsErro
 
 /// Merge `new_alerts` into `existing` history, dedup by `id`,
 /// cap at [`HISTORY_CAP`].
-pub fn merge_history(
-    existing: Vec<OrefAlert>,
-    new_alerts: Vec<OrefAlert>,
-) -> Vec<OrefAlert> {
+pub fn merge_history(existing: Vec<OrefAlert>, new_alerts: Vec<OrefAlert>) -> Vec<OrefAlert> {
     let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut out: Vec<OrefAlert> = Vec::with_capacity(existing.len() + new_alerts.len());
     for a in new_alerts.into_iter().chain(existing.into_iter()) {
@@ -312,12 +308,9 @@ pub async fn read_history(pool: &Pool) -> Result<OrefHistory, StreamsError> {
     // JSON value; we unwrap the `.data` slot before decoding into
     // OrefHistory.
     let hit: CacheHit<serde_json::Value> =
-        pellucid_cache::kv::get_cached_json::<serde_json::Value>(
-            pool,
-            HISTORY_CACHE_KEY,
-        )
-        .await
-        .map_err(|e| StreamsError::Io(format!("history read: {e}")))?;
+        pellucid_cache::kv::get_cached_json::<serde_json::Value>(pool, HISTORY_CACHE_KEY)
+            .await
+            .map_err(|e| StreamsError::Io(format!("history read: {e}")))?;
     let envelope_value: serde_json::Value = match hit {
         CacheHit::Fresh(v) | CacheHit::Stale(v) => v,
         CacheHit::NegativeSentinel | CacheHit::Miss => {
@@ -348,9 +341,7 @@ fn build_chrome_client(proxy_url: Option<&str>) -> Result<reqwest::Client, Strea
     );
     headers.insert(
         reqwest::header::ACCEPT,
-        reqwest::header::HeaderValue::from_static(
-            "application/json, text/plain, */*",
-        ),
+        reqwest::header::HeaderValue::from_static("application/json, text/plain, */*"),
     );
     headers.insert(
         reqwest::header::ACCEPT_LANGUAGE,
@@ -383,8 +374,8 @@ fn build_chrome_client(proxy_url: Option<&str>) -> Result<reqwest::Client, Strea
         .gzip(true)
         .brotli(true);
     if let Some(url) = proxy_url {
-        let proxy = reqwest::Proxy::all(url)
-            .map_err(|e| StreamsError::Io(format!("proxy: {e}")))?;
+        let proxy =
+            reqwest::Proxy::all(url).map_err(|e| StreamsError::Io(format!("proxy: {e}")))?;
         builder = builder.proxy(proxy);
     }
     builder
@@ -411,7 +402,8 @@ mod tests {
 
     #[test]
     fn parse_oref_body_single_object_returns_singleton_vec() {
-        let body = r#"{"id":"42","cat":"1","title":"רקטות","data":"שדרות","desc":"היכנסו למרחב מוגן"}"#;
+        let body =
+            r#"{"id":"42","cat":"1","title":"רקטות","data":"שדרות","desc":"היכנסו למרחב מוגן"}"#;
         let alerts = parse_oref_body(body).unwrap().unwrap();
         assert_eq!(alerts.len(), 1);
         assert_eq!(alerts[0].id, "42");
@@ -440,12 +432,36 @@ mod tests {
     #[test]
     fn merge_history_dedupes_by_id_preserves_order() {
         let prev = vec![
-            OrefAlert { id: "10".into(), cat: "1".into(), title: "old".into(), data: String::new(), desc: String::new() },
-            OrefAlert { id: "9".into(),  cat: "1".into(), title: "older".into(), data: String::new(), desc: String::new() },
+            OrefAlert {
+                id: "10".into(),
+                cat: "1".into(),
+                title: "old".into(),
+                data: String::new(),
+                desc: String::new(),
+            },
+            OrefAlert {
+                id: "9".into(),
+                cat: "1".into(),
+                title: "older".into(),
+                data: String::new(),
+                desc: String::new(),
+            },
         ];
         let new = vec![
-            OrefAlert { id: "11".into(), cat: "1".into(), title: "new".into(), data: String::new(), desc: String::new() },
-            OrefAlert { id: "10".into(), cat: "1".into(), title: "dup".into(), data: String::new(), desc: String::new() },
+            OrefAlert {
+                id: "11".into(),
+                cat: "1".into(),
+                title: "new".into(),
+                data: String::new(),
+                desc: String::new(),
+            },
+            OrefAlert {
+                id: "10".into(),
+                cat: "1".into(),
+                title: "dup".into(),
+                data: String::new(),
+                desc: String::new(),
+            },
         ];
         let merged = merge_history(prev, new);
         let ids: Vec<&str> = merged.iter().map(|a| a.id.as_str()).collect();

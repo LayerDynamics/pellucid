@@ -41,8 +41,7 @@ use serde::{Deserialize, Serialize};
 use pellucid_gateway::error_mapper::GATEWAY_ERROR_CODE_HEADER;
 
 use crate::intelligence::v1::country_deep_dive::{
-    self, ActorRow, ArticleRow, CountryDeepDiveQuery, CountryDeepDiveResponse,
-    CountryTotals,
+    self, ActorRow, ArticleRow, CountryDeepDiveQuery, CountryDeepDiveResponse, CountryTotals,
 };
 use crate::state::AppState;
 
@@ -157,9 +156,9 @@ impl From<country_deep_dive::HandlerError> for HandlerError {
             country_deep_dive::HandlerError::MissingCountry => Self::MissingCountry,
             country_deep_dive::HandlerError::Cache(m) => Self::Cache(m),
             country_deep_dive::HandlerError::Shape(m) => Self::Shape(m),
-            country_deep_dive::HandlerError::Outage { retry_after_secs } => Self::Outage {
-                retry_after_secs,
-            },
+            country_deep_dive::HandlerError::Outage { retry_after_secs } => {
+                Self::Outage { retry_after_secs }
+            }
         }
     }
 }
@@ -195,7 +194,11 @@ impl axum::response::IntoResponse for HandlerError {
 #[must_use]
 pub fn summarise(totals: &CountryTotals) -> String {
     fn plural<'a>(n: u64, singular: &'a str, plural: &'a str) -> &'a str {
-        if n == 1 { singular } else { plural }
+        if n == 1 {
+            singular
+        } else {
+            plural
+        }
     }
     format!(
         "{} ACLED {}, {} GDELT {}, {} Telegram {}.",
@@ -226,12 +229,10 @@ pub fn pick_top_article(articles: &[ArticleRow]) -> Option<TopArticle> {
 /// Pick the highest-event actor from a deep-dive payload. Pure.
 #[must_use]
 pub fn pick_top_actor(actors: &[ActorRow]) -> Option<TopActor> {
-    actors
-        .first()
-        .map(|a| TopActor {
-            name: a.name.clone(),
-            events: a.events,
-        })
+    actors.first().map(|a| TopActor {
+        name: a.name.clone(),
+        events: a.events,
+    })
 }
 
 /// Project a [`CountryDeepDiveResponse`] into the brief. Pure.
@@ -269,12 +270,9 @@ pub async fn handler(
         actors: Some(1),
         limit: Some(5),
     };
-    let deep_resp = country_deep_dive::handler(
-        State(state),
-        Query(dive_query),
-    )
-    .await
-    .map_err(HandlerError::from)?;
+    let deep_resp = country_deep_dive::handler(State(state), Query(dive_query))
+        .await
+        .map_err(HandlerError::from)?;
     let deep = deep_resp.0;
     Ok(Json(project(deep)))
 }
@@ -341,11 +339,19 @@ mod tests {
     #[test]
     fn summarise_uses_singular_plural_correctly() {
         assert_eq!(
-            summarise(&CountryTotals { events: 1, incidents: 1, messages: 1 }),
+            summarise(&CountryTotals {
+                events: 1,
+                incidents: 1,
+                messages: 1
+            }),
             "1 ACLED event, 1 GDELT incident, 1 Telegram mention.",
         );
         assert_eq!(
-            summarise(&CountryTotals { events: 0, incidents: 2, messages: 3 }),
+            summarise(&CountryTotals {
+                events: 0,
+                incidents: 2,
+                messages: 3
+            }),
             "0 ACLED events, 2 GDELT incidents, 3 Telegram mentions.",
         );
     }
@@ -353,8 +359,16 @@ mod tests {
     #[test]
     fn pick_top_actor_returns_first_when_present() {
         let rows = vec![
-            ActorRow { name: "A".into(), events: 5, total_fatalities: 0 },
-            ActorRow { name: "B".into(), events: 3, total_fatalities: 0 },
+            ActorRow {
+                name: "A".into(),
+                events: 5,
+                total_fatalities: 0,
+            },
+            ActorRow {
+                name: "B".into(),
+                events: 3,
+                total_fatalities: 0,
+            },
         ];
         let top = pick_top_actor(&rows).unwrap();
         assert_eq!(top.name, "A");
@@ -370,12 +384,18 @@ mod tests {
     fn pick_top_article_picks_max_seen_date() {
         let rows = vec![
             ArticleRow {
-                url: "u1".into(), title: "old".into(), domain: "a".into(),
-                language: "en".into(), seen_date: "20260504T120000Z".into(),
+                url: "u1".into(),
+                title: "old".into(),
+                domain: "a".into(),
+                language: "en".into(),
+                seen_date: "20260504T120000Z".into(),
             },
             ArticleRow {
-                url: "u2".into(), title: "new".into(), domain: "b".into(),
-                language: "en".into(), seen_date: "20260504T230000Z".into(),
+                url: "u2".into(),
+                title: "new".into(),
+                domain: "b".into(),
+                language: "en".into(),
+                seen_date: "20260504T230000Z".into(),
             },
         ];
         let top = pick_top_article(&rows).unwrap();
@@ -394,14 +414,23 @@ mod tests {
             country: "Iran".into(),
             region: "Middle East".into(),
             actors: vec![ActorRow {
-                name: "IRGC".into(), events: 8, total_fatalities: 5,
+                name: "IRGC".into(),
+                events: 8,
+                total_fatalities: 5,
             }],
             articles: vec![ArticleRow {
-                url: "u1".into(), title: "t".into(), domain: "d".into(),
-                language: "en".into(), seen_date: "20260504T120000Z".into(),
+                url: "u1".into(),
+                title: "t".into(),
+                domain: "d".into(),
+                language: "en".into(),
+                seen_date: "20260504T120000Z".into(),
             }],
             telegram: vec![],
-            totals: CountryTotals { events: 8, incidents: 1, messages: 0 },
+            totals: CountryTotals {
+                events: 8,
+                incidents: 1,
+                messages: 0,
+            },
             assembled_at_ms: 5,
             stale: false,
         };

@@ -127,9 +127,10 @@ impl IntoResponse for GatewayError {
                 response.headers_mut().insert(header::RETRY_AFTER, value);
             }
         }
-        response
-            .headers_mut()
-            .insert(GATEWAY_ERROR_CODE_HEADER, header_value_for_code(self.code()));
+        response.headers_mut().insert(
+            GATEWAY_ERROR_CODE_HEADER,
+            header_value_for_code(self.code()),
+        );
         response
     }
 }
@@ -255,7 +256,9 @@ mod tests {
     fn retry_after_only_for_rate_limit_and_upstream_down() {
         assert!(GatewayError::OriginForbidden.retry_after_secs().is_none());
         assert!(GatewayError::ClerkUnauthorized.retry_after_secs().is_none());
-        assert!(GatewayError::ApiKeyUnauthorized.retry_after_secs().is_none());
+        assert!(GatewayError::ApiKeyUnauthorized
+            .retry_after_secs()
+            .is_none());
         assert!(GatewayError::EntitlementForbidden
             .retry_after_secs()
             .is_none());

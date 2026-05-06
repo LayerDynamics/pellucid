@@ -8,9 +8,7 @@ use serde_json::Value;
 
 use pellucid_cache::get_cached_json;
 
-use crate::economic::v1::shared::{
-    decode_optional, HandlerError, DEFAULT_RETRY_AFTER_SECS,
-};
+use crate::economic::v1::shared::{decode_optional, HandlerError, DEFAULT_RETRY_AFTER_SECS};
 use crate::state::AppState;
 
 use super::{extended, now_cast, scenario_state};
@@ -92,7 +90,8 @@ pub async fn handler(
     let mut tiles: Vec<ForecastTile> = Vec::new();
     if let Some(nc) = nc {
         if !nc.rows.is_empty() {
-            let avg: f64 = nc.rows.iter().map(|r| r.probability).sum::<f64>() / nc.rows.len() as f64;
+            let avg: f64 =
+                nc.rows.iter().map(|r| r.probability).sum::<f64>() / nc.rows.len() as f64;
             tiles.push(ForecastTile {
                 code: "NOW".into(),
                 label: "Now-cast avg".into(),
@@ -104,7 +103,12 @@ pub async fn handler(
     if let Some(st) = st {
         let total_v: f64 = st.rows.iter().map(|r| r.volume_usd.max(0.0)).sum();
         if total_v > 0.0 {
-            let weighted: f64 = st.rows.iter().map(|r| r.yes_price * r.volume_usd.max(0.0)).sum::<f64>() / total_v;
+            let weighted: f64 = st
+                .rows
+                .iter()
+                .map(|r| r.yes_price * r.volume_usd.max(0.0))
+                .sum::<f64>()
+                / total_v;
             tiles.push(ForecastTile {
                 code: "MARKETS".into(),
                 label: "Vol-weighted YES".into(),
@@ -115,12 +119,20 @@ pub async fn handler(
     }
     if let Some(ext) = ext {
         if !ext.rows.is_empty() {
-            let max_abs = ext.rows.iter().map(|r| r.delta_7d.abs()).fold(0.0_f64, f64::max);
+            let max_abs = ext
+                .rows
+                .iter()
+                .map(|r| r.delta_7d.abs())
+                .fold(0.0_f64, f64::max);
             tiles.push(ForecastTile {
                 code: "MOMENTUM".into(),
                 label: "Max |Δ7d|".into(),
                 value: format!("{:+.0}pp", max_abs * 100.0),
-                tone: if max_abs > 0.10 { "negative".into() } else { "neutral".into() },
+                tone: if max_abs > 0.10 {
+                    "negative".into()
+                } else {
+                    "neutral".into()
+                },
             });
         }
     }
@@ -153,14 +165,23 @@ mod tests {
     async fn migrated() -> (axum::Router, pellucid_db::Pool) {
         let state = AppState::for_tests_async().await.unwrap();
         let pool = state.pool.clone();
-        let app = axum::Router::new().route(SUMMARY_PATH, axum::routing::get(handler).with_state(state));
+        let app =
+            axum::Router::new().route(SUMMARY_PATH, axum::routing::get(handler).with_state(state));
         (app, pool)
     }
 
     #[tokio::test]
     async fn returns_503_when_all_empty() {
         let (app, _) = migrated().await;
-        let resp = app.oneshot(Request::builder().uri(SUMMARY_PATH).body(Body::empty()).unwrap()).await.unwrap();
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .uri(SUMMARY_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
         assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
     }
 
@@ -171,12 +192,30 @@ mod tests {
             "rows": [{ "id": "q1", "question": "Q", "probability": 0.4, "trend": "flat" }],
             "assembled_at_ms": 1_700_000_000_000_i64,
         });
-        set_cached_json(&pool, now_cast::CACHE_KEY, &Envelope::new(snap), 60_000).await.unwrap();
-        let resp = app.oneshot(Request::builder().uri(SUMMARY_PATH).body(Body::empty()).unwrap()).await.unwrap();
+        set_cached_json(&pool, now_cast::CACHE_KEY, &Envelope::new(snap), 60_000)
+            .await
+            .unwrap();
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .uri(SUMMARY_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         let parsed: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(parsed.pointer("/availableTiles").and_then(Value::as_u64), Some(1));
-        assert_eq!(parsed.pointer("/tiles/0/code").and_then(Value::as_str), Some("NOW"));
+        assert_eq!(
+            parsed.pointer("/availableTiles").and_then(Value::as_u64),
+            Some(1)
+        );
+        assert_eq!(
+            parsed.pointer("/tiles/0/code").and_then(Value::as_str),
+            Some("NOW")
+        );
     }
 }

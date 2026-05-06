@@ -44,7 +44,11 @@ async fn states_all(State(state): State<ProxyState>) -> impl IntoResponse {
         }
         Ok(None) => {
             ::metrics::counter!("pellucid_proxy_opensky_negative").increment(1);
-            (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "no upstream data"}))).into_response()
+            (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({"error": "no upstream data"})),
+            )
+                .into_response()
         }
         Err(e) => streams_error_response(&e),
     }
@@ -94,19 +98,16 @@ async fn states_for_path(
 fn streams_error_response(err: &StreamsError) -> axum::response::Response {
     ::metrics::counter!("pellucid_proxy_opensky_error").increment(1);
     let (code, msg) = match err {
-        StreamsError::Status { status } if *status >= 500 => (
-            StatusCode::BAD_GATEWAY,
-            format!("upstream status {status}"),
-        ),
+        StreamsError::Status { status } if *status >= 500 => {
+            (StatusCode::BAD_GATEWAY, format!("upstream status {status}"))
+        }
         StreamsError::Status { status } => (
             StatusCode::from_u16(*status).unwrap_or(StatusCode::BAD_GATEWAY),
             format!("upstream status {status}"),
         ),
         StreamsError::Io(s) => (StatusCode::BAD_GATEWAY, format!("upstream io: {s}")),
         StreamsError::Parse(s) => (StatusCode::BAD_GATEWAY, format!("upstream parse: {s}")),
-        StreamsError::NotFound => {
-            (StatusCode::NOT_FOUND, "upstream not found".to_string())
-        }
+        StreamsError::NotFound => (StatusCode::NOT_FOUND, "upstream not found".to_string()),
     };
     (code, Json(serde_json::json!({"error": msg}))).into_response()
 }
@@ -148,7 +149,10 @@ mod tests {
 
     #[test]
     fn urlencoding_decode_handles_percent_encoded_slash() {
-        assert_eq!(urlencoding_decode("%2Fstates%2Fall").unwrap(), "/states/all");
+        assert_eq!(
+            urlencoding_decode("%2Fstates%2Fall").unwrap(),
+            "/states/all"
+        );
     }
 
     #[test]

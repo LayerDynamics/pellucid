@@ -125,7 +125,10 @@ impl GpsjamClient {
             .await
             .map_err(|e| StreamsError::Parse(e.to_string()))?;
         Ok(Some(
-            body.features.into_iter().filter_map(JammingCell::from_feature).collect(),
+            body.features
+                .into_iter()
+                .filter_map(JammingCell::from_feature)
+                .collect(),
         ))
     }
 
@@ -291,14 +294,12 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/data/2026/05/04/h3_4.json"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                    "features": [
-                        { "properties": { "h3": "ok", "bad_pos_pct": 0.1, "n_samples": 10 } },
-                        { "properties": { "bad_pos_pct": 0.5 } }
-                    ]
-                })),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "features": [
+                    { "properties": { "h3": "ok", "bad_pos_pct": 0.1, "n_samples": 10 } },
+                    { "properties": { "bad_pos_pct": 0.5 } }
+                ]
+            })))
             .mount(&server)
             .await;
         let client = client_pointing_at(&server);

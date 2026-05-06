@@ -269,8 +269,8 @@ pub async fn handler(
     };
 
     let inner = unwrap_envelope_data(value);
-    let payload: ListArticlesPayload = serde_json::from_value(inner)
-        .map_err(|e| HandlerError::Shape(e.to_string()))?;
+    let payload: ListArticlesPayload =
+        serde_json::from_value(inner).map_err(|e| HandlerError::Shape(e.to_string()))?;
     let (articles, total) = apply_filters(payload, &q);
     Ok(Json(ListArticlesResponse {
         articles,
@@ -419,10 +419,9 @@ mod tests {
         // High + Critical pass; Info excluded.
         assert_eq!(out.len(), 2);
         assert_eq!(total, 3);
-        assert!(out.iter().all(|a| matches!(
-            a.severity,
-            Some(Severity::High) | Some(Severity::Critical)
-        )));
+        assert!(out
+            .iter()
+            .all(|a| matches!(a.severity, Some(Severity::High) | Some(Severity::Critical))));
     }
 
     #[test]
@@ -451,14 +450,8 @@ mod tests {
 
     #[test]
     fn handler_error_status_codes() {
-        assert_eq!(
-            HandlerError::Cache("x".into()).status(),
-            Code::BAD_GATEWAY,
-        );
-        assert_eq!(
-            HandlerError::Shape("x".into()).status(),
-            Code::BAD_GATEWAY,
-        );
+        assert_eq!(HandlerError::Cache("x".into()).status(), Code::BAD_GATEWAY,);
+        assert_eq!(HandlerError::Shape("x".into()).status(), Code::BAD_GATEWAY,);
         assert_eq!(
             HandlerError::Outage {
                 retry_after_secs: 30,
@@ -473,14 +466,20 @@ mod tests {
         assert_eq!(HandlerError::Cache("x".into()).code(), "cache_failure");
         assert_eq!(HandlerError::Shape("x".into()).code(), "cache_shape");
         assert_eq!(
-            HandlerError::Outage { retry_after_secs: 30 }.code(),
+            HandlerError::Outage {
+                retry_after_secs: 30
+            }
+            .code(),
             "bootstrap_upstream_empty",
         );
     }
 
     #[tokio::test]
     async fn outage_response_carries_retry_after_header() {
-        let resp = HandlerError::Outage { retry_after_secs: 30 }.into_response();
+        let resp = HandlerError::Outage {
+            retry_after_secs: 30,
+        }
+        .into_response();
         assert_eq!(resp.status(), Code::SERVICE_UNAVAILABLE);
         assert_eq!(resp.headers().get("retry-after").unwrap(), "30");
         assert_eq!(
@@ -531,7 +530,9 @@ mod tests {
             .unwrap();
         let parsed: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(
-            parsed.pointer("/error/code").and_then(serde_json::Value::as_str),
+            parsed
+                .pointer("/error/code")
+                .and_then(serde_json::Value::as_str),
             Some("bootstrap_upstream_empty"),
         );
     }
@@ -651,7 +652,9 @@ mod tests {
             .unwrap();
         let parsed: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(
-            parsed.pointer("/error/code").and_then(serde_json::Value::as_str),
+            parsed
+                .pointer("/error/code")
+                .and_then(serde_json::Value::as_str),
             Some("cache_shape"),
         );
     }

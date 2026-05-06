@@ -191,13 +191,11 @@ mod tests {
             ],
         };
         let _ = run_cycle(&pool, &fetcher).await.unwrap();
-        let row: (String,) = sqlx::query_as(
-            "SELECT payload FROM kv_envelope WHERE cache_key = ?",
-        )
-        .bind(CACHE_KEY)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let isos: Vec<&str> = parsed
             .pointer("/data/rows")

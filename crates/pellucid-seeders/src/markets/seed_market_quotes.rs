@@ -44,9 +44,7 @@ pub const SOURCE_VERSION: &str = "market-quotes-yahoo-v1";
 pub const CASCADE_GROUP: &str = "markets";
 
 /// Default basket — the eight symbols listed above.
-pub const DEFAULT_SYMBOLS: &[&str] = &[
-    "SPY", "QQQ", "DIA", "IWM", "VTI", "EFA", "EEM", "^VIX",
-];
+pub const DEFAULT_SYMBOLS: &[&str] = &["SPY", "QQQ", "DIA", "IWM", "VTI", "EFA", "EEM", "^VIX"];
 
 /// Run-time configuration for the seeder.
 #[derive(Clone, Debug)]
@@ -296,12 +294,11 @@ mod tests {
         .unwrap();
         assert!(outcome.bytes_written > 0);
 
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 3);
@@ -329,20 +326,22 @@ mod tests {
         )
         .await
         .unwrap_err();
-        assert!(matches!(err, MarketsSeederError::EmptyUpstream), "got {err:?}");
+        assert!(
+            matches!(err, MarketsSeederError::EmptyUpstream),
+            "got {err:?}"
+        );
     }
 
     #[tokio::test]
     async fn run_cycle_upstream_failure_propagates() {
         let pool = open_in_memory().await.unwrap();
-        let err = run_cycle(
-            &pool,
-            &FailingFetcher,
-            &MarketQuotesConfig::default(),
-        )
-        .await
-        .unwrap_err();
-        assert!(matches!(err, MarketsSeederError::Upstream(_)), "got {err:?}");
+        let err = run_cycle(&pool, &FailingFetcher, &MarketQuotesConfig::default())
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(err, MarketsSeederError::Upstream(_)),
+            "got {err:?}"
+        );
     }
 
     #[tokio::test]

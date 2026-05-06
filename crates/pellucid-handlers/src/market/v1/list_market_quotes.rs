@@ -282,8 +282,8 @@ pub async fn handler(
     };
 
     let inner = unwrap_envelope_data(value);
-    let payload: SnapshotPayload = serde_json::from_value(inner)
-        .map_err(|e| HandlerError::Shape(e.to_string()))?;
+    let payload: SnapshotPayload =
+        serde_json::from_value(inner).map_err(|e| HandlerError::Shape(e.to_string()))?;
     let projected: Vec<MarketQuote> = payload
         .rows
         .into_iter()
@@ -464,7 +464,10 @@ mod tests {
         assert_eq!(HandlerError::Cache("x".into()).code(), "cache_failure");
         assert_eq!(HandlerError::Shape("x".into()).code(), "cache_shape");
         assert_eq!(
-            HandlerError::Outage { retry_after_secs: 30 }.code(),
+            HandlerError::Outage {
+                retry_after_secs: 30
+            }
+            .code(),
             "bootstrap_upstream_empty",
         );
     }

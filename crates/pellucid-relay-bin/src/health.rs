@@ -131,7 +131,9 @@ pub struct HealthState {
 
 /// Build the `/health` router.
 pub fn health_router(state: HealthState) -> Router {
-    Router::new().route(HEALTH_PATH, get(health_handler)).with_state(state)
+    Router::new()
+        .route(HEALTH_PATH, get(health_handler))
+        .with_state(state)
 }
 
 /// Compute the cascade once.
@@ -284,10 +286,9 @@ mod tests {
         // 60-second TTL, fetched 5s ago — fresh.
         insert_seed_meta(&pool, "k1", "alpha", now - 5_000, 60_000).await;
         insert_seed_meta(&pool, "k2", "beta", now - 2_000, 60_000).await;
-        let body =
-            compute_cascade(&pool, &["alpha".into(), "beta".into()], 0.5)
-                .await
-                .unwrap();
+        let body = compute_cascade(&pool, &["alpha".into(), "beta".into()], 0.5)
+            .await
+            .unwrap();
         assert_eq!(body.status, HealthStatus::Ok);
         assert_eq!(body.summary.fresh, 2);
         assert_eq!(body.summary.stale, 0);
@@ -299,11 +300,10 @@ mod tests {
         let pool = open_in_memory().await.unwrap();
         let now = pellucid_core::now_ms();
         insert_seed_meta(&pool, "k1", "alpha", now - 90_000, 60_000).await; // stale
-        insert_seed_meta(&pool, "k2", "beta", now - 5_000, 60_000).await;   // fresh
-        let body =
-            compute_cascade(&pool, &["alpha".into(), "beta".into()], 0.5)
-                .await
-                .unwrap();
+        insert_seed_meta(&pool, "k2", "beta", now - 5_000, 60_000).await; // fresh
+        let body = compute_cascade(&pool, &["alpha".into(), "beta".into()], 0.5)
+            .await
+            .unwrap();
         assert_eq!(body.status, HealthStatus::Degraded);
         assert_eq!(status_code_for(body.status), StatusCode::OK);
     }
@@ -314,12 +314,14 @@ mod tests {
         // Two expected, one present.
         let now = pellucid_core::now_ms();
         insert_seed_meta(&pool, "k1", "alpha", now - 5_000, 60_000).await;
-        let body =
-            compute_cascade(&pool, &["alpha".into(), "beta".into()], 0.5)
-                .await
-                .unwrap();
+        let body = compute_cascade(&pool, &["alpha".into(), "beta".into()], 0.5)
+            .await
+            .unwrap();
         assert_eq!(body.status, HealthStatus::Outage);
-        assert_eq!(status_code_for(body.status), StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(
+            status_code_for(body.status),
+            StatusCode::SERVICE_UNAVAILABLE
+        );
         assert_eq!(body.summary.missing, 1);
     }
 
@@ -363,7 +365,12 @@ mod tests {
         };
         let app = health_router(state);
         let resp = app
-            .oneshot(Request::builder().uri(HEALTH_PATH).body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri(HEALTH_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
@@ -381,7 +388,12 @@ mod tests {
         };
         let app = health_router(state);
         let resp = app
-            .oneshot(Request::builder().uri(HEALTH_PATH).body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri(HEALTH_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);

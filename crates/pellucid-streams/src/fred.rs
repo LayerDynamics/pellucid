@@ -153,8 +153,8 @@ impl FredClient {
 
     fn build_url(&self, series_id: &str, limit: u32) -> Result<Url, StreamsError> {
         let raw = format!("{}/fred/series/observations", self.config.base_url);
-        let mut url = Url::parse(&raw)
-            .map_err(|e| StreamsError::Parse(format!("fred url: {e}")))?;
+        let mut url =
+            Url::parse(&raw).map_err(|e| StreamsError::Parse(format!("fred url: {e}")))?;
         {
             let mut q = url.query_pairs_mut();
             q.append_pair("series_id", series_id);
@@ -289,10 +289,7 @@ mod tests {
             .mount(&server)
             .await;
         let client = client_pointing_at(&server);
-        let series = client
-            .fetch_observations("PCU3344133441", 5)
-            .await
-            .unwrap();
+        let series = client.fetch_observations("PCU3344133441", 5).await.unwrap();
         assert_eq!(series.series_id, "PCU3344133441");
         assert_eq!(series.count, 460);
         assert_eq!(series.observations.len(), 4);
@@ -361,22 +358,17 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/fred/series/observations"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                    "count": 2,
-                    "observations": [
-                        { "date": "2026-04-01", "value": "." },
-                        { "date": "2026-03-01", "value": "" }
-                    ]
-                })),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "count": 2,
+                "observations": [
+                    { "date": "2026-04-01", "value": "." },
+                    { "date": "2026-03-01", "value": "" }
+                ]
+            })))
             .mount(&server)
             .await;
         let client = client_pointing_at(&server);
-        let series = client
-            .fetch_observations("BOGUS_SERIES", 5)
-            .await
-            .unwrap();
+        let series = client.fetch_observations("BOGUS_SERIES", 5).await.unwrap();
         assert_eq!(series.observations.len(), 2);
         assert!(series.latest().is_none());
     }

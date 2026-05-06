@@ -149,7 +149,12 @@ impl OssInsightClient {
             .json()
             .await
             .map_err(|e| StreamsError::Parse(e.to_string()))?;
-        Ok(body.data.rows.into_iter().map(TrendingRepo::from_raw).collect())
+        Ok(body
+            .data
+            .rows
+            .into_iter()
+            .map(TrendingRepo::from_raw)
+            .collect())
     }
 
     fn build_url(
@@ -158,8 +163,8 @@ impl OssInsightClient {
         language: Option<&str>,
     ) -> Result<Url, StreamsError> {
         let raw = format!("{}/v1/trends/repos/", self.config.base_url);
-        let mut url = Url::parse(&raw)
-            .map_err(|e| StreamsError::Parse(format!("ossinsight url: {e}")))?;
+        let mut url =
+            Url::parse(&raw).map_err(|e| StreamsError::Parse(format!("ossinsight url: {e}")))?;
         {
             let mut q = url.query_pairs_mut();
             q.append_pair("period", period.slug());

@@ -515,7 +515,10 @@ pub async fn handler(
         return Err(HandlerError::MissingCountry);
     }
     let actors_cap = q.actors.unwrap_or(DEFAULT_TOP_ACTORS).clamp(1, 100);
-    let feed_cap = q.limit.unwrap_or(DEFAULT_FEED_LIMIT).clamp(1, MAX_FEED_LIMIT);
+    let feed_cap = q
+        .limit
+        .unwrap_or(DEFAULT_FEED_LIMIT)
+        .clamp(1, MAX_FEED_LIMIT);
 
     let acled_raw = get_cached_json::<Value>(&state.pool, ACLED_CACHE_KEY)
         .await
@@ -604,8 +607,8 @@ where
         CacheHit::NegativeSentinel | CacheHit::Miss => return Ok((None, false)),
     };
     let inner = unwrap_envelope_data(value);
-    let parsed: T = serde_json::from_value(inner)
-        .map_err(|e| HandlerError::Shape(e.to_string()))?;
+    let parsed: T =
+        serde_json::from_value(inner).map_err(|e| HandlerError::Shape(e.to_string()))?;
     Ok((Some(parsed), stale))
 }
 
@@ -735,10 +738,7 @@ mod tests {
 
     #[test]
     fn text_mentions_country_case_insensitive_substring() {
-        assert!(text_mentions_country(
-            "the IRAN-backed militia",
-            "Iran",
-        ));
+        assert!(text_mentions_country("the IRAN-backed militia", "Iran",));
         assert!(text_mentions_country("nothing", "ot"));
         assert!(!text_mentions_country("ukraine front", "Iran"));
     }
@@ -799,20 +799,26 @@ mod tests {
             stale: false,
             rows: vec![
                 GdeltArticleOwned {
-                    url: "u1".into(), title: "t1".into(),
-                    domain: "d1".into(), language: "English".into(),
+                    url: "u1".into(),
+                    title: "t1".into(),
+                    domain: "d1".into(),
+                    language: "English".into(),
                     source_country: "Iran".into(),
                     seen_date: "20260504T120000Z".into(),
                 },
                 GdeltArticleOwned {
-                    url: "u2".into(), title: "t2".into(),
-                    domain: "d2".into(), language: "Persian".into(),
+                    url: "u2".into(),
+                    title: "t2".into(),
+                    domain: "d2".into(),
+                    language: "Persian".into(),
                     source_country: "iran".into(),
                     seen_date: "20260504T130000Z".into(),
                 },
                 GdeltArticleOwned {
-                    url: "u3".into(), title: "t3".into(),
-                    domain: "d3".into(), language: "Hebrew".into(),
+                    url: "u3".into(),
+                    title: "t3".into(),
+                    domain: "d3".into(),
+                    language: "Hebrew".into(),
                     source_country: "Israel".into(),
                     seen_date: "20260504T140000Z".into(),
                 },
@@ -831,14 +837,20 @@ mod tests {
             stale: false,
             rows: vec![
                 TelegramMessageOwned {
-                    channel: "a".into(), data_post: "a/1".into(),
-                    url: "u1".into(), datetime: "x".into(),
-                    text: "Iran update".into(), views: "1K".into(),
+                    channel: "a".into(),
+                    data_post: "a/1".into(),
+                    url: "u1".into(),
+                    datetime: "x".into(),
+                    text: "Iran update".into(),
+                    views: "1K".into(),
                 },
                 TelegramMessageOwned {
-                    channel: "b".into(), data_post: "b/2".into(),
-                    url: "u2".into(), datetime: "x".into(),
-                    text: "Ukraine front".into(), views: "2K".into(),
+                    channel: "b".into(),
+                    data_post: "b/2".into(),
+                    url: "u2".into(),
+                    datetime: "x".into(),
+                    text: "Ukraine front".into(),
+                    views: "2K".into(),
                 },
             ],
         };
@@ -901,12 +913,22 @@ mod tests {
     #[tokio::test]
     async fn handler_combines_three_caches_into_one_payload() {
         let (app, pool) = migrated_router().await;
-        set_cached_json(&pool, ACLED_CACHE_KEY, &Envelope::new(acled_value()), 60_000)
-            .await
-            .unwrap();
-        set_cached_json(&pool, GDELT_CACHE_KEY, &Envelope::new(gdelt_value()), 60_000)
-            .await
-            .unwrap();
+        set_cached_json(
+            &pool,
+            ACLED_CACHE_KEY,
+            &Envelope::new(acled_value()),
+            60_000,
+        )
+        .await
+        .unwrap();
+        set_cached_json(
+            &pool,
+            GDELT_CACHE_KEY,
+            &Envelope::new(gdelt_value()),
+            60_000,
+        )
+        .await
+        .unwrap();
         set_cached_json(
             &pool,
             TELEGRAM_CACHE_KEY,
@@ -943,9 +965,14 @@ mod tests {
     #[tokio::test]
     async fn handler_serves_when_only_one_cache_slot_present() {
         let (app, pool) = migrated_router().await;
-        set_cached_json(&pool, ACLED_CACHE_KEY, &Envelope::new(acled_value()), 60_000)
-            .await
-            .unwrap();
+        set_cached_json(
+            &pool,
+            ACLED_CACHE_KEY,
+            &Envelope::new(acled_value()),
+            60_000,
+        )
+        .await
+        .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()
@@ -968,9 +995,14 @@ mod tests {
     #[tokio::test]
     async fn handler_clamps_actors_and_limit_query_params() {
         let (app, pool) = migrated_router().await;
-        set_cached_json(&pool, ACLED_CACHE_KEY, &Envelope::new(acled_value()), 60_000)
-            .await
-            .unwrap();
+        set_cached_json(
+            &pool,
+            ACLED_CACHE_KEY,
+            &Envelope::new(acled_value()),
+            60_000,
+        )
+        .await
+        .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()

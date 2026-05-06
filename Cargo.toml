@@ -74,6 +74,15 @@ rustls = { version = "0.23", default-features = false, features = ["aws-lc-rs"] 
 keyring = { version = "3", default-features = false, features = ["apple-native", "linux-native", "windows-native", "sync-secret-service"] }
 getrandom = { version = "0.2", features = ["std"] }
 
+# Telegram MTProto (T4.5.0)
+grammers-client = "0.9"
+grammers-session = "0.9"
+grammers-tl-types = "0.9"
+# `chrono` is already pulled in transitively by `grammers-client` for
+# `Message::date()`. Pin it directly so the streams crate can format
+# the timestamp without bumping versions later.
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+
 # test-only dependencies (declared once so per-crate dev-dependencies stay slim)
 wiremock = "0.6"
 proptest = "1.5"

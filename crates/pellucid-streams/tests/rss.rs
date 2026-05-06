@@ -89,15 +89,17 @@ async fn fetch_returns_parsed_feed_for_allowed_host() {
         .mount(&server)
         .await;
 
-    let client = RssClient::new(proxied_client(&server.uri()))
-        .with_timeout(Duration::from_secs(2));
+    let client = RssClient::new(proxied_client(&server.uri())).with_timeout(Duration::from_secs(2));
     let url = rewrite_to_mock("http://reuters.com/feed", &server.uri());
     let feed: RssFeed = client.fetch(&url).await.unwrap();
     assert_eq!(feed.title.as_deref(), Some("Reuters Top News"));
     assert_eq!(feed.entries.len(), 1);
     let only = &feed.entries[0];
     assert_eq!(only.title.as_deref(), Some("Markets close higher"));
-    assert_eq!(only.link.as_deref(), Some("https://reuters.com/articles/markets-close-higher"));
+    assert_eq!(
+        only.link.as_deref(),
+        Some("https://reuters.com/articles/markets-close-higher")
+    );
     assert_eq!(only.id, "tag:reuters,2026:1");
 }
 
@@ -149,15 +151,12 @@ async fn fetch_after_dedup_eviction_re_hits_upstream() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/twice-feed"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_string(RSS_2_0_FIXTURE),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_string(RSS_2_0_FIXTURE))
         .expect(2)
         .mount(&server)
         .await;
 
-    let client = RssClient::new(proxied_client(&server.uri()))
-        .with_timeout(Duration::from_secs(2));
+    let client = RssClient::new(proxied_client(&server.uri())).with_timeout(Duration::from_secs(2));
     let url = "http://reuters.com/twice-feed";
     let _ = client.fetch(url).await.unwrap();
     let _ = client.fetch(url).await.unwrap();
@@ -170,10 +169,15 @@ async fn fetch_rejects_disallowed_host_without_touching_network() {
     // matchers wired so any reach to the network would 404 — but
     // the allowlist check should fire first and short-circuit.
     let server = MockServer::start().await;
-    let client = RssClient::new(proxied_client(&server.uri()))
-        .with_timeout(Duration::from_secs(2));
-    let err = client.fetch("http://attacker.example/feed").await.unwrap_err();
-    assert!(matches!(err, StreamsError::Status { status: 403 }), "got {err:?}");
+    let client = RssClient::new(proxied_client(&server.uri())).with_timeout(Duration::from_secs(2));
+    let err = client
+        .fetch("http://attacker.example/feed")
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, StreamsError::Status { status: 403 }),
+        "got {err:?}"
+    );
 }
 
 #[tokio::test]
@@ -184,8 +188,7 @@ async fn fetch_propagates_upstream_5xx() {
         .respond_with(ResponseTemplate::new(503))
         .mount(&server)
         .await;
-    let client = RssClient::new(proxied_client(&server.uri()))
-        .with_timeout(Duration::from_secs(2));
+    let client = RssClient::new(proxied_client(&server.uri())).with_timeout(Duration::from_secs(2));
     let err = client
         .fetch("http://reuters.com/down-feed")
         .await
@@ -198,13 +201,10 @@ async fn fetch_propagates_malformed_body_as_parse_error() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/bad-feed"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_string("totally not xml"),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_string("totally not xml"))
         .mount(&server)
         .await;
-    let client = RssClient::new(proxied_client(&server.uri()))
-        .with_timeout(Duration::from_secs(2));
+    let client = RssClient::new(proxied_client(&server.uri())).with_timeout(Duration::from_secs(2));
     let err = client
         .fetch("http://reuters.com/bad-feed")
         .await
@@ -221,15 +221,9 @@ async fn fetch_includes_host_header_for_allowed_domain() {
     Mock::given(method("GET"))
         .and(path("/host-check"))
         .and(wiremock::matchers::header_exists(HOST.as_str()))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_string(RSS_2_0_FIXTURE),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_string(RSS_2_0_FIXTURE))
         .mount(&server)
         .await;
-    let client = RssClient::new(proxied_client(&server.uri()))
-        .with_timeout(Duration::from_secs(2));
-    let _ = client
-        .fetch("http://reuters.com/host-check")
-        .await
-        .unwrap();
+    let client = RssClient::new(proxied_client(&server.uri())).with_timeout(Duration::from_secs(2));
+    let _ = client.fetch("http://reuters.com/host-check").await.unwrap();
 }

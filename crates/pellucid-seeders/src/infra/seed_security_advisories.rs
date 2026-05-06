@@ -236,23 +236,32 @@ mod tests {
         .await
         .unwrap();
         assert!(outcome.bytes_written > 0);
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 2);
-        assert_eq!(rows[0].get("cve_id").unwrap().as_str().unwrap(), "CVE-2024-002");
-        assert_eq!(rows[1].get("cve_id").unwrap().as_str().unwrap(), "CVE-2024-003");
+        assert_eq!(
+            rows[0].get("cve_id").unwrap().as_str().unwrap(),
+            "CVE-2024-002"
+        );
+        assert_eq!(
+            rows[1].get("cve_id").unwrap().as_str().unwrap(),
+            "CVE-2024-003"
+        );
         assert_eq!(
             parsed.pointer("/data/total_catalog_size").unwrap().as_u64(),
             Some(3)
         );
         assert_eq!(
-            parsed.pointer("/data/catalog_version").unwrap().as_str().unwrap(),
+            parsed
+                .pointer("/data/catalog_version")
+                .unwrap()
+                .as_str()
+                .unwrap(),
             "2026.04.25"
         );
     }

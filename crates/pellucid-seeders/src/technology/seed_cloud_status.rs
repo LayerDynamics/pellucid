@@ -170,8 +170,7 @@ pub async fn run_cycle(
         },
         data: serde_json::to_value(&snapshot).unwrap_or(serde_json::Value::Null),
     };
-    let outcome =
-        atomic_publish(pool, "technology", CACHE_KEY, &envelope, TTL).await?;
+    let outcome = atomic_publish(pool, "technology", CACHE_KEY, &envelope, TTL).await?;
     Ok(outcome)
 }
 
@@ -190,8 +189,7 @@ mod tests {
     impl CloudStatusFetcher for StaticFetcher {
         async fn fetch_incidents(
             &self,
-        ) -> Result<Vec<FetchedIncident>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Vec<FetchedIncident>, Box<dyn std::error::Error + Send + Sync>> {
             Ok(self.rows.clone())
         }
     }
@@ -203,8 +201,7 @@ mod tests {
     impl CloudStatusFetcher for FailingFetcher {
         async fn fetch_incidents(
             &self,
-        ) -> Result<Vec<FetchedIncident>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Vec<FetchedIncident>, Box<dyn std::error::Error + Send + Sync>> {
             Err("upstream down".into())
         }
     }
@@ -241,12 +238,11 @@ mod tests {
         let _ = run_cycle(&pool, &fetcher, &CloudStatusConfig::default())
             .await
             .unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         assert_eq!(
             parsed.pointer("/data/open_incidents").unwrap().as_u64(),

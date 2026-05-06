@@ -116,10 +116,7 @@ impl CoinGeckoClient {
     /// - [`StreamsError::Io`] on transport failures.
     /// - [`StreamsError::Status`] on non-2xx (notably 429).
     /// - [`StreamsError::Parse`] on body shape mismatch.
-    pub async fn fetch_simple_price(
-        &self,
-        ids: &[&str],
-    ) -> Result<Vec<CryptoQuote>, StreamsError> {
+    pub async fn fetch_simple_price(&self, ids: &[&str]) -> Result<Vec<CryptoQuote>, StreamsError> {
         if ids.is_empty() {
             return Ok(Vec::new());
         }
@@ -158,8 +155,8 @@ impl CoinGeckoClient {
 
     fn build_simple_price_url(&self, ids: &[&str]) -> Result<Url, StreamsError> {
         let raw = format!("{}/simple/price", self.config.base_url);
-        let mut url = Url::parse(&raw)
-            .map_err(|e| StreamsError::Parse(format!("coingecko url: {e}")))?;
+        let mut url =
+            Url::parse(&raw).map_err(|e| StreamsError::Parse(format!("coingecko url: {e}")))?;
         {
             let mut q = url.query_pairs_mut();
             q.append_pair("ids", &ids.join(","));
@@ -331,11 +328,9 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/simple/price"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                    "bitcoin": { "eur": 60000.0 }
-                })),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "bitcoin": { "eur": 60000.0 }
+            })))
             .mount(&server)
             .await;
         let client = client_pointing_at(&server);
@@ -348,7 +343,10 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/simple/price"))
-            .and(wiremock::matchers::header("x-cg-demo-api-key", "demo-key-1"))
+            .and(wiremock::matchers::header(
+                "x-cg-demo-api-key",
+                "demo-key-1",
+            ))
             .respond_with(ResponseTemplate::new(200).set_body_json(body()))
             .mount(&server)
             .await;

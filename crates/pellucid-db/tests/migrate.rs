@@ -26,12 +26,11 @@ async fn fresh_database_has_every_required_table() {
         "embedding_meta",
     ];
     for name in required {
-        let row =
-            sqlx::query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?1")
-                .bind(name)
-                .fetch_optional(&pool)
-                .await
-                .expect("query sqlite_master");
+        let row = sqlx::query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?1")
+            .bind(name)
+            .fetch_optional(&pool)
+            .await
+            .expect("query sqlite_master");
         assert!(row.is_some(), "table {name} missing");
     }
 }
@@ -41,12 +40,11 @@ async fn fresh_database_has_required_virtual_tables() {
     let pool = open_in_memory().await.expect("open");
     let required = ["news_fts", "positions_rtree"];
     for name in required {
-        let row =
-            sqlx::query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?1")
-                .bind(name)
-                .fetch_optional(&pool)
-                .await
-                .expect("query");
+        let row = sqlx::query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?1")
+            .bind(name)
+            .fetch_optional(&pool)
+            .await
+            .expect("query");
         assert!(row.is_some(), "virtual table {name} missing");
     }
 }
@@ -110,11 +108,12 @@ async fn rate_limit_window_composite_pk_enforced() {
         .expect("insert");
 
     // Same key + same timestamp must be rejected by the composite PK.
-    let dup = sqlx::query("INSERT INTO rate_limit_window (bucket_key, request_at_ms) VALUES (?1, ?2)")
-        .bind("rl:ip:1.2.3.4")
-        .bind(1000_i64)
-        .execute(&pool)
-        .await;
+    let dup =
+        sqlx::query("INSERT INTO rate_limit_window (bucket_key, request_at_ms) VALUES (?1, ?2)")
+            .bind("rl:ip:1.2.3.4")
+            .bind(1000_i64)
+            .execute(&pool)
+            .await;
     assert!(dup.is_err(), "expected unique-violation on duplicate row");
 }
 
@@ -209,11 +208,12 @@ async fn seed_lock_enforces_uniqueness_per_domain() {
         .await
         .expect("first insert");
 
-    let dup = sqlx::query("INSERT INTO seed_lock (domain, run_id, expires_at_ms) VALUES (?1, ?2, ?3)")
-        .bind("aviation")
-        .bind("run-2")
-        .bind(2000_i64)
-        .execute(&pool)
-        .await;
+    let dup =
+        sqlx::query("INSERT INTO seed_lock (domain, run_id, expires_at_ms) VALUES (?1, ?2, ?3)")
+            .bind("aviation")
+            .bind("run-2")
+            .bind(2000_i64)
+            .execute(&pool)
+            .await;
     assert!(dup.is_err(), "second insert for same domain must conflict");
 }

@@ -130,8 +130,7 @@ impl VantageComputeClient {
             .json()
             .await
             .map_err(|e| StreamsError::Parse(e.to_string()))?;
-        let wanted: std::collections::HashSet<&str> =
-            instance_types.iter().copied().collect();
+        let wanted: std::collections::HashSet<&str> = instance_types.iter().copied().collect();
         Ok(body
             .into_iter()
             .filter(|raw| wanted.contains(raw.instance_type.as_str()))
@@ -178,18 +177,9 @@ impl InstancePricing {
         let region_pricing = raw.pricing.get(region)?;
         let linux = region_pricing.get("linux")?.as_object()?;
         let ondemand = parse_value_f64(linux.get("ondemand")?);
-        let spot_min = linux
-            .get("spot_min")
-            .map(parse_value_f64)
-            .unwrap_or(0.0);
-        let spot_max = linux
-            .get("spot_max")
-            .map(parse_value_f64)
-            .unwrap_or(0.0);
-        let spot_avg = linux
-            .get("spot_avg")
-            .map(parse_value_f64)
-            .unwrap_or(0.0);
+        let spot_min = linux.get("spot_min").map(parse_value_f64).unwrap_or(0.0);
+        let spot_max = linux.get("spot_max").map(parse_value_f64).unwrap_or(0.0);
+        let spot_avg = linux.get("spot_avg").map(parse_value_f64).unwrap_or(0.0);
         Some(Self {
             instance_type: raw.instance_type,
             region: region.to_string(),
@@ -288,10 +278,16 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(rows.len(), 2);
-        let m7 = rows.iter().find(|r| r.instance_type == "m7i.large").unwrap();
+        let m7 = rows
+            .iter()
+            .find(|r| r.instance_type == "m7i.large")
+            .unwrap();
         assert!((m7.ondemand_usd_hr - 0.1008).abs() < 1e-6);
         assert!((m7.spot_avg_usd_hr - 0.045).abs() < 1e-9);
-        let g5 = rows.iter().find(|r| r.instance_type == "g5.xlarge").unwrap();
+        let g5 = rows
+            .iter()
+            .find(|r| r.instance_type == "g5.xlarge")
+            .unwrap();
         // Numeric values also round-trip.
         assert!((g5.ondemand_usd_hr - 1.006).abs() < 1e-9);
     }

@@ -74,8 +74,7 @@ const FIXTURES: &[Fixture] = &[
 /// build. The `repeat` constructor is `const fn`-incompatible at the
 /// time of writing, so the literal is hand-written. The length
 /// invariant is asserted at the top of the test.
-const ONE_KB_OF_A: &str =
-    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+const ONE_KB_OF_A: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
      aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
      aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
      aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
@@ -105,7 +104,8 @@ fn rust_signatures_match_node_byte_for_byte() {
     for (idx, fx) in FIXTURES.iter().enumerate() {
         let actual = sign_user_id_hmac(fx.user_id, fx.secret);
         assert_eq!(
-            actual, fx.expected_sig,
+            actual,
+            fx.expected_sig,
             "fixture #{idx} drift — sign({user_id_dbg:?}, secret_len={secret_len}) \
              produced {actual:?}, Node produced {expected:?}",
             user_id_dbg = fx.user_id,

@@ -242,40 +242,72 @@ pub fn region_for_country(country: &str) -> &'static str {
         // Middle East — ACLED basket: Saudi Arabia (760), Iran (368),
         // Yemen (887), Iraq (368→duplicate code in plan, use 364 = Israel
         // here), Israel (376), plus regional neighbours.
-        "saudi arabia" | "iran" | "yemen" | "iraq" | "israel" | "syria"
-        | "lebanon" | "jordan" | "egypt" | "turkey" | "uae"
-        | "united arab emirates" | "qatar" | "bahrain" | "oman"
-        | "palestine" | "kuwait" => "Middle East",
+        "saudi arabia"
+        | "iran"
+        | "yemen"
+        | "iraq"
+        | "israel"
+        | "syria"
+        | "lebanon"
+        | "jordan"
+        | "egypt"
+        | "turkey"
+        | "uae"
+        | "united arab emirates"
+        | "qatar"
+        | "bahrain"
+        | "oman"
+        | "palestine"
+        | "kuwait" => "Middle East",
         // Europe — ACLED basket includes Ukraine (804); plus EU/UK.
-        "ukraine" | "russia" | "russian federation" | "germany" | "france"
-        | "united kingdom" | "uk" | "poland" | "spain" | "italy"
-        | "netherlands" | "belgium" | "sweden" | "norway" | "finland"
-        | "denmark" | "ireland" | "portugal" | "greece" | "switzerland"
-        | "austria" | "czech republic" | "czechia" | "hungary" | "romania"
-        | "bulgaria" | "serbia" | "croatia" | "slovakia" | "slovenia"
-        | "estonia" | "latvia" | "lithuania" | "belarus" | "moldova" => "Europe",
+        "ukraine" | "russia" | "russian federation" | "germany" | "france" | "united kingdom"
+        | "uk" | "poland" | "spain" | "italy" | "netherlands" | "belgium" | "sweden" | "norway"
+        | "finland" | "denmark" | "ireland" | "portugal" | "greece" | "switzerland" | "austria"
+        | "czech republic" | "czechia" | "hungary" | "romania" | "bulgaria" | "serbia"
+        | "croatia" | "slovakia" | "slovenia" | "estonia" | "latvia" | "lithuania" | "belarus"
+        | "moldova" => "Europe",
         // East Asia.
-        "china" | "japan" | "south korea" | "north korea" | "taiwan"
-        | "mongolia" => "East Asia",
+        "china" | "japan" | "south korea" | "north korea" | "taiwan" | "mongolia" => "East Asia",
         // South Asia — Pakistan (586), Afghanistan (4 — outside basket
         // but high GDELT volume), India (356), Bangladesh, Sri Lanka.
-        "pakistan" | "afghanistan" | "india" | "bangladesh" | "sri lanka"
-        | "nepal" | "bhutan" | "maldives" => "South Asia",
+        "pakistan" | "afghanistan" | "india" | "bangladesh" | "sri lanka" | "nepal" | "bhutan"
+        | "maldives" => "South Asia",
         // Africa.
-        "nigeria" | "south africa" | "kenya" | "ethiopia" | "sudan"
-        | "south sudan" | "libya" | "tunisia" | "algeria" | "morocco"
-        | "somalia" | "uganda" | "tanzania" | "ghana" | "cameroon"
-        | "drc" | "democratic republic of the congo"
-        | "central african republic" | "mali" | "burkina faso" | "niger"
-        | "chad" | "rwanda" | "burundi" | "mozambique" | "zimbabwe"
-        | "zambia" | "angola" => "Africa",
+        "nigeria"
+        | "south africa"
+        | "kenya"
+        | "ethiopia"
+        | "sudan"
+        | "south sudan"
+        | "libya"
+        | "tunisia"
+        | "algeria"
+        | "morocco"
+        | "somalia"
+        | "uganda"
+        | "tanzania"
+        | "ghana"
+        | "cameroon"
+        | "drc"
+        | "democratic republic of the congo"
+        | "central african republic"
+        | "mali"
+        | "burkina faso"
+        | "niger"
+        | "chad"
+        | "rwanda"
+        | "burundi"
+        | "mozambique"
+        | "zimbabwe"
+        | "zambia"
+        | "angola" => "Africa",
         // Americas.
-        "united states" | "usa" | "us" | "canada" | "mexico" | "brazil"
-        | "argentina" | "colombia" | "venezuela" | "chile" | "peru"
-        | "ecuador" | "bolivia" | "paraguay" | "uruguay" | "guyana"
-        | "suriname" | "haiti" | "cuba" | "dominican republic"
-        | "guatemala" | "honduras" | "nicaragua" | "costa rica" | "panama"
-        | "el salvador" => "Americas",
+        "united states" | "usa" | "us" | "canada" | "mexico" | "brazil" | "argentina"
+        | "colombia" | "venezuela" | "chile" | "peru" | "ecuador" | "bolivia" | "paraguay"
+        | "uruguay" | "guyana" | "suriname" | "haiti" | "cuba" | "dominican republic"
+        | "guatemala" | "honduras" | "nicaragua" | "costa rica" | "panama" | "el salvador" => {
+            "Americas"
+        }
         // Oceania.
         "australia" | "new zealand" | "papua new guinea" | "fiji" => "Oceania",
         _ => "Other",
@@ -338,7 +370,11 @@ pub fn compose_rollups(
                     for (actor, c) in actor_breakdown {
                         *actor_totals.entry(actor).or_insert(0) += c;
                     }
-                    CountryRollup { name, events, incidents }
+                    CountryRollup {
+                        name,
+                        events,
+                        incidents,
+                    }
                 })
                 .collect();
             countries.sort_by(|a, b| {
@@ -373,10 +409,7 @@ pub fn compose_rollups(
 
 /// Apply the optional `?region=` filter. Pure.
 #[must_use]
-pub fn apply_region_filter(
-    rollups: Vec<RegionRollup>,
-    q: &RegionalQuery,
-) -> Vec<RegionRollup> {
+pub fn apply_region_filter(rollups: Vec<RegionRollup>, q: &RegionalQuery) -> Vec<RegionRollup> {
     if let Some(needle) = q.region.as_deref() {
         let key = needle.trim().to_ascii_lowercase();
         rollups
@@ -488,17 +521,25 @@ pub async fn handler(
 
     let acled_snap = acled_payload.map(|p| AcledSnapshot {
         assembled_at_ms: p.assembled_at_ms,
-        rows: p.rows.into_iter().map(|r| AcledActorRowOwned {
-            actor: r.actor,
-            event_count: r.event_count,
-            country_breakdown: r.country_breakdown,
-        }).collect(),
+        rows: p
+            .rows
+            .into_iter()
+            .map(|r| AcledActorRowOwned {
+                actor: r.actor,
+                event_count: r.event_count,
+                country_breakdown: r.country_breakdown,
+            })
+            .collect(),
     });
     let gdelt_snap = gdelt_payload.map(|p| GdeltSnapshot {
         assembled_at_ms: p.assembled_at_ms,
-        rows: p.rows.into_iter().map(|r| GdeltArticleRowOwned {
-            source_country: r.source_country,
-        }).collect(),
+        rows: p
+            .rows
+            .into_iter()
+            .map(|r| GdeltArticleRowOwned {
+                source_country: r.source_country,
+            })
+            .collect(),
     });
 
     let rollups = compose_rollups(acled_snap, gdelt_snap);
@@ -523,8 +564,8 @@ where
         CacheHit::NegativeSentinel | CacheHit::Miss => return Ok((None, false)),
     };
     let inner = unwrap_envelope_data(value);
-    let parsed: T = serde_json::from_value(inner)
-        .map_err(|e| HandlerError::Shape(e.to_string()))?;
+    let parsed: T =
+        serde_json::from_value(inner).map_err(|e| HandlerError::Shape(e.to_string()))?;
     Ok((Some(parsed), stale))
 }
 
@@ -554,10 +595,8 @@ mod tests {
     async fn migrated_router() -> (axum::Router, pellucid_db::Pool) {
         let state = AppState::for_tests_async().await.unwrap();
         let pool = state.pool.clone();
-        let app = axum::Router::new().route(
-            REGIONAL_PATH,
-            axum::routing::get(handler).with_state(state),
-        );
+        let app =
+            axum::Router::new().route(REGIONAL_PATH, axum::routing::get(handler).with_state(state));
         (app, pool)
     }
 
@@ -621,10 +660,7 @@ mod tests {
             rows: vec![AcledActorRowOwned {
                 actor: "Hamas".into(),
                 event_count: 10,
-                country_breakdown: vec![
-                    ("Israel".into(), 5),
-                    ("Iran".into(), 3),
-                ],
+                country_breakdown: vec![("Israel".into(), 5), ("Iran".into(), 3)],
             }],
         };
         let rollups = compose_rollups(Some(acled), None);
@@ -645,10 +681,18 @@ mod tests {
         let gdelt = GdeltSnapshot {
             assembled_at_ms: 1,
             rows: vec![
-                GdeltArticleRowOwned { source_country: "Iran".into() },
-                GdeltArticleRowOwned { source_country: "Iran".into() },
-                GdeltArticleRowOwned { source_country: "Israel".into() },
-                GdeltArticleRowOwned { source_country: "China".into() },
+                GdeltArticleRowOwned {
+                    source_country: "Iran".into(),
+                },
+                GdeltArticleRowOwned {
+                    source_country: "Iran".into(),
+                },
+                GdeltArticleRowOwned {
+                    source_country: "Israel".into(),
+                },
+                GdeltArticleRowOwned {
+                    source_country: "China".into(),
+                },
             ],
         };
         let rollups = compose_rollups(None, Some(gdelt));
@@ -700,10 +744,7 @@ mod tests {
                 .collect(),
         };
         let rollups = compose_rollups(Some(acled), None);
-        let me = rollups
-            .iter()
-            .find(|r| r.region == "Middle East")
-            .unwrap();
+        let me = rollups.iter().find(|r| r.region == "Middle East").unwrap();
         assert_eq!(me.top_actors.len(), TOP_ACTORS_PER_REGION);
     }
 
@@ -725,7 +766,9 @@ mod tests {
                 top_actors: vec![],
             },
         ];
-        let q = RegionalQuery { region: Some(" middle east ".into()) };
+        let q = RegionalQuery {
+            region: Some(" middle east ".into()),
+        };
         let out = apply_region_filter(rollups, &q);
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].region, "Middle East");
@@ -750,11 +793,7 @@ mod tests {
     #[tokio::test]
     async fn handler_serves_when_only_one_cache_slot_present() {
         let (app, pool) = migrated_router().await;
-        let env = Envelope::new(acled_value(vec![(
-            "Hamas",
-            5,
-            vec![("Israel", 5)],
-        )]));
+        let env = Envelope::new(acled_value(vec![("Hamas", 5, vec![("Israel", 5)])]));
         set_cached_json(&pool, ACLED_CACHE_KEY, &env, 60_000)
             .await
             .unwrap();
@@ -847,7 +886,9 @@ mod tests {
     async fn handler_marks_stale_when_either_cache_slot_is_stale() {
         let (app, pool) = migrated_router().await;
         let env = Envelope::new(acled_value(vec![("a", 1, vec![("Iran", 1)])]));
-        set_cached_json(&pool, ACLED_CACHE_KEY, &env, 0).await.unwrap();
+        set_cached_json(&pool, ACLED_CACHE_KEY, &env, 0)
+            .await
+            .unwrap();
         tokio::time::sleep(std::time::Duration::from_millis(20)).await;
         let resp = app
             .oneshot(

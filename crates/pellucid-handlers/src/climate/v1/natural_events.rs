@@ -8,9 +8,7 @@ use serde_json::Value;
 
 use pellucid_cache::get_cached_json;
 
-use crate::economic::v1::shared::{
-    decode_optional, HandlerError, DEFAULT_RETRY_AFTER_SECS,
-};
+use crate::economic::v1::shared::{decode_optional, HandlerError, DEFAULT_RETRY_AFTER_SECS};
 use crate::state::AppState;
 
 use super::{earthquakes, volcano_activity, wildfire};
@@ -163,7 +161,15 @@ mod tests {
     #[tokio::test]
     async fn returns_503_when_all_empty() {
         let (app, _) = migrated().await;
-        let resp = app.oneshot(Request::builder().uri(NATURAL_EVENTS_PATH).body(Body::empty()).unwrap()).await.unwrap();
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .uri(NATURAL_EVENTS_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
         assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
     }
 
@@ -174,14 +180,35 @@ mod tests {
             "rows": [{ "id": "us2", "place": "Japan", "mag": 6.1, "depth": 50.0, "lat": 35.0, "lon": 140.0, "occurred_at_ms": 1_700_000_000_000_i64 }],
             "assembled_at_ms": 1_700_000_000_000_i64,
         });
-        set_cached_json(&pool, earthquakes::CACHE_KEY, &Envelope::new(snap), 60_000).await.unwrap();
-        let resp = app.oneshot(Request::builder().uri(NATURAL_EVENTS_PATH).body(Body::empty()).unwrap()).await.unwrap();
+        set_cached_json(&pool, earthquakes::CACHE_KEY, &Envelope::new(snap), 60_000)
+            .await
+            .unwrap();
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .uri(NATURAL_EVENTS_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         let parsed: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(parsed.pointer("/totalEvents").and_then(Value::as_u64), Some(1));
-        assert_eq!(parsed.pointer("/tiles/0/kind").and_then(Value::as_str), Some("earthquake"));
-        assert_eq!(parsed.pointer("/tiles/0/severity").and_then(Value::as_str), Some("severe"));
+        assert_eq!(
+            parsed.pointer("/totalEvents").and_then(Value::as_u64),
+            Some(1)
+        );
+        assert_eq!(
+            parsed.pointer("/tiles/0/kind").and_then(Value::as_str),
+            Some("earthquake")
+        );
+        assert_eq!(
+            parsed.pointer("/tiles/0/severity").and_then(Value::as_str),
+            Some("severe")
+        );
     }
 
     #[test]

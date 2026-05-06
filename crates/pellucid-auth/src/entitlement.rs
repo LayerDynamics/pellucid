@@ -130,10 +130,7 @@ pub trait EntitlementSource: Send + Sync + std::fmt::Debug {
     /// Fetch the snapshot for `user_id`. Returning `Ok(None)` is
     /// reserved for the genuinely-unknown-user case (treated as
     /// anonymous tier with a short TTL).
-    async fn fetch(
-        &self,
-        user_id: &str,
-    ) -> Result<EntitlementSnapshot, EntitlementSourceError>;
+    async fn fetch(&self, user_id: &str) -> Result<EntitlementSnapshot, EntitlementSourceError>;
 }
 
 /// Production source backed by Convex.
@@ -178,10 +175,7 @@ impl ConvexEntitlementSource {
 
 #[async_trait]
 impl EntitlementSource for ConvexEntitlementSource {
-    async fn fetch(
-        &self,
-        user_id: &str,
-    ) -> Result<EntitlementSnapshot, EntitlementSourceError> {
+    async fn fetch(&self, user_id: &str) -> Result<EntitlementSnapshot, EntitlementSourceError> {
         let now_ms = pellucid_core::now_ms();
         let resp = self
             .http
@@ -210,9 +204,8 @@ impl EntitlementSource for ConvexEntitlementSource {
         //   { user_id, tier, features, valid_until_ms }
         //
         // and synthesise a `valid_until_ms` if the upstream omits it.
-        let parsed: ConvexResponse = serde_json::from_str(&body).map_err(|err| {
-            EntitlementSourceError::Parse(format!("{err}: {body}"))
-        })?;
+        let parsed: ConvexResponse = serde_json::from_str(&body)
+            .map_err(|err| EntitlementSourceError::Parse(format!("{err}: {body}")))?;
         let valid_until_ms = parsed
             .valid_until_ms
             .or(parsed.valid_until_ms_alt)
@@ -290,10 +283,7 @@ impl StaticEntitlementSource {
 
 #[async_trait]
 impl EntitlementSource for StaticEntitlementSource {
-    async fn fetch(
-        &self,
-        user_id: &str,
-    ) -> Result<EntitlementSnapshot, EntitlementSourceError> {
+    async fn fetch(&self, user_id: &str) -> Result<EntitlementSnapshot, EntitlementSourceError> {
         self.call_count
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         if let Some(err) = self.error.read().as_ref() {
@@ -346,10 +336,7 @@ impl EntitlementCache {
     }
 
     /// Read the cache row for `user_id` if present.
-    pub async fn read(
-        &self,
-        user_id: &str,
-    ) -> Result<Option<EntitlementSnapshot>, CacheError> {
+    pub async fn read(&self, user_id: &str) -> Result<Option<EntitlementSnapshot>, CacheError> {
         let row = sqlx::query(
             "SELECT user_id, tier, features_json, valid_until_ms \
              FROM entitlements_cache WHERE user_id = ?1",
@@ -372,10 +359,7 @@ impl EntitlementCache {
     }
 
     /// Write (insert-or-replace) a cache row.
-    pub async fn write(
-        &self,
-        snapshot: &EntitlementSnapshot,
-    ) -> Result<(), CacheError> {
+    pub async fn write(&self, snapshot: &EntitlementSnapshot) -> Result<(), CacheError> {
         let now_ms = pellucid_core::now_ms();
         let features_json = serde_json::to_string(&snapshot.features)?;
         sqlx::query(
@@ -405,10 +389,7 @@ pub async fn read_cache(
 
 /// Free-function write shim — kept so existing call sites keep
 /// compiling. Prefer [`EntitlementCache::write`].
-pub async fn write_cache(
-    pool: &Pool,
-    snapshot: &EntitlementSnapshot,
-) -> Result<(), CacheError> {
+pub async fn write_cache(pool: &Pool, snapshot: &EntitlementSnapshot) -> Result<(), CacheError> {
     EntitlementCache::new(pool.clone()).write(snapshot).await
 }
 
@@ -431,10 +412,7 @@ impl ClerkEntitlementChecker {
     /// Construct from an explicit cache. Reserved for callers that
     /// share an [`EntitlementCache`] instance with other components.
     #[must_use]
-    pub fn with_cache(
-        cache: EntitlementCache,
-        source: Arc<dyn EntitlementSource>,
-    ) -> Self {
+    pub fn with_cache(cache: EntitlementCache, source: Arc<dyn EntitlementSource>) -> Self {
         Self {
             cache,
             source,
@@ -579,7 +557,12 @@ mod tests {
         let checker = ClerkEntitlementChecker::new(pool, source.clone());
         let d = checker.check(user_id, Tier::Tier1).await;
         assert!(
-            matches!(d, EntitlementDecision::Allow { effective_tier: Tier::Tier2 }),
+            matches!(
+                d,
+                EntitlementDecision::Allow {
+                    effective_tier: Tier::Tier2
+                }
+            ),
             "got {d:?}"
         );
         assert_eq!(source.fetch_count(), 0, "fresh cache must skip the source");
@@ -596,7 +579,12 @@ mod tests {
         let checker = ClerkEntitlementChecker::new(pool, source.clone());
         let d = checker.check(user_id, Tier::Tier2).await;
         assert!(
-            matches!(d, EntitlementDecision::Deny { effective_tier: Tier::Free }),
+            matches!(
+                d,
+                EntitlementDecision::Deny {
+                    effective_tier: Tier::Free
+                }
+            ),
             "got {d:?}"
         );
         assert_eq!(source.fetch_count(), 0);
@@ -615,7 +603,9 @@ mod tests {
         let d = checker.check(user_id, Tier::Tier1).await;
         assert!(matches!(
             d,
-            EntitlementDecision::Allow { effective_tier: Tier::Tier2 }
+            EntitlementDecision::Allow {
+                effective_tier: Tier::Tier2
+            }
         ));
         assert_eq!(source.fetch_count(), 1);
         // The new snapshot must now be in the cache; a second call
@@ -634,7 +624,9 @@ mod tests {
         let d = checker.check(user_id, Tier::Free).await;
         assert!(matches!(
             d,
-            EntitlementDecision::Allow { effective_tier: Tier::Tier1 }
+            EntitlementDecision::Allow {
+                effective_tier: Tier::Tier1
+            }
         ));
         // Persisted in cache.
         let cached = read_cache(&pool, user_id).await.unwrap().unwrap();
@@ -717,11 +709,11 @@ mod tests {
 
     #[tokio::test]
     async fn convex_endpoint_is_built_from_base_plus_path() {
-        let s = ConvexEntitlementSource::new(
-            "https://convex.test",
-            "secret",
-            reqwest::Client::new(),
+        let s =
+            ConvexEntitlementSource::new("https://convex.test", "secret", reqwest::Client::new());
+        assert_eq!(
+            s.endpoint(),
+            "https://convex.test/api/internal-entitlements"
         );
-        assert_eq!(s.endpoint(), "https://convex.test/api/internal-entitlements");
     }
 }

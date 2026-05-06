@@ -27,7 +27,8 @@ pub const CASCADE_GROUP: &str = "conflict-gdelt";
 /// Default GDELT DOC query for the global incident feed.
 /// Targets violent-events themes per the GDELT Global Knowledge
 /// Graph 2.0 vocabulary.
-pub const DEFAULT_QUERY: &str = "(theme:KILL OR theme:WOUND OR theme:ARMEDCONFLICT OR theme:TERROR)";
+pub const DEFAULT_QUERY: &str =
+    "(theme:KILL OR theme:WOUND OR theme:ARMEDCONFLICT OR theme:TERROR)";
 
 /// Default lookback window — 24 hours.
 pub const DEFAULT_TIMESPAN: &str = "24h";
@@ -166,8 +167,7 @@ pub async fn run_cycle(
         },
         data: serde_json::to_value(&snapshot).unwrap_or(serde_json::Value::Null),
     };
-    let outcome =
-        atomic_publish(pool, "conflict", CACHE_KEY, &envelope, TTL).await?;
+    let outcome = atomic_publish(pool, "conflict", CACHE_KEY, &envelope, TTL).await?;
     Ok(outcome)
 }
 
@@ -190,8 +190,7 @@ mod tests {
             query: &str,
             _timespan: &str,
             _max_records: u32,
-        ) -> Result<Vec<FetchedGdeltArticle>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Vec<FetchedGdeltArticle>, Box<dyn std::error::Error + Send + Sync>> {
             *self.last_query.lock().unwrap() = query.to_string();
             Ok(self.rows.clone())
         }
@@ -207,8 +206,7 @@ mod tests {
             _query: &str,
             _timespan: &str,
             _max_records: u32,
-        ) -> Result<Vec<FetchedGdeltArticle>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Vec<FetchedGdeltArticle>, Box<dyn std::error::Error + Send + Sync>> {
             Err("upstream down".into())
         }
     }
@@ -234,7 +232,10 @@ mod tests {
     async fn run_cycle_writes_snapshot_passing_query_through() {
         let pool = open_in_memory().await.unwrap();
         let fetcher = StaticFetcher {
-            rows: vec![article("https://a.com", "Iran"), article("https://b.com", "Iraq")],
+            rows: vec![
+                article("https://a.com", "Iran"),
+                article("https://b.com", "Iraq"),
+            ],
             last_query: std::sync::Mutex::new(String::new()),
         };
         let outcome = run_cycle(&pool, &fetcher, &GdeltIntelConfig::default())
@@ -242,12 +243,11 @@ mod tests {
             .unwrap();
         assert!(outcome.bytes_written > 0);
         assert_eq!(*fetcher.last_query.lock().unwrap(), DEFAULT_QUERY);
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 2);

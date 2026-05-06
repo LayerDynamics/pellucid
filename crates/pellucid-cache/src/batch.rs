@@ -71,7 +71,11 @@ pub async fn get_cached_json_batch<T: DeserializeOwned>(
         if is_negative != 0 {
             out.insert(
                 key,
-                if alive { BatchHit::NegativeSentinel } else { BatchHit::Miss },
+                if alive {
+                    BatchHit::NegativeSentinel
+                } else {
+                    BatchHit::Miss
+                },
             );
             continue;
         }
@@ -82,7 +86,11 @@ pub async fn get_cached_json_batch<T: DeserializeOwned>(
         })?;
         out.insert(
             key,
-            if alive { BatchHit::Fresh(value) } else { BatchHit::Stale(value) },
+            if alive {
+                BatchHit::Fresh(value)
+            } else {
+                BatchHit::Stale(value)
+            },
         );
     }
 
@@ -110,15 +118,27 @@ mod tests {
     async fn batch_returns_fresh_stale_negative_miss() {
         let pool = open_in_memory().await.expect("pool");
         // fresh
-        set_cached_json(&pool, "fresh", &Envelope::new(serde_json::json!({"a": 1})), 60_000)
-            .await
-            .expect("set fresh");
+        set_cached_json(
+            &pool,
+            "fresh",
+            &Envelope::new(serde_json::json!({"a": 1})),
+            60_000,
+        )
+        .await
+        .expect("set fresh");
         // stale
-        set_cached_json(&pool, "stale", &Envelope::new(serde_json::json!({"b": 2})), 0)
-            .await
-            .expect("set stale");
+        set_cached_json(
+            &pool,
+            "stale",
+            &Envelope::new(serde_json::json!({"b": 2})),
+            0,
+        )
+        .await
+        .expect("set stale");
         // negative sentinel
-        set_negative_sentinel(&pool, "neg", 60_000).await.expect("neg");
+        set_negative_sentinel(&pool, "neg", 60_000)
+            .await
+            .expect("neg");
         // no `miss` row at all — request must classify it as Miss.
 
         let out: HashMap<String, BatchHit<serde_json::Value>> =
@@ -148,10 +168,15 @@ mod tests {
         }
 
         let out: HashMap<String, BatchHit<serde_json::Value>> =
-            get_cached_json_batch(&pool, &key_refs).await.expect("batch");
+            get_cached_json_batch(&pool, &key_refs)
+                .await
+                .expect("batch");
 
         assert_eq!(out.len(), 67);
-        let fresh_count = out.values().filter(|v| matches!(v, BatchHit::Fresh(_))).count();
+        let fresh_count = out
+            .values()
+            .filter(|v| matches!(v, BatchHit::Fresh(_)))
+            .count();
         let miss_count = out.values().filter(|v| matches!(v, BatchHit::Miss)).count();
         assert_eq!(fresh_count, 33);
         assert_eq!(miss_count, 34);
@@ -160,9 +185,13 @@ mod tests {
     #[tokio::test]
     async fn negative_sentinel_decays_to_miss_in_batch() {
         let pool = open_in_memory().await.expect("pool");
-        set_negative_sentinel(&pool, "neg-decay", 0).await.expect("neg");
+        set_negative_sentinel(&pool, "neg-decay", 0)
+            .await
+            .expect("neg");
         let out: HashMap<String, BatchHit<serde_json::Value>> =
-            get_cached_json_batch(&pool, &["neg-decay"]).await.expect("batch");
+            get_cached_json_batch(&pool, &["neg-decay"])
+                .await
+                .expect("batch");
         assert_eq!(out.get("neg-decay").unwrap(), &BatchHit::Miss);
     }
 }

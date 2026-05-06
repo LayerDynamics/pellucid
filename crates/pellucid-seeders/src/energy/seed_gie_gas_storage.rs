@@ -25,9 +25,8 @@ pub const SOURCE_VERSION: &str = "gie-gas-storage-agsi-v1";
 pub const CASCADE_GROUP: &str = "energy-gas-storage";
 
 /// Default countries — major EU storage holders.
-pub const DEFAULT_COUNTRIES: &[&str] = &[
-    "DE", "FR", "IT", "NL", "AT", "ES", "BE", "PL", "CZ", "HU",
-];
+pub const DEFAULT_COUNTRIES: &[&str] =
+    &["DE", "FR", "IT", "NL", "AT", "ES", "BE", "PL", "CZ", "HU"];
 
 /// Run-time configuration.
 #[derive(Clone, Debug)]
@@ -147,7 +146,9 @@ pub async fn run_cycle(
             .fetch_country(country, &config.from_date, &config.to_date)
             .await
             .map_err(|e| EnergySeederError::Upstream(e.to_string()))?;
-        if let Some(row) = result.into_iter().max_by(|a, b| a.gas_day_start.cmp(&b.gas_day_start))
+        if let Some(row) = result
+            .into_iter()
+            .max_by(|a, b| a.gas_day_start.cmp(&b.gas_day_start))
         {
             rows.push(GasStoragePublishedRow {
                 gas_day_start: row.gas_day_start,
@@ -166,7 +167,11 @@ pub async fn run_cycle(
     if rows.is_empty() {
         return Err(EnergySeederError::EmptyUpstream);
     }
-    rows.sort_by(|a, b| b.full_pct.partial_cmp(&a.full_pct).unwrap_or(std::cmp::Ordering::Equal));
+    rows.sort_by(|a, b| {
+        b.full_pct
+            .partial_cmp(&a.full_pct)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     let assembled_at_ms = pellucid_core::now_ms();
     let snapshot = GieGasStorageSnapshot {
@@ -185,15 +190,18 @@ pub async fn run_cycle(
         },
         data: serde_json::to_value(&snapshot).unwrap_or(serde_json::Value::Null),
     };
-    let outcome =
-        atomic_publish(pool, "energy", CACHE_KEY, &envelope, TTL).await?;
+    let outcome = atomic_publish(pool, "energy", CACHE_KEY, &envelope, TTL).await?;
     Ok(outcome)
 }
 
 fn today_utc_ymd() -> (u16, u8, u8) {
     let secs = pellucid_core::now_ms() / 1000;
     let days = secs / 86_400 + 719_468;
-    let era = if days >= 0 { days / 146_097 } else { (days - 146_096) / 146_097 };
+    let era = if days >= 0 {
+        days / 146_097
+    } else {
+        (days - 146_096) / 146_097
+    };
     let doe = (days - era * 146_097) as u64;
     let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
     let y = yoe as i64 + era * 400;
@@ -223,8 +231,7 @@ mod tests {
             country: &str,
             _from_date: &str,
             _to_date: &str,
-        ) -> Result<Vec<FetchedStorageRow>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Vec<FetchedStorageRow>, Box<dyn std::error::Error + Send + Sync>> {
             Ok(self.responses.get(country).cloned().unwrap_or_default())
         }
     }
@@ -239,8 +246,7 @@ mod tests {
             _country: &str,
             _from_date: &str,
             _to_date: &str,
-        ) -> Result<Vec<FetchedStorageRow>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Vec<FetchedStorageRow>, Box<dyn std::error::Error + Send + Sync>> {
             Err("upstream down".into())
         }
     }
@@ -297,12 +303,11 @@ mod tests {
         .await
         .unwrap();
         assert!(outcome.bytes_written > 0);
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 3);
@@ -326,12 +331,11 @@ mod tests {
         let _ = run_cycle(&pool, &fetcher, &config_for(&["DE"], "2026-05-04"))
             .await
             .unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 1);
@@ -352,12 +356,11 @@ mod tests {
         let _ = run_cycle(&pool, &fetcher, &config_for(&["DE", "FR"], "2026-05-04"))
             .await
             .unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 1);

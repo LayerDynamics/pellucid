@@ -101,7 +101,10 @@ impl AcledClient {
     ///
     /// # Errors
     /// [`StreamsError::Io`] if `reqwest` fails to build.
-    pub fn production(email: impl Into<String>, key: impl Into<String>) -> Result<Self, StreamsError> {
+    pub fn production(
+        email: impl Into<String>,
+        key: impl Into<String>,
+    ) -> Result<Self, StreamsError> {
         let cfg = AcledConfig::with_credentials(email, key);
         let http = reqwest::Client::builder()
             .timeout(cfg.timeout)
@@ -165,8 +168,8 @@ impl AcledClient {
         limit: u32,
     ) -> Result<Url, StreamsError> {
         let raw = format!("{}/acled/read", self.config.base_url);
-        let mut url = Url::parse(&raw)
-            .map_err(|e| StreamsError::Parse(format!("acled url: {e}")))?;
+        let mut url =
+            Url::parse(&raw).map_err(|e| StreamsError::Parse(format!("acled url: {e}")))?;
         let iso_csv = iso_codes
             .iter()
             .map(u16::to_string)
@@ -470,8 +473,7 @@ mod tests {
     fn parse_value_f64_handles_numeric_and_string() {
         assert!((parse_value_f64(&Value::String("36.523".into())) - 36.523).abs() < 1e-9);
         assert!(
-            (parse_value_f64(&Value::Number(serde_json::Number::from_f64(33.31).unwrap()))
-                - 33.31)
+            (parse_value_f64(&Value::Number(serde_json::Number::from_f64(33.31).unwrap())) - 33.31)
                 .abs()
                 < 1e-9
         );
@@ -481,7 +483,10 @@ mod tests {
     #[test]
     fn parse_value_i64_handles_numeric_and_string() {
         assert_eq!(parse_value_i64(&Value::String("5".into())), 5);
-        assert_eq!(parse_value_i64(&Value::Number(serde_json::Number::from(0))), 0);
+        assert_eq!(
+            parse_value_i64(&Value::Number(serde_json::Number::from(0))),
+            0
+        );
         assert_eq!(parse_value_i64(&Value::Null), 0);
     }
 

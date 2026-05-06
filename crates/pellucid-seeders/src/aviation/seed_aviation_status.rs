@@ -57,14 +57,38 @@ pub struct WatchEntry {
 
 /// Default watchlist — eight large-volume routes.
 pub const DEFAULT_WATCHLIST: &[WatchEntry] = &[
-    WatchEntry { flight: "AA100", dep: "JFK" },
-    WatchEntry { flight: "UA1",   dep: "EWR" },
-    WatchEntry { flight: "DL1",   dep: "JFK" },
-    WatchEntry { flight: "BA178", dep: "JFK" },
-    WatchEntry { flight: "AF23",  dep: "JFK" },
-    WatchEntry { flight: "LH401", dep: "JFK" },
-    WatchEntry { flight: "EK202", dep: "JFK" },
-    WatchEntry { flight: "QF12",  dep: "LAX" },
+    WatchEntry {
+        flight: "AA100",
+        dep: "JFK",
+    },
+    WatchEntry {
+        flight: "UA1",
+        dep: "EWR",
+    },
+    WatchEntry {
+        flight: "DL1",
+        dep: "JFK",
+    },
+    WatchEntry {
+        flight: "BA178",
+        dep: "JFK",
+    },
+    WatchEntry {
+        flight: "AF23",
+        dep: "JFK",
+    },
+    WatchEntry {
+        flight: "LH401",
+        dep: "JFK",
+    },
+    WatchEntry {
+        flight: "EK202",
+        dep: "JFK",
+    },
+    WatchEntry {
+        flight: "QF12",
+        dep: "LAX",
+    },
 ];
 
 /// Run-time configuration.
@@ -232,7 +256,11 @@ fn epoch_days_to_ymd(days: i64) -> (i32, u32, u32) {
     // Algorithm from Howard Hinnant's `civil_from_days`
     // (https://howardhinnant.github.io/date_algorithms.html).
     let days = days + 719_468;
-    let era = if days >= 0 { days / 146_097 } else { (days - 146_096) / 146_097 };
+    let era = if days >= 0 {
+        days / 146_097
+    } else {
+        (days - 146_096) / 146_097
+    };
     let doe = (days - era * 146_097) as u64;
     let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
     let y = yoe as i64 + era * 400;
@@ -297,10 +325,7 @@ mod tests {
 
     fn config_for_two_flights() -> AviationStatusConfig {
         AviationStatusConfig {
-            watchlist: vec![
-                ("AA100".into(), "JFK".into()),
-                ("UA1".into(), "EWR".into()),
-            ],
+            watchlist: vec![("AA100".into(), "JFK".into()), ("UA1".into(), "EWR".into())],
             date: "2026-05-04".into(),
         }
     }
@@ -344,12 +369,11 @@ mod tests {
             .unwrap();
         assert!(outcome.bytes_written > 0);
 
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 2);
@@ -368,12 +392,11 @@ mod tests {
             .await
             .unwrap();
         assert!(outcome.bytes_written > 0);
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 1);

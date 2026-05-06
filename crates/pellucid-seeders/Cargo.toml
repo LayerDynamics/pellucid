@@ -29,4 +29,8 @@ pellucid-cache = { path = "../pellucid-cache" }
 tokio = { workspace = true }
 wiremock = { workspace = true }
 reqwest = { workspace = true }
+# regression_h3 uses pellucid_streams::OpenSkyConfig. The streams crate
+# regular-deps `pellucid-seeders` (T4.5.0 added that for atomic_publish);
+# Cargo allows the inverse dev-dep because dev-deps are not part of the
+# lib build graph.
 pellucid-streams = { path = "../pellucid-streams" }

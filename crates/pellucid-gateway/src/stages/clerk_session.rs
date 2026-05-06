@@ -69,7 +69,11 @@ pub async fn clerk_session(
 }
 
 fn extract_bearer(request: &Request) -> Option<String> {
-    let value = request.headers().get(header::AUTHORIZATION)?.to_str().ok()?;
+    let value = request
+        .headers()
+        .get(header::AUTHORIZATION)?
+        .to_str()
+        .ok()?;
     value.strip_prefix("Bearer ").map(str::to_string)
 }
 
@@ -113,13 +117,15 @@ mod tests {
         Router::new()
             .route("/x", get(echo_user))
             .layer(from_fn_with_state(verifier, clerk_session))
-            .layer(axum::middleware::from_fn(move |mut req: Request, next: Next| {
-                let r = required;
-                async move {
-                    req.extensions_mut().insert(RequiredTier(r));
-                    next.run(req).await
-                }
-            }))
+            .layer(axum::middleware::from_fn(
+                move |mut req: Request, next: Next| {
+                    let r = required;
+                    async move {
+                        req.extensions_mut().insert(RequiredTier(r));
+                        next.run(req).await
+                    }
+                },
+            ))
     }
 
     #[tokio::test]
@@ -193,7 +199,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         assert_eq!(&body[..], b"user-1");
     }
 

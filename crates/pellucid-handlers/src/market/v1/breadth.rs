@@ -341,10 +341,8 @@ mod tests {
     async fn migrated_router() -> (axum::Router, pellucid_db::Pool) {
         let state = AppState::for_tests_async().await.unwrap();
         let pool = state.pool.clone();
-        let app = axum::Router::new().route(
-            BREADTH_PATH,
-            axum::routing::get(handler).with_state(state),
-        );
+        let app =
+            axum::Router::new().route(BREADTH_PATH, axum::routing::get(handler).with_state(state));
         (app, pool)
     }
 
@@ -391,11 +389,7 @@ mod tests {
 
     #[test]
     fn compute_breadth_top_advancers_sorted_descending() {
-        let rows = vec![
-            row("LOW", 0.1),
-            row("MID", 1.0),
-            row("HIGH", 5.0),
-        ];
+        let rows = vec![row("LOW", 0.1), row("MID", 1.0), row("HIGH", 5.0)];
         let resp = compute_breadth(rows, false, 0, /*top_n=*/ 2);
         assert_eq!(resp.top_advancers.len(), 2);
         assert_eq!(resp.top_advancers[0].symbol, "HIGH");
@@ -404,11 +398,7 @@ mod tests {
 
     #[test]
     fn compute_breadth_top_decliners_sorted_ascending() {
-        let rows = vec![
-            row("LOSE", -5.0),
-            row("MID", -1.0),
-            row("OK", 0.5),
-        ];
+        let rows = vec![row("LOSE", -5.0), row("MID", -1.0), row("OK", 0.5)];
         let resp = compute_breadth(rows, false, 0, /*top_n=*/ 5);
         assert_eq!(resp.top_decliners.len(), 2);
         assert_eq!(resp.top_decliners[0].symbol, "LOSE");
@@ -426,16 +416,13 @@ mod tests {
 
     #[test]
     fn handler_error_status_codes() {
+        assert_eq!(HandlerError::Cache("x".into()).status(), Code::BAD_GATEWAY,);
+        assert_eq!(HandlerError::Shape("x".into()).status(), Code::BAD_GATEWAY,);
         assert_eq!(
-            HandlerError::Cache("x".into()).status(),
-            Code::BAD_GATEWAY,
-        );
-        assert_eq!(
-            HandlerError::Shape("x".into()).status(),
-            Code::BAD_GATEWAY,
-        );
-        assert_eq!(
-            HandlerError::Outage { retry_after_secs: 0 }.status(),
+            HandlerError::Outage {
+                retry_after_secs: 0
+            }
+            .status(),
             Code::SERVICE_UNAVAILABLE,
         );
     }
@@ -464,7 +451,9 @@ mod tests {
             ("FLAT", 0.0),
             ("LOSE", -2.5),
         ]));
-        set_cached_json(&pool, CACHE_KEY, &env, 60_000).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &env, 60_000)
+            .await
+            .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()
@@ -498,7 +487,9 @@ mod tests {
             ("C", 3.0),
             ("D", 4.0),
         ]));
-        set_cached_json(&pool, CACHE_KEY, &env, 60_000).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &env, 60_000)
+            .await
+            .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()

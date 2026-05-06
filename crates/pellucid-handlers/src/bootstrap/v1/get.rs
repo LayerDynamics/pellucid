@@ -131,8 +131,7 @@ impl axum::response::IntoResponse for HandlerError {
             requested,
         } = &self
         {
-            body["error"]["retry_after_secs"] =
-                serde_json::Value::from(*retry_after_secs);
+            body["error"]["retry_after_secs"] = serde_json::Value::from(*retry_after_secs);
             body["error"]["requested"] = serde_json::Value::from(*requested);
         }
         let status = self.status();
@@ -171,8 +170,8 @@ pub fn resolve_requested_keys(q: &BootstrapQuery) -> Result<Vec<String>, Handler
         return Ok(split);
     }
     let tier_str = q.tier.as_deref().unwrap_or("both");
-    let tier = Tier::parse(tier_str)
-        .ok_or_else(|| HandlerError::InvalidTier(tier_str.to_string()))?;
+    let tier =
+        Tier::parse(tier_str).ok_or_else(|| HandlerError::InvalidTier(tier_str.to_string()))?;
     Ok(tier.keys().into_iter().map(String::from).collect())
 }
 
@@ -280,15 +279,13 @@ mod tests {
     #[test]
     fn resolve_keys_override_takes_precedence() {
         // Even with tier=fast, the explicit keys list wins.
-        let resolved =
-            resolve_requested_keys(&q(Some("fast"), Some("a,b,c"))).unwrap();
+        let resolved = resolve_requested_keys(&q(Some("fast"), Some("a,b,c"))).unwrap();
         assert_eq!(resolved, vec!["a", "b", "c"]);
     }
 
     #[test]
     fn resolve_keys_trims_whitespace_and_drops_empties() {
-        let resolved =
-            resolve_requested_keys(&q(None, Some("  a , b ,, c , "))).unwrap();
+        let resolved = resolve_requested_keys(&q(None, Some("  a , b ,, c , "))).unwrap();
         assert_eq!(resolved, vec!["a", "b", "c"]);
     }
 
@@ -312,10 +309,7 @@ mod tests {
             HandlerError::InvalidTier("x".into()).status(),
             StatusCode::BAD_REQUEST
         );
-        assert_eq!(
-            HandlerError::EmptyKeys.status(),
-            StatusCode::BAD_REQUEST
-        );
+        assert_eq!(HandlerError::EmptyKeys.status(), StatusCode::BAD_REQUEST);
         assert_eq!(
             HandlerError::Cache("x".into()).status(),
             StatusCode::BAD_GATEWAY

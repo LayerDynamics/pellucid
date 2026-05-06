@@ -39,9 +39,8 @@ pub const CASCADE_GROUP: &str = "aviation-notam";
 
 /// Default ICAO designator basket.
 pub const DEFAULT_DESIGNATORS: &[&str] = &[
-    "KJFK", "KEWR", "KLGA", "KBOS", "KDCA", "KIAD",
-    "KLAX", "KSFO", "KSEA", "KDEN",
-    "EGLL", "EHAM", "LFPG",
+    "KJFK", "KEWR", "KLGA", "KBOS", "KDCA", "KIAD", "KLAX", "KSFO", "KSEA", "KDEN", "EGLL", "EHAM",
+    "LFPG",
 ];
 
 /// Run-time configuration.
@@ -54,7 +53,10 @@ pub struct NotamConfig {
 impl Default for NotamConfig {
     fn default() -> Self {
         Self {
-            designators: DEFAULT_DESIGNATORS.iter().map(|s| (*s).to_string()).collect(),
+            designators: DEFAULT_DESIGNATORS
+                .iter()
+                .map(|s| (*s).to_string())
+                .collect(),
         }
     }
 }
@@ -125,8 +127,7 @@ pub async fn run_cycle(
     fetcher: &dyn NotamFetcher,
     config: &NotamConfig,
 ) -> Result<PublishOutcome, AviationSeederError> {
-    let designator_refs: Vec<&str> =
-        config.designators.iter().map(String::as_str).collect();
+    let designator_refs: Vec<&str> = config.designators.iter().map(String::as_str).collect();
     let fetched = fetcher
         .fetch_notams(&designator_refs)
         .await
@@ -245,12 +246,11 @@ mod tests {
             .unwrap();
         assert!(outcome.bytes_written > 0);
 
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 3);

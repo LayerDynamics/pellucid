@@ -97,10 +97,7 @@ impl TokenSet {
         if inner.current == token {
             return true;
         }
-        if let (Some(prev), Some(retired)) = (
-            inner.previous.as_ref(),
-            inner.previous_retired_at,
-        ) {
+        if let (Some(prev), Some(retired)) = (inner.previous.as_ref(), inner.previous_retired_at) {
             if prev == token && retired.elapsed() < OVERLAP {
                 return true;
             }

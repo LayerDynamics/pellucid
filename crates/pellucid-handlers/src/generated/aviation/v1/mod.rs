@@ -4,6 +4,4 @@
 
 pub mod get_flight_status;
 
-pub use get_flight_status::{
-    FlightStatus, GetFlightStatusRequest, CACHE_KEY_TEMPLATE, CACHE_TIER,
-};
+pub use get_flight_status::{FlightStatus, GetFlightStatusRequest, CACHE_KEY_TEMPLATE, CACHE_TIER};

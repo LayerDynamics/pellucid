@@ -89,8 +89,8 @@ where
         }
     };
     let inner = unwrap_envelope_data(value);
-    let parsed: T = serde_json::from_value(inner)
-        .map_err(|e| HandlerError::Shape(e.to_string()))?;
+    let parsed: T =
+        serde_json::from_value(inner).map_err(|e| HandlerError::Shape(e.to_string()))?;
     Ok((parsed, stale))
 }
 
@@ -107,8 +107,8 @@ where
         CacheHit::NegativeSentinel | CacheHit::Miss => return Ok((None, false)),
     };
     let inner = unwrap_envelope_data(value);
-    let parsed: T = serde_json::from_value(inner)
-        .map_err(|e| HandlerError::Shape(e.to_string()))?;
+    let parsed: T =
+        serde_json::from_value(inner).map_err(|e| HandlerError::Shape(e.to_string()))?;
     Ok((Some(parsed), stale))
 }
 

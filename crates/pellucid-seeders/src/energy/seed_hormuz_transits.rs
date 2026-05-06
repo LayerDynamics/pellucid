@@ -85,7 +85,11 @@ pub async fn run_cycle(
         .into_iter()
         .map(|r| HormuzRow {
             product: r.product,
-            share_pct: if total > 0.0 { (r.mb_per_day / total) * 100.0 } else { 0.0 },
+            share_pct: if total > 0.0 {
+                (r.mb_per_day / total) * 100.0
+            } else {
+                0.0
+            },
             mb_per_day: r.mb_per_day,
         })
         .collect();
@@ -155,22 +159,21 @@ mod tests {
     async fn run_cycle_writes_sorted_with_shares() {
         let pool = open_in_memory().await.unwrap();
         let fetcher = StaticFetcher {
-            rows: vec![
-                row("crude", 14.0),
-                row("lng", 4.0),
-                row("refined", 2.0),
-            ],
+            rows: vec![row("crude", 14.0), row("lng", 4.0), row("refined", 2.0)],
             period: "2026-04".into(),
         };
         let _ = run_cycle(&pool, &fetcher).await.unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
-        let total = parsed.pointer("/data/total_mb_per_day").unwrap().as_f64().unwrap();
+        let total = parsed
+            .pointer("/data/total_mb_per_day")
+            .unwrap()
+            .as_f64()
+            .unwrap();
         assert!((total - 20.0).abs() < 0.001);
         let products: Vec<&str> = parsed
             .pointer("/data/rows")

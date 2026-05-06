@@ -374,8 +374,9 @@ pub async fn handler(
 ) -> Result<Json<CotResponse>, HandlerError> {
     let sort = match q.sort.as_deref() {
         None => SortMode::ManagedMoneyNetDesc,
-        Some(raw) => SortMode::parse(raw)
-            .ok_or_else(|| HandlerError::InvalidSort(raw.to_string()))?,
+        Some(raw) => {
+            SortMode::parse(raw).ok_or_else(|| HandlerError::InvalidSort(raw.to_string()))?
+        }
     };
 
     let raw: CacheHit<Value> = get_cached_json::<Value>(&state.pool, CACHE_KEY)
@@ -393,8 +394,8 @@ pub async fn handler(
     };
 
     let inner = unwrap_envelope_data(value);
-    let payload: SnapshotPayload = serde_json::from_value(inner)
-        .map_err(|e| HandlerError::Shape(e.to_string()))?;
+    let payload: SnapshotPayload =
+        serde_json::from_value(inner).map_err(|e| HandlerError::Shape(e.to_string()))?;
 
     let projected: Vec<CotRow> = payload
         .rows
@@ -475,10 +476,8 @@ mod tests {
     async fn migrated_router() -> (axum::Router, pellucid_db::Pool) {
         let state = AppState::for_tests_async().await.unwrap();
         let pool = state.pool.clone();
-        let app = axum::Router::new().route(
-            COT_PATH,
-            axum::routing::get(handler).with_state(state),
-        );
+        let app =
+            axum::Router::new().route(COT_PATH, axum::routing::get(handler).with_state(state));
         (app, pool)
     }
 
@@ -568,12 +567,7 @@ mod tests {
             row("b", "B", 100, 100),
             row("c", "C", -25, 100),
         ];
-        let (out, total) = apply_filters_and_sort(
-            rows,
-            SortMode::ManagedMoneyNetDesc,
-            None,
-            10,
-        );
+        let (out, total) = apply_filters_and_sort(rows, SortMode::ManagedMoneyNetDesc, None, 10);
         let codes: Vec<&str> = out.iter().map(|r| r.contract_code.as_str()).collect();
         assert_eq!(codes, vec!["b", "a", "c"]);
         assert_eq!(total, 3);
@@ -586,12 +580,7 @@ mod tests {
             row("b", "B", 100, 100),
             row("c", "C", -25, 100),
         ];
-        let (out, _) = apply_filters_and_sort(
-            rows,
-            SortMode::ManagedMoneyNetAsc,
-            None,
-            10,
-        );
+        let (out, _) = apply_filters_and_sort(rows, SortMode::ManagedMoneyNetAsc, None, 10);
         let codes: Vec<&str> = out.iter().map(|r| r.contract_code.as_str()).collect();
         assert_eq!(codes, vec!["c", "a", "b"]);
     }
@@ -603,12 +592,7 @@ mod tests {
             row("b", "B", 0, 500),
             row("c", "C", 0, 250),
         ];
-        let (out, _) = apply_filters_and_sort(
-            rows,
-            SortMode::OpenInterestDesc,
-            None,
-            10,
-        );
+        let (out, _) = apply_filters_and_sort(rows, SortMode::OpenInterestDesc, None, 10);
         let codes: Vec<&str> = out.iter().map(|r| r.contract_code.as_str()).collect();
         assert_eq!(codes, vec!["b", "c", "a"]);
     }
@@ -620,12 +604,7 @@ mod tests {
             row("b", "AAA", 0, 0),
             row("c", "CCC", 0, 0),
         ];
-        let (out, _) = apply_filters_and_sort(
-            rows,
-            SortMode::NameAsc,
-            None,
-            10,
-        );
+        let (out, _) = apply_filters_and_sort(rows, SortMode::NameAsc, None, 10);
         let names: Vec<&str> = out.iter().map(|r| r.contract_name.as_str()).collect();
         assert_eq!(names, vec!["AAA", "BBB", "CCC"]);
     }
@@ -637,12 +616,7 @@ mod tests {
             row("bbb", "B", 0, 0),
             row("ccc", "C", 0, 0),
         ];
-        let (out, total) = apply_filters_and_sort(
-            rows,
-            SortMode::NameAsc,
-            Some("aaa,ccc"),
-            10,
-        );
+        let (out, total) = apply_filters_and_sort(rows, SortMode::NameAsc, Some("aaa,ccc"), 10);
         let codes: Vec<&str> = out.iter().map(|r| r.contract_code.as_str()).collect();
         assert_eq!(codes, vec!["aaa", "ccc"]);
         assert_eq!(total, 2);
@@ -653,12 +627,7 @@ mod tests {
         let rows: Vec<CotRow> = (0..(MAX_LIMIT + 30))
             .map(|i| row(&format!("c{i}"), &format!("C{i}"), i as i64, 0))
             .collect();
-        let (out, total) = apply_filters_and_sort(
-            rows,
-            SortMode::NameAsc,
-            None,
-            MAX_LIMIT * 5,
-        );
+        let (out, total) = apply_filters_and_sort(rows, SortMode::NameAsc, None, MAX_LIMIT * 5);
         assert_eq!(out.len(), MAX_LIMIT);
         assert_eq!(total, MAX_LIMIT + 30);
     }
@@ -666,12 +635,7 @@ mod tests {
     #[test]
     fn apply_filters_and_sort_zero_limit_floors_to_one() {
         let rows = vec![row("a", "A", 0, 0), row("b", "B", 0, 0)];
-        let (out, _) = apply_filters_and_sort(
-            rows,
-            SortMode::NameAsc,
-            None,
-            0,
-        );
+        let (out, _) = apply_filters_and_sort(rows, SortMode::NameAsc, None, 0);
         assert_eq!(out.len(), 1);
     }
 
@@ -716,9 +680,9 @@ mod tests {
     #[tokio::test]
     async fn handler_returns_envelope_with_camelcase_field_names() {
         let (app, pool) = migrated_router().await;
-        let env = Envelope::new(snapshot_value(&[
-            ("088691", "GOLD", 480_000, 120_000, 60_000),
-        ]));
+        let env = Envelope::new(snapshot_value(&[(
+            "088691", "GOLD", 480_000, 120_000, 60_000,
+        )]));
         set_cached_json(&pool, CACHE_KEY, &env, 60_000)
             .await
             .unwrap();
@@ -739,10 +703,7 @@ mod tests {
         assert!(parsed.pointer("/rows/0/contractCode").is_some());
         assert!(parsed.pointer("/rows/0/managedMoneyNet").is_some());
         assert!(parsed.pointer("/rows/0/managedMoneyNetPctOi").is_some());
-        assert_eq!(
-            parsed.pointer("/total").and_then(Value::as_u64),
-            Some(1),
-        );
+        assert_eq!(parsed.pointer("/total").and_then(Value::as_u64), Some(1),);
     }
 
     #[tokio::test]
@@ -777,9 +738,9 @@ mod tests {
     #[tokio::test]
     async fn handler_marks_stale_response() {
         let (app, pool) = migrated_router().await;
-        let env = Envelope::new(snapshot_value(&[
-            ("088691", "GOLD", 480_000, 120_000, 60_000),
-        ]));
+        let env = Envelope::new(snapshot_value(&[(
+            "088691", "GOLD", 480_000, 120_000, 60_000,
+        )]));
         set_cached_json(&pool, CACHE_KEY, &env, 0).await.unwrap();
         tokio::time::sleep(std::time::Duration::from_millis(20)).await;
         let resp = app

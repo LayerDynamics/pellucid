@@ -226,9 +226,10 @@ mod tests {
             &self,
             _bbox: (f64, f64, f64, f64),
         ) -> Result<Option<serde_json::Value>, Box<dyn std::error::Error + Send + Sync>> {
-            self.calls
-                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            Ok(Some(serde_json::json!({ "states": [["abc", "AAL100  ", "US"]] })))
+            self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            Ok(Some(
+                serde_json::json!({ "states": [["abc", "AAL100  ", "US"]] }),
+            ))
         }
     }
 
@@ -285,14 +286,17 @@ mod tests {
         assert!(outcome.bytes_written > 0);
 
         // Read the canonical row back + assert shape.
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let envelope: serde_json::Value = serde_json::from_str(&row.0).unwrap();
-        let theaters = envelope.pointer("/data/theaters").unwrap().as_array().unwrap();
+        let theaters = envelope
+            .pointer("/data/theaters")
+            .unwrap()
+            .as_array()
+            .unwrap();
         assert_eq!(theaters.len(), 4);
         for t in theaters {
             assert_eq!(t.get("aircraft_count").unwrap().as_u64(), Some(2));
@@ -307,14 +311,17 @@ mod tests {
         let outcome = run_cycle(&pool, &fetcher).await.unwrap();
         assert!(outcome.bytes_written > 0);
 
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let envelope: serde_json::Value = serde_json::from_str(&row.0).unwrap();
-        let theaters = envelope.pointer("/data/theaters").unwrap().as_array().unwrap();
+        let theaters = envelope
+            .pointer("/data/theaters")
+            .unwrap()
+            .as_array()
+            .unwrap();
         for t in theaters {
             assert_eq!(t.get("fresh").unwrap().as_bool(), Some(false));
             assert_eq!(t.get("aircraft_count").unwrap().as_u64(), Some(0));
@@ -344,12 +351,13 @@ mod tests {
         };
         let _ = run_cycle(&pool, &fetcher).await.unwrap();
 
-        let row: (String, String) =
-            sqlx::query_as("SELECT source_version, cascade_group FROM seed_meta WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String, String) = sqlx::query_as(
+            "SELECT source_version, cascade_group FROM seed_meta WHERE cache_key = ?",
+        )
+        .bind(CACHE_KEY)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
         assert_eq!(row.0, SOURCE_VERSION);
         assert_eq!(row.1, CASCADE_GROUP);
     }

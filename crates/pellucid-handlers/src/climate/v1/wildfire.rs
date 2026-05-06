@@ -72,10 +72,8 @@ mod tests {
     async fn migrated() -> (axum::Router, pellucid_db::Pool) {
         let state = AppState::for_tests_async().await.unwrap();
         let pool = state.pool.clone();
-        let app = axum::Router::new().route(
-            WILDFIRE_PATH,
-            axum::routing::get(handler).with_state(state),
-        );
+        let app =
+            axum::Router::new().route(WILDFIRE_PATH, axum::routing::get(handler).with_state(state));
         (app, pool)
     }
 
@@ -83,7 +81,12 @@ mod tests {
     async fn returns_503_when_cache_empty() {
         let (app, _) = migrated().await;
         let resp = app
-            .oneshot(Request::builder().uri(WILDFIRE_PATH).body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri(WILDFIRE_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
@@ -96,12 +99,29 @@ mod tests {
             "rows": [{ "label": "Park Fire", "region": "CA", "lat": 39.6, "lon": -121.5, "acres_burned": 426400.0, "containment_pct": 100.0 }],
             "assembled_at_ms": 1_700_000_000_000_i64,
         });
-        set_cached_json(&pool, CACHE_KEY, &Envelope::new(snap), 60_000).await.unwrap();
-        let resp = app.oneshot(Request::builder().uri(WILDFIRE_PATH).body(Body::empty()).unwrap()).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &Envelope::new(snap), 60_000)
+            .await
+            .unwrap();
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .uri(WILDFIRE_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         let parsed: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(parsed.pointer("/rows/0/acresBurned").and_then(Value::as_f64), Some(426400.0));
+        assert_eq!(
+            parsed
+                .pointer("/rows/0/acresBurned")
+                .and_then(Value::as_f64),
+            Some(426400.0)
+        );
         assert_eq!(parsed.pointer("/total").and_then(Value::as_u64), Some(1));
     }
 }

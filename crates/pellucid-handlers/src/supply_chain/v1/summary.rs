@@ -9,9 +9,7 @@ use serde_json::Value;
 
 use pellucid_cache::get_cached_json;
 
-use crate::economic::v1::shared::{
-    decode_optional, HandlerError, DEFAULT_RETRY_AFTER_SECS,
-};
+use crate::economic::v1::shared::{decode_optional, HandlerError, DEFAULT_RETRY_AFTER_SECS};
 use crate::state::AppState;
 
 pub const STRESS_KEY: &str = "supply-chain:stress-index:current:v1";
@@ -118,13 +116,22 @@ pub async fn handler(
         let degraded = c
             .rows
             .iter()
-            .filter(|r| !matches!(r.status.to_ascii_lowercase().as_str(), "open" | "normal" | "ok"))
+            .filter(|r| {
+                !matches!(
+                    r.status.to_ascii_lowercase().as_str(),
+                    "open" | "normal" | "ok"
+                )
+            })
             .count();
         tiles.push(SupplyChainTile {
             code: "CHOKEPOINTS".into(),
             label: "Degraded chokepoints".into(),
             value: degraded.to_string(),
-            tone: if degraded == 0 { "positive".into() } else { "negative".into() },
+            tone: if degraded == 0 {
+                "positive".into()
+            } else {
+                "negative".into()
+            },
         });
     }
 
@@ -156,8 +163,8 @@ mod tests {
     async fn migrated() -> (axum::Router, pellucid_db::Pool) {
         let state = AppState::for_tests_async().await.unwrap();
         let pool = state.pool.clone();
-        let app = axum::Router::new()
-            .route(SUMMARY_PATH, axum::routing::get(handler).with_state(state));
+        let app =
+            axum::Router::new().route(SUMMARY_PATH, axum::routing::get(handler).with_state(state));
         (app, pool)
     }
 
@@ -180,7 +187,9 @@ mod tests {
     async fn picks_stress_when_seeded() {
         let (app, pool) = migrated().await;
         let snap = serde_json::json!({ "index_value": 0.72 });
-        set_cached_json(&pool, STRESS_KEY, &Envelope::new(snap), 60_000).await.unwrap();
+        set_cached_json(&pool, STRESS_KEY, &Envelope::new(snap), 60_000)
+            .await
+            .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()
@@ -191,11 +200,22 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         let parsed: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(parsed.pointer("/availableTiles").and_then(Value::as_u64), Some(1));
-        assert_eq!(parsed.pointer("/tiles/0/code").and_then(Value::as_str), Some("STRESS"));
-        assert_eq!(parsed.pointer("/tiles/0/tone").and_then(Value::as_str), Some("negative"));
+        assert_eq!(
+            parsed.pointer("/availableTiles").and_then(Value::as_u64),
+            Some(1)
+        );
+        assert_eq!(
+            parsed.pointer("/tiles/0/code").and_then(Value::as_str),
+            Some("STRESS")
+        );
+        assert_eq!(
+            parsed.pointer("/tiles/0/tone").and_then(Value::as_str),
+            Some("negative")
+        );
     }
 
     #[test]

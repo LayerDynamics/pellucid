@@ -29,8 +29,7 @@ use crate::registry::{Cadence, RegistryEntry};
 
 /// Pinned future a seeder cycle returns. `Send + 'static` so the
 /// scheduler can spawn it on tokio.
-pub type CycleFuture =
-    Pin<Box<dyn Future<Output = Result<(), SeederCycleError>> + Send + 'static>>;
+pub type CycleFuture = Pin<Box<dyn Future<Output = Result<(), SeederCycleError>> + Send + 'static>>;
 
 /// Closure type the registry hands the scheduler — given the
 /// seeder's name, it returns the cycle future.
@@ -114,11 +113,7 @@ impl std::fmt::Debug for ScheduledJob {
 /// Panics if the name is not in the static [`crate::registry::REGISTRY`]
 /// — production callers MUST register at compile time.
 #[must_use]
-pub fn job(
-    name: &'static str,
-    cadence: Cadence,
-    cycle: CycleFn,
-) -> ScheduledJob {
+pub fn job(name: &'static str, cadence: Cadence, cycle: CycleFn) -> ScheduledJob {
     ScheduledJob {
         entry: RegistryEntry { name, cadence },
         cycle,
@@ -259,9 +254,21 @@ mod tests {
         let c = Arc::new(AtomicUsize::new(0));
         let stats = SchedulerStats::new();
         let jobs = vec![
-            job("a", Cadence::every(Duration::from_millis(5)), ok_cycle(a.clone())),
-            job("b", Cadence::every(Duration::from_millis(5)), ok_cycle(b.clone())),
-            job("c", Cadence::every(Duration::from_millis(5)), ok_cycle(c.clone())),
+            job(
+                "a",
+                Cadence::every(Duration::from_millis(5)),
+                ok_cycle(a.clone()),
+            ),
+            job(
+                "b",
+                Cadence::every(Duration::from_millis(5)),
+                ok_cycle(b.clone()),
+            ),
+            job(
+                "c",
+                Cadence::every(Duration::from_millis(5)),
+                ok_cycle(c.clone()),
+            ),
         ];
         tokio::time::timeout(
             Duration::from_secs(2),

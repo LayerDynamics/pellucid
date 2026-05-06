@@ -180,12 +180,11 @@ mod tests {
             rows: vec![anom("a", 320.0), anom("b", 410.0), anom("c", 360.0)],
         };
         let _ = run_cycle(&pool, &fetcher).await.unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let ids: Vec<&str> = parsed
             .pointer("/data/rows")

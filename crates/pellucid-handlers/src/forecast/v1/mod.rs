@@ -20,10 +20,28 @@ pub const SUMMARY_PATH: &str = "/api/forecast/v1/summary";
 
 pub fn router(state: AppState) -> Router {
     Router::new()
-        .route(NOW_CAST_PATH, axum::routing::get(now_cast::handler).with_state(state.clone()))
-        .route(PREDICTION_MARKETS_PATH, axum::routing::get(prediction_markets::handler).with_state(state.clone()))
-        .route(SCENARIO_STATE_PATH, axum::routing::get(scenario_state::handler).with_state(state.clone()))
-        .route(SCENARIO_LIBRARY_PATH, axum::routing::get(scenario_library::handler).with_state(state.clone()))
-        .route(EXTENDED_PATH, axum::routing::get(extended::handler).with_state(state.clone()))
-        .route(SUMMARY_PATH, axum::routing::get(summary::handler).with_state(state))
+        .route(
+            NOW_CAST_PATH,
+            axum::routing::get(now_cast::handler).with_state(state.clone()),
+        )
+        .route(
+            PREDICTION_MARKETS_PATH,
+            axum::routing::get(prediction_markets::handler).with_state(state.clone()),
+        )
+        .route(
+            SCENARIO_STATE_PATH,
+            axum::routing::get(scenario_state::handler).with_state(state.clone()),
+        )
+        .route(
+            SCENARIO_LIBRARY_PATH,
+            axum::routing::get(scenario_library::handler).with_state(state.clone()),
+        )
+        .route(
+            EXTENDED_PATH,
+            axum::routing::get(extended::handler).with_state(state.clone()),
+        )
+        .route(
+            SUMMARY_PATH,
+            axum::routing::get(summary::handler).with_state(state),
+        )
 }

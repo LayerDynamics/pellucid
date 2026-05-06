@@ -194,12 +194,11 @@ mod tests {
             ],
         };
         let _ = run_cycle(&pool, &fetcher).await.unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let events: Vec<&str> = parsed
             .pointer("/data/rows")
@@ -209,7 +208,10 @@ mod tests {
             .iter()
             .map(|r| r.get("event").unwrap().as_str().unwrap())
             .collect();
-        assert_eq!(events, vec!["Tornado Warning", "Flash Flood", "Wind Advisory"]);
+        assert_eq!(
+            events,
+            vec!["Tornado Warning", "Flash Flood", "Wind Advisory"]
+        );
     }
 
     #[tokio::test]

@@ -272,7 +272,9 @@ mod tests {
     async fn fetch_catalog_returns_two_rows() {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
-            .and(path("/sites/default/files/feeds/known_exploited_vulnerabilities.json"))
+            .and(path(
+                "/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+            ))
             .respond_with(ResponseTemplate::new(200).set_body_json(body()))
             .mount(&server)
             .await;
@@ -281,7 +283,10 @@ mod tests {
         assert_eq!(cat.catalog_version, "2026.04.25");
         assert_eq!(cat.vulnerabilities.len(), 2);
         assert_eq!(cat.vulnerabilities[0].cve_id, "CVE-2024-12345");
-        assert_eq!(cat.vulnerabilities[0].known_ransomware_campaign_use, "Known");
+        assert_eq!(
+            cat.vulnerabilities[0].known_ransomware_campaign_use,
+            "Known"
+        );
         assert_eq!(
             cat.vulnerabilities[1].known_ransomware_campaign_use,
             "Unknown"
@@ -292,7 +297,9 @@ mod tests {
     async fn fetch_catalog_5xx_yields_status() {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
-            .and(path("/sites/default/files/feeds/known_exploited_vulnerabilities.json"))
+            .and(path(
+                "/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+            ))
             .respond_with(ResponseTemplate::new(503))
             .mount(&server)
             .await;
@@ -305,7 +312,9 @@ mod tests {
     async fn fetch_catalog_unparseable_yields_parse() {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
-            .and(path("/sites/default/files/feeds/known_exploited_vulnerabilities.json"))
+            .and(path(
+                "/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+            ))
             .respond_with(ResponseTemplate::new(200).set_body_string("not json"))
             .mount(&server)
             .await;

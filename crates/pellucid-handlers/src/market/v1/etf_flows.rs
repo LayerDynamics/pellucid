@@ -294,8 +294,9 @@ pub async fn handler(
     Query(q): Query<EtfFlowsQuery>,
 ) -> Result<Json<EtfFlowsResponse>, HandlerError> {
     let sort = match q.sort.as_deref() {
-        Some(raw) => SortMode::parse(raw)
-            .ok_or_else(|| HandlerError::InvalidSort(raw.to_string()))?,
+        Some(raw) => {
+            SortMode::parse(raw).ok_or_else(|| HandlerError::InvalidSort(raw.to_string()))?
+        }
         None => SortMode::ActivityRatioDesc,
     };
     let raw: CacheHit<Value> = get_cached_json::<Value>(&state.pool, CACHE_KEY)
@@ -407,7 +408,11 @@ mod tests {
 
     #[test]
     fn sort_activity_ratio_descending_orders_most_active_first() {
-        let rows = vec![row("A", 100.0, 100.0), row("HOT", 500.0, 100.0), row("COLD", 25.0, 100.0)];
+        let rows = vec![
+            row("A", 100.0, 100.0),
+            row("HOT", 500.0, 100.0),
+            row("COLD", 25.0, 100.0),
+        ];
         let (out, _) =
             apply_filters_and_sort(rows, SortMode::ActivityRatioDesc, &EtfFlowsQuery::default());
         assert_eq!(out[0].symbol, "HOT");
@@ -425,27 +430,42 @@ mod tests {
 
     #[test]
     fn sort_symbol_asc_orders_alphabetically() {
-        let rows = vec![row("ZZZ", 1.0, 1.0), row("AAA", 1.0, 1.0), row("MMM", 1.0, 1.0)];
+        let rows = vec![
+            row("ZZZ", 1.0, 1.0),
+            row("AAA", 1.0, 1.0),
+            row("MMM", 1.0, 1.0),
+        ];
         let (out, _) = apply_filters_and_sort(rows, SortMode::SymbolAsc, &EtfFlowsQuery::default());
-        assert_eq!(out.iter().map(|r| r.symbol.as_str()).collect::<Vec<_>>(), vec!["AAA", "MMM", "ZZZ"]);
+        assert_eq!(
+            out.iter().map(|r| r.symbol.as_str()).collect::<Vec<_>>(),
+            vec!["AAA", "MMM", "ZZZ"]
+        );
     }
 
     #[test]
     fn apply_filters_filters_by_symbols_csv_case_insensitive() {
-        let rows = vec![row("SPY", 1.0, 1.0), row("QQQ", 1.0, 1.0), row("DIA", 1.0, 1.0)];
+        let rows = vec![
+            row("SPY", 1.0, 1.0),
+            row("QQQ", 1.0, 1.0),
+            row("DIA", 1.0, 1.0),
+        ];
         let q = EtfFlowsQuery {
             symbols: Some("spy,DIA".into()),
             ..EtfFlowsQuery::default()
         };
         let (out, total) = apply_filters_and_sort(rows, SortMode::SymbolAsc, &q);
-        assert_eq!(out.iter().map(|r| r.symbol.as_str()).collect::<Vec<_>>(), vec!["DIA", "SPY"]);
+        assert_eq!(
+            out.iter().map(|r| r.symbol.as_str()).collect::<Vec<_>>(),
+            vec!["DIA", "SPY"]
+        );
         assert_eq!(total, 2);
     }
 
     #[test]
     fn apply_filters_clamps_limit_to_max() {
-        let rows: Vec<EtfFlowRow> =
-            (0..(MAX_LIMIT + 5)).map(|i| row(&format!("S{i}"), 1.0, 1.0)).collect();
+        let rows: Vec<EtfFlowRow> = (0..(MAX_LIMIT + 5))
+            .map(|i| row(&format!("S{i}"), 1.0, 1.0))
+            .collect();
         let q = EtfFlowsQuery {
             limit: Some(MAX_LIMIT * 10),
             ..EtfFlowsQuery::default()
@@ -461,12 +481,12 @@ mod tests {
             HandlerError::InvalidSort("x".into()).status(),
             Code::BAD_REQUEST,
         );
+        assert_eq!(HandlerError::Cache("x".into()).status(), Code::BAD_GATEWAY,);
         assert_eq!(
-            HandlerError::Cache("x".into()).status(),
-            Code::BAD_GATEWAY,
-        );
-        assert_eq!(
-            HandlerError::Outage { retry_after_secs: 0 }.status(),
+            HandlerError::Outage {
+                retry_after_secs: 0
+            }
+            .status(),
             Code::SERVICE_UNAVAILABLE,
         );
     }
@@ -490,7 +510,9 @@ mod tests {
     async fn handler_returns_400_for_invalid_sort() {
         let (app, pool) = migrated_router().await;
         let env = Envelope::new(snapshot(vec![("SPY", 1.0, 1.0)]));
-        set_cached_json(&pool, CACHE_KEY, &env, 60_000).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &env, 60_000)
+            .await
+            .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()
@@ -510,7 +532,9 @@ mod tests {
             ("SPY", 1_000.0, 500.0),
             ("QQQ", 2_000.0, 4_000.0),
         ]));
-        set_cached_json(&pool, CACHE_KEY, &env, 60_000).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &env, 60_000)
+            .await
+            .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()
@@ -542,7 +566,9 @@ mod tests {
             ("B", 2.0, 1.0),
             ("C", 3.0, 1.0),
         ]));
-        set_cached_json(&pool, CACHE_KEY, &env, 60_000).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &env, 60_000)
+            .await
+            .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()

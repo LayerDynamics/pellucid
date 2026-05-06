@@ -119,10 +119,7 @@ pub trait LiquidityShiftsFetcher: Send + Sync + std::fmt::Debug {
 
 /// Compute period delta + percent. Pure, exported for tests.
 #[must_use]
-pub fn period_delta_components(
-    latest: f64,
-    prior: Option<f64>,
-) -> (Option<f64>, Option<f64>) {
+pub fn period_delta_components(latest: f64, prior: Option<f64>) -> (Option<f64>, Option<f64>) {
     let Some(p) = prior else {
         return (None, None);
     };
@@ -152,7 +149,11 @@ pub async fn run_cycle(
     let mut series: Vec<LiquiditySeriesRow> = Vec::with_capacity(fetched.len());
     for (i, opt) in fetched.into_iter().enumerate() {
         let Some(o) = opt else { continue };
-        let code = config.series_codes.get(i).cloned().unwrap_or(o.series_code.clone());
+        let code = config
+            .series_codes
+            .get(i)
+            .cloned()
+            .unwrap_or(o.series_code.clone());
         let (delta, pct) = period_delta_components(o.latest_value, o.prior_value);
         if code.eq_ignore_ascii_case("WALCL") {
             walcl = Some(o.latest_value);
@@ -273,13 +274,11 @@ mod tests {
         let _ = run_cycle(&pool, &fetcher, &LiquidityShiftsConfig::default())
             .await
             .unwrap();
-        let row: (String,) = sqlx::query_as(
-            "SELECT payload FROM kv_envelope WHERE cache_key = ?",
-        )
-        .bind(CACHE_KEY)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         // Net liquidity = WALCL - RRPONTSYD = 7200 - 450 = 6750.
         let net = parsed

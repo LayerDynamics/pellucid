@@ -76,7 +76,10 @@ pub struct SemiconductorPpiConfig {
 impl Default for SemiconductorPpiConfig {
     fn default() -> Self {
         Self {
-            series_ids: DEFAULT_SERIES_IDS.iter().map(|s| (*s).to_string()).collect(),
+            series_ids: DEFAULT_SERIES_IDS
+                .iter()
+                .map(|s| (*s).to_string())
+                .collect(),
             lookback_months: DEFAULT_LOOKBACK_MONTHS,
         }
     }
@@ -198,8 +201,7 @@ pub async fn run_cycle(
         },
         data: serde_json::to_value(&snapshot).unwrap_or(serde_json::Value::Null),
     };
-    let outcome =
-        atomic_publish(pool, "technology", CACHE_KEY, &envelope, TTL).await?;
+    let outcome = atomic_publish(pool, "technology", CACHE_KEY, &envelope, TTL).await?;
     Ok(outcome)
 }
 
@@ -212,10 +214,7 @@ fn build_series_row(fetched: FetchedSeries) -> Option<SeriesRow> {
             value: o.value,
         })
         .collect();
-    let latest = readings
-        .iter()
-        .find(|r| r.value.is_some())
-        .cloned();
+    let latest = readings.iter().find(|r| r.value.is_some()).cloned();
     let yoy_percent_change = compute_yoy(&readings);
     Some(SeriesRow {
         series_id: fetched.series_id,
@@ -365,12 +364,11 @@ mod tests {
         let _ = run_cycle(&pool, &fetcher, &SemiconductorPpiConfig::default())
             .await
             .unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 3);
@@ -378,11 +376,7 @@ mod tests {
             .iter()
             .find(|r| r.get("series_id").unwrap().as_str() == Some("PCU3344133441"))
             .unwrap();
-        let latest_value = pcu
-            .pointer("/latest/value")
-            .unwrap()
-            .as_f64()
-            .unwrap();
+        let latest_value = pcu.pointer("/latest/value").unwrap().as_f64().unwrap();
         assert!((latest_value - 117.5).abs() < 1e-9);
         let note = parsed
             .pointer("/data/source_note")

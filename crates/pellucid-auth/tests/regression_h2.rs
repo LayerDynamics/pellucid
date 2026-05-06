@@ -33,9 +33,7 @@ use pellucid_db::open_in_memory;
 use pellucid_gateway::traits::{
     ClerkClaims, ClerkVerifier, ClerkVerifyError, EntitlementChecker, Tier,
 };
-use pellucid_gateway::{
-    build_router, GatewayConfig, OriginAllowList, RouteEntitlementRules,
-};
+use pellucid_gateway::{build_router, GatewayConfig, OriginAllowList, RouteEntitlementRules};
 use serde_json::json;
 use tower::util::ServiceExt;
 use wiremock::matchers::{method, path};
@@ -74,8 +72,7 @@ impl ClerkVerifier for TestClerk {
 }
 
 fn handlers() -> Router {
-    Router::new()
-        .route(TIER2_PATH, get(|| async { "secret-stock-data" }))
+    Router::new().route(TIER2_PATH, get(|| async { "secret-stock-data" }))
 }
 
 /// Build the gateway under test: TIER2_PATH gated to `Tier::Tier2`,
@@ -136,7 +133,10 @@ async fn convex_5xx_with_cold_cache_yields_503_plus_retry_after_30() {
         "Convex 5xx must surface as 503"
     );
     assert_eq!(
-        response.headers().get("retry-after").and_then(|v| v.to_str().ok()),
+        response
+            .headers()
+            .get("retry-after")
+            .and_then(|v| v.to_str().ok()),
         Some("30"),
         "H2 fix mandates `Retry-After: 30`"
     );
@@ -184,7 +184,10 @@ async fn convex_unreachable_yields_503_plus_retry_after() {
         .unwrap();
     assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
     assert_eq!(
-        response.headers().get("retry-after").and_then(|v| v.to_str().ok()),
+        response
+            .headers()
+            .get("retry-after")
+            .and_then(|v| v.to_str().ok()),
         Some("30")
     );
 }
@@ -310,8 +313,7 @@ async fn end_to_end_with_real_clerk_jwks_and_convex_outage() {
     // Sign a real JWT with the fixture key.
     let mut header = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::RS256);
     header.kid = Some(FIXTURE_KID.to_string());
-    let key = jsonwebtoken::EncodingKey::from_rsa_pem(fixture_signing_key().as_bytes())
-        .unwrap();
+    let key = jsonwebtoken::EncodingKey::from_rsa_pem(fixture_signing_key().as_bytes()).unwrap();
     let token = jsonwebtoken::encode(
         &header,
         &json!({
@@ -354,7 +356,10 @@ async fn end_to_end_with_real_clerk_jwks_and_convex_outage() {
 
     assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
     assert_eq!(
-        response.headers().get("retry-after").and_then(|v| v.to_str().ok()),
+        response
+            .headers()
+            .get("retry-after")
+            .and_then(|v| v.to_str().ok()),
         Some("30")
     );
 }

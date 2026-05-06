@@ -27,6 +27,7 @@ pub mod health;
 pub mod metrics;
 pub mod proxy;
 pub mod startup_check;
+pub mod telegram_task;
 
 pub use app::{build_app, BootedRelay, RelayBootError};
 pub use auth::{require_shared_secret, SharedSecret, RELAY_SECRET_HEADER};
@@ -37,9 +38,7 @@ pub use health::{
 };
 pub use metrics::{install_recorder, metrics_router, MetricsError, MetricsState, METRICS_PATH};
 pub use proxy::{opensky_router, ProxyState, OPENSKY_PROXY_PREFIX};
-pub use startup_check::{
-    ensure_safe_to_boot, BootDecision, StartupEnv, StartupError,
-};
+pub use startup_check::{ensure_safe_to_boot, BootDecision, StartupEnv, StartupError};
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.
 #[must_use]

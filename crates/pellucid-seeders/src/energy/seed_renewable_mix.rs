@@ -89,7 +89,11 @@ pub async fn run_cycle(
     let mut rows: Vec<RenewableSourceRow> = fetched
         .into_iter()
         .map(|r| RenewableSourceRow {
-            share_pct: if total > 0.0 { (r.capacity_gw / total) * 100.0 } else { 0.0 },
+            share_pct: if total > 0.0 {
+                (r.capacity_gw / total) * 100.0
+            } else {
+                0.0
+            },
             source: r.source,
             capacity_gw: r.capacity_gw,
             yoy_pct: r.yoy_pct,
@@ -170,12 +174,11 @@ mod tests {
             period: "2026-Q1".into(),
         };
         let _ = run_cycle(&pool, &fetcher).await.unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let sources: Vec<&str> = parsed
             .pointer("/data/rows")

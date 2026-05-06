@@ -73,11 +73,7 @@ impl RequestIdentity {
             .as_ref()
             .and_then(|c| c.tier)
             .unwrap_or(Tier::Anonymous);
-        let api_tier = self
-            .api
-            .as_ref()
-            .map(|a| a.tier)
-            .unwrap_or(Tier::Anonymous);
+        let api_tier = self.api.as_ref().map(|a| a.tier).unwrap_or(Tier::Anonymous);
         if clerk_tier.rank() >= api_tier.rank() {
             clerk_tier
         } else {

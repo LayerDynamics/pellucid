@@ -134,7 +134,11 @@ impl GdeltClient {
             .json()
             .await
             .map_err(|e| StreamsError::Parse(e.to_string()))?;
-        Ok(body.articles.into_iter().map(GdeltArticle::from_raw).collect())
+        Ok(body
+            .articles
+            .into_iter()
+            .map(GdeltArticle::from_raw)
+            .collect())
     }
 
     fn build_doc_url(
@@ -144,8 +148,8 @@ impl GdeltClient {
         max_records: u32,
     ) -> Result<Url, StreamsError> {
         let raw = format!("{}/api/v2/doc/doc", self.config.base_url);
-        let mut url = Url::parse(&raw)
-            .map_err(|e| StreamsError::Parse(format!("gdelt url: {e}")))?;
+        let mut url =
+            Url::parse(&raw).map_err(|e| StreamsError::Parse(format!("gdelt url: {e}")))?;
         {
             let mut q = url.query_pairs_mut();
             q.append_pair("query", query);

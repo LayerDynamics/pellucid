@@ -27,13 +27,25 @@ futures = { workspace = true }
 mini-moka = { workspace = true }
 md-5 = { workspace = true }
 sqlx = { workspace = true }
+base64 = { workspace = true }
+metrics = { workspace = true }
+grammers-client = { workspace = true }
+grammers-session = { workspace = true }
+grammers-tl-types = { workspace = true }
+chrono = { workspace = true }
 pellucid-core = { path = "../pellucid-core" }
 pellucid-cache = { path = "../pellucid-cache" }
 pellucid-db = { path = "../pellucid-db" }
 pellucid-handlers = { path = "../pellucid-handlers" }
+# T4.5.0 — telegram::run uses atomic_publish (lock + staging + canonical
+# + seed_meta) the same way every other seeder does. The dev-dep direction
+# (seeders -> streams, only for tests) was removed when seed_telegram_intel_min
+# was deleted, so no Cargo cycle.
+pellucid-seeders = { path = "../pellucid-seeders" }
 
 [dev-dependencies]
 wiremock = { workspace = true }
 tokio = { workspace = true }
 tokio-tungstenite = { workspace = true }
 futures = { workspace = true }
+tempfile = { workspace = true }

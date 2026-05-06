@@ -33,13 +33,25 @@ pub struct LiquiditySeries {
     #[serde(rename = "latestDate", alias = "latest_date")]
     pub latest_date: String,
     /// Prior-period observation value, when present.
-    #[serde(rename = "priorValue", alias = "prior_value", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "priorValue",
+        alias = "prior_value",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub prior_value: Option<f64>,
     /// Latest minus prior.
-    #[serde(rename = "periodDelta", alias = "period_delta", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "periodDelta",
+        alias = "period_delta",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub period_delta: Option<f64>,
     /// Period delta as a percent of prior.
-    #[serde(rename = "periodDeltaPct", alias = "period_delta_pct", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "periodDeltaPct",
+        alias = "period_delta_pct",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub period_delta_pct: Option<f64>,
 }
 
@@ -164,8 +176,8 @@ pub async fn handler(
     };
 
     let inner = unwrap_envelope_data(value);
-    let payload: SnapshotPayload = serde_json::from_value(inner)
-        .map_err(|e| HandlerError::Shape(e.to_string()))?;
+    let payload: SnapshotPayload =
+        serde_json::from_value(inner).map_err(|e| HandlerError::Shape(e.to_string()))?;
 
     let series: Vec<LiquiditySeries> = payload
         .series
@@ -277,7 +289,9 @@ mod tests {
     async fn handler_returns_envelope_with_camelcase_fields() {
         let (app, pool) = migrated_router().await;
         let env = Envelope::new(snapshot());
-        set_cached_json(&pool, CACHE_KEY, &env, 60_000).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &env, 60_000)
+            .await
+            .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()
@@ -295,7 +309,9 @@ mod tests {
         assert!(parsed.pointer("/series/0/periodDelta").is_some());
         assert!(parsed.pointer("/series/0/periodDeltaPct").is_some());
         assert_eq!(
-            parsed.pointer("/netLiquidityBillionUsd").and_then(Value::as_f64),
+            parsed
+                .pointer("/netLiquidityBillionUsd")
+                .and_then(Value::as_f64),
             Some(6_750.0),
         );
     }
@@ -326,7 +342,9 @@ mod tests {
     async fn handler_returns_502_on_shape_mismatch() {
         let (app, pool) = migrated_router().await;
         let bad = Envelope::new(serde_json::json!({ "series": "not-an-array" }));
-        set_cached_json(&pool, CACHE_KEY, &bad, 60_000).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &bad, 60_000)
+            .await
+            .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()

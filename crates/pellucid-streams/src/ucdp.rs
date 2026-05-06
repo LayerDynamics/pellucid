@@ -151,8 +151,8 @@ impl UcdpClient {
             "{}/api/gedevents/{}",
             self.config.base_url, self.config.version
         );
-        let mut url = Url::parse(&raw)
-            .map_err(|e| StreamsError::Parse(format!("ucdp url: {e}")))?;
+        let mut url =
+            Url::parse(&raw).map_err(|e| StreamsError::Parse(format!("ucdp url: {e}")))?;
         {
             let mut q = url.query_pairs_mut();
             q.append_pair("Year", &year.to_string());

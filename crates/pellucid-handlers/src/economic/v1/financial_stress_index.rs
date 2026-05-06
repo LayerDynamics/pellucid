@@ -42,9 +42,7 @@ struct Snap {
     assembled_at_ms: i64,
 }
 
-pub async fn handler(
-    State(state): State<AppState>,
-) -> Result<Json<FsiResponse>, HandlerError> {
+pub async fn handler(State(state): State<AppState>) -> Result<Json<FsiResponse>, HandlerError> {
     let raw = get_cached_json::<Value>(&state.pool, CACHE_KEY)
         .await
         .map_err(|e| HandlerError::Cache(e.to_string()))?;
@@ -73,10 +71,8 @@ mod tests {
     async fn migrated() -> (axum::Router, pellucid_db::Pool) {
         let state = AppState::for_tests_async().await.unwrap();
         let pool = state.pool.clone();
-        let app = axum::Router::new().route(
-            FSI_PATH,
-            axum::routing::get(handler).with_state(state),
-        );
+        let app =
+            axum::Router::new().route(FSI_PATH, axum::routing::get(handler).with_state(state));
         (app, pool)
     }
 
@@ -84,7 +80,12 @@ mod tests {
     async fn returns_503_when_cache_empty() {
         let (app, _) = migrated().await;
         let resp = app
-            .oneshot(Request::builder().uri(FSI_PATH).body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri(FSI_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
@@ -107,7 +108,12 @@ mod tests {
             .await
             .unwrap();
         let resp = app
-            .oneshot(Request::builder().uri(FSI_PATH).body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri(FSI_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
@@ -120,6 +126,14 @@ mod tests {
             Some("STLFSI4"),
         );
         assert!(parsed.pointer("/latest").is_some());
-        assert!(parsed.pointer("/history").unwrap().as_array().unwrap().len() == 2);
+        assert!(
+            parsed
+                .pointer("/history")
+                .unwrap()
+                .as_array()
+                .unwrap()
+                .len()
+                == 2
+        );
     }
 }

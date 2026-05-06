@@ -61,9 +61,7 @@ pub async fn endpoint_rate(
         .extensions()
         .get::<RequestIdentity>()
         .cloned()
-        .unwrap_or_else(|| {
-            RequestIdentity::anonymous(std::net::IpAddr::from([127, 0, 0, 1]))
-        });
+        .unwrap_or_else(|| RequestIdentity::anonymous(std::net::IpAddr::from([127, 0, 0, 1])));
     let path = request.uri().path().to_string();
     let cfg = state.rules.for_path(&path);
     let ip = identity.ip.to_string();
@@ -131,7 +129,12 @@ mod tests {
     #[tokio::test]
     async fn no_pool_short_circuits_to_allow() {
         let resp = router_no_pool()
-            .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/x")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
@@ -147,7 +150,12 @@ mod tests {
             .route("/x", get(|| async { "ok" }))
             .layer(from_fn_with_state(state, endpoint_rate));
         let resp = app
-            .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/x")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
@@ -159,6 +167,9 @@ mod tests {
             rules: Arc::new(RouteRateLimitRules::default()),
             pool: None,
         };
-        assert_eq!(format!("{state:?}"), "EndpointRateState { has_pool: false }");
+        assert_eq!(
+            format!("{state:?}"),
+            "EndpointRateState { has_pool: false }"
+        );
     }
 }

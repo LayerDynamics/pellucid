@@ -40,9 +40,7 @@ struct Snap {
     assembled_at_ms: i64,
 }
 
-pub async fn handler(
-    State(state): State<AppState>,
-) -> Result<Json<VolcanoResponse>, HandlerError> {
+pub async fn handler(State(state): State<AppState>) -> Result<Json<VolcanoResponse>, HandlerError> {
     let raw = get_cached_json::<Value>(&state.pool, CACHE_KEY)
         .await
         .map_err(|e| HandlerError::Cache(e.to_string()))?;
@@ -70,10 +68,8 @@ mod tests {
     async fn migrated() -> (axum::Router, pellucid_db::Pool) {
         let state = AppState::for_tests_async().await.unwrap();
         let pool = state.pool.clone();
-        let app = axum::Router::new().route(
-            VOLCANO_PATH,
-            axum::routing::get(handler).with_state(state),
-        );
+        let app =
+            axum::Router::new().route(VOLCANO_PATH, axum::routing::get(handler).with_state(state));
         (app, pool)
     }
 
@@ -81,7 +77,12 @@ mod tests {
     async fn returns_503_when_cache_empty() {
         let (app, _) = migrated().await;
         let resp = app
-            .oneshot(Request::builder().uri(VOLCANO_PATH).body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri(VOLCANO_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
@@ -96,10 +97,22 @@ mod tests {
             ],
             "assembled_at_ms": 1_700_000_000_000_i64,
         });
-        set_cached_json(&pool, CACHE_KEY, &Envelope::new(snap), 60_000).await.unwrap();
-        let resp = app.oneshot(Request::builder().uri(VOLCANO_PATH).body(Body::empty()).unwrap()).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &Envelope::new(snap), 60_000)
+            .await
+            .unwrap();
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .uri(VOLCANO_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         let parsed: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(parsed.pointer("/total").and_then(Value::as_u64), Some(1));
     }

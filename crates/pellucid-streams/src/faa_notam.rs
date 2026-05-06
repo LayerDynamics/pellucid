@@ -110,10 +110,7 @@ impl FaaNotamClient {
     /// - [`StreamsError::Io`] for transport failures.
     /// - [`StreamsError::Status`] for non-2xx responses.
     /// - [`StreamsError::Parse`] for body shape mismatches.
-    pub async fn fetch_notams(
-        &self,
-        designators: &[&str],
-    ) -> Result<Vec<Notam>, StreamsError> {
+    pub async fn fetch_notams(&self, designators: &[&str]) -> Result<Vec<Notam>, StreamsError> {
         if designators.is_empty() {
             return Ok(Vec::new());
         }

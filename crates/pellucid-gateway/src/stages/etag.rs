@@ -108,7 +108,12 @@ mod tests {
     #[tokio::test]
     async fn ok_response_gets_etag() {
         let resp = router()
-            .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/x")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
@@ -120,7 +125,12 @@ mod tests {
     async fn matching_if_none_match_returns_304_with_empty_body() {
         // First call to learn the etag.
         let resp = router()
-            .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/x")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         let etag = resp.headers().get(ETAG_HEADER).unwrap().clone();
@@ -136,7 +146,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp2.status(), StatusCode::NOT_MODIFIED);
-        let body = axum::body::to_bytes(resp2.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp2.into_body(), 1_000_000)
+            .await
+            .unwrap();
         assert!(body.is_empty());
     }
 
@@ -153,20 +165,24 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         assert_eq!(&body[..], b"hello");
     }
 
     #[tokio::test]
     async fn error_responses_pass_through_without_etag() {
         let r = Router::new()
-            .route(
-                "/x",
-                get(|| async { (StatusCode::FORBIDDEN, "denied") }),
-            )
+            .route("/x", get(|| async { (StatusCode::FORBIDDEN, "denied") }))
             .layer(from_fn(etag));
         let resp = r
-            .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/x")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::FORBIDDEN);

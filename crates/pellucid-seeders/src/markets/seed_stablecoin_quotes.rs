@@ -34,12 +34,7 @@ pub const CASCADE_GROUP: &str = "markets-crypto";
 
 /// Default basket of CoinGecko ids — the four most-traded USD
 /// stablecoins.
-pub const DEFAULT_IDS: &[&str] = &[
-    "tether",
-    "usd-coin",
-    "dai",
-    "first-digital-usd",
-];
+pub const DEFAULT_IDS: &[&str] = &["tether", "usd-coin", "dai", "first-digital-usd"];
 
 /// Run-time configuration.
 #[derive(Clone, Debug)]
@@ -188,8 +183,7 @@ mod tests {
         async fn fetch_stablecoins(
             &self,
             _ids: &[&str],
-        ) -> Result<Vec<FetchedStablecoinQuote>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Vec<FetchedStablecoinQuote>, Box<dyn std::error::Error + Send + Sync>> {
             Ok(self.rows.clone())
         }
     }
@@ -240,13 +234,11 @@ mod tests {
         let _ = run_cycle(&pool, &fetcher, &StablecoinQuotesConfig::default())
             .await
             .unwrap();
-        let row: (String,) = sqlx::query_as(
-            "SELECT payload FROM kv_envelope WHERE cache_key = ?",
-        )
-        .bind(CACHE_KEY)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         let symbols: Vec<&str> = rows
@@ -254,11 +246,7 @@ mod tests {
             .map(|r| r.get("symbol").unwrap().as_str().unwrap())
             .collect();
         assert_eq!(symbols, vec!["USDT", "USDC", "DAI"]);
-        let usdt_pct = rows[0]
-            .get("peg_deviation_pct")
-            .unwrap()
-            .as_f64()
-            .unwrap();
+        let usdt_pct = rows[0].get("peg_deviation_pct").unwrap().as_f64().unwrap();
         assert!((usdt_pct - 0.0).abs() < 1e-9);
     }
 

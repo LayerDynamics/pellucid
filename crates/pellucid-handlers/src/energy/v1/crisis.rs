@@ -9,9 +9,7 @@ use serde_json::Value;
 
 use pellucid_cache::get_cached_json;
 
-use crate::economic::v1::shared::{
-    decode_optional, HandlerError, DEFAULT_RETRY_AFTER_SECS,
-};
+use crate::economic::v1::shared::{decode_optional, HandlerError, DEFAULT_RETRY_AFTER_SECS};
 use crate::state::AppState;
 
 use super::complex::{GAS_STORAGE_KEY, SPR_KEY};
@@ -49,9 +47,7 @@ struct SprSnap {
     delta_mb: Option<f64>,
 }
 
-pub async fn handler(
-    State(state): State<AppState>,
-) -> Result<Json<CrisisResponse>, HandlerError> {
+pub async fn handler(State(state): State<AppState>) -> Result<Json<CrisisResponse>, HandlerError> {
     let raw_gas = get_cached_json::<Value>(&state.pool, GAS_STORAGE_KEY)
         .await
         .map_err(|e| HandlerError::Cache(e.to_string()))?;
@@ -156,10 +152,8 @@ mod tests {
     async fn migrated() -> (axum::Router, pellucid_db::Pool) {
         let state = AppState::for_tests_async().await.unwrap();
         let pool = state.pool.clone();
-        let app = axum::Router::new().route(
-            CRISIS_PATH,
-            axum::routing::get(handler).with_state(state),
-        );
+        let app =
+            axum::Router::new().route(CRISIS_PATH, axum::routing::get(handler).with_state(state));
         (app, pool)
     }
 
@@ -195,9 +189,14 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         let parsed: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(parsed.pointer("/level").and_then(Value::as_str), Some("low"));
+        assert_eq!(
+            parsed.pointer("/level").and_then(Value::as_str),
+            Some("low")
+        );
     }
 
     #[test]

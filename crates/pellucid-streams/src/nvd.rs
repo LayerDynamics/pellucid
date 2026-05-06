@@ -170,8 +170,7 @@ impl NvdClient {
         results_per_page: u32,
     ) -> Result<Url, StreamsError> {
         let raw = format!("{}/rest/json/cves/2.0", self.config.base_url);
-        let mut url = Url::parse(&raw)
-            .map_err(|e| StreamsError::Parse(format!("nvd url: {e}")))?;
+        let mut url = Url::parse(&raw).map_err(|e| StreamsError::Parse(format!("nvd url: {e}")))?;
         {
             let mut q = url.query_pairs_mut();
             q.append_pair("lastModStartDate", last_mod_start);
@@ -362,11 +361,7 @@ mod tests {
             .await;
         let client = client_pointing_at(&server);
         let resp = client
-            .fetch_recent(
-                "2026-04-25T00:00:00.000Z",
-                "2026-05-04T23:59:59.999Z",
-                100,
-            )
+            .fetch_recent("2026-04-25T00:00:00.000Z", "2026-05-04T23:59:59.999Z", 100)
             .await
             .unwrap();
         assert_eq!(resp.total_results, 42);

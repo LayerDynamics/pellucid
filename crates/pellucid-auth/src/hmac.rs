@@ -32,8 +32,7 @@ type HmacSha256 = Hmac<Sha256>;
 /// clippy-allow + safety justification.
 #[allow(clippy::expect_used)]
 fn build_mac(secret: &[u8]) -> HmacSha256 {
-    HmacSha256::new_from_slice(secret)
-        .expect("HMAC-SHA256 accepts any key length per RFC 2104")
+    HmacSha256::new_from_slice(secret).expect("HMAC-SHA256 accepts any key length per RFC 2104")
 }
 
 /// Sign `user_id` with `secret` and return the base64 (standard, with

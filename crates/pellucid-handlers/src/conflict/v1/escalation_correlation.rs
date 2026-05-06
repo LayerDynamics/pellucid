@@ -12,9 +12,7 @@ use serde_json::Value;
 use pellucid_cache::get_cached_json;
 use std::collections::BTreeMap;
 
-use crate::economic::v1::shared::{
-    decode_optional, HandlerError, DEFAULT_RETRY_AFTER_SECS,
-};
+use crate::economic::v1::shared::{decode_optional, HandlerError, DEFAULT_RETRY_AFTER_SECS};
 use crate::state::AppState;
 use crate::thermal::v1::escalation as thermal_escalation;
 
@@ -177,8 +175,17 @@ mod tests {
             "rows": [{ "id":"u1","country":"Ukraine","actor1":"a","actor2":"b","fatalities":50,"lat":50.0,"lon":30.0,"occurred_at":"2026-04-29T01:00:00Z" }],
             "assembled_at_ms": 1_700_000_000_000_i64,
         });
-        set_cached_json(&pool, thermal_escalation::CACHE_KEY, &Envelope::new(thermal), 60_000).await.unwrap();
-        set_cached_json(&pool, ucdp_events::CACHE_KEY, &Envelope::new(ucdp), 60_000).await.unwrap();
+        set_cached_json(
+            &pool,
+            thermal_escalation::CACHE_KEY,
+            &Envelope::new(thermal),
+            60_000,
+        )
+        .await
+        .unwrap();
+        set_cached_json(&pool, ucdp_events::CACHE_KEY, &Envelope::new(ucdp), 60_000)
+            .await
+            .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()
@@ -189,10 +196,18 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         let parsed: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(parsed.pointer("/rows/0/zone").and_then(Value::as_str), Some("Ukraine"));
-        let escalation = parsed.pointer("/rows/0/escalation").and_then(Value::as_u64).unwrap();
+        assert_eq!(
+            parsed.pointer("/rows/0/zone").and_then(Value::as_str),
+            Some("Ukraine")
+        );
+        let escalation = parsed
+            .pointer("/rows/0/escalation")
+            .and_then(Value::as_u64)
+            .unwrap();
         assert!(escalation >= 25, "{escalation}");
     }
 

@@ -20,10 +20,28 @@ pub const CLOUD_STATUS_PATH: &str = "/api/infra/v1/cloud-status";
 
 pub fn router(state: AppState) -> Router {
     Router::new()
-        .route(SUMMARY_PATH, axum::routing::get(infra_summary::handler).with_state(state.clone()))
-        .route(INTERNET_OUTAGES_PATH, axum::routing::get(internet_outages::handler).with_state(state.clone()))
-        .route(CYBER_INCIDENTS_PATH, axum::routing::get(cyber_incidents::handler).with_state(state.clone()))
-        .route(CVE_TRENDING_PATH, axum::routing::get(cve_trending::handler).with_state(state.clone()))
-        .route(ACTIVE_CAMPAIGNS_PATH, axum::routing::get(active_campaigns::handler).with_state(state.clone()))
-        .route(CLOUD_STATUS_PATH, axum::routing::get(cloud_status::handler).with_state(state))
+        .route(
+            SUMMARY_PATH,
+            axum::routing::get(infra_summary::handler).with_state(state.clone()),
+        )
+        .route(
+            INTERNET_OUTAGES_PATH,
+            axum::routing::get(internet_outages::handler).with_state(state.clone()),
+        )
+        .route(
+            CYBER_INCIDENTS_PATH,
+            axum::routing::get(cyber_incidents::handler).with_state(state.clone()),
+        )
+        .route(
+            CVE_TRENDING_PATH,
+            axum::routing::get(cve_trending::handler).with_state(state.clone()),
+        )
+        .route(
+            ACTIVE_CAMPAIGNS_PATH,
+            axum::routing::get(active_campaigns::handler).with_state(state.clone()),
+        )
+        .route(
+            CLOUD_STATUS_PATH,
+            axum::routing::get(cloud_status::handler).with_state(state),
+        )
 }

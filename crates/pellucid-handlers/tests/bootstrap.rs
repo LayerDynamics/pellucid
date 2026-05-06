@@ -135,9 +135,7 @@ async fn empty_cache_full_fast_tier_returns_503_with_retry_after_m4_fix() {
         Some(30),
     );
     assert_eq!(
-        parsed
-            .pointer("/error/requested")
-            .and_then(Value::as_u64),
+        parsed.pointer("/error/requested").and_then(Value::as_u64),
         Some(FAST_KEYS.len() as u64),
     );
 }
@@ -158,9 +156,12 @@ async fn fully_populated_request_67_returns_200_no_missing() {
         parsed.pointer("/data").unwrap().as_object().unwrap().len(),
         FAST_KEYS.len()
     );
-    assert!(
-        parsed.pointer("/missing").unwrap().as_array().unwrap().is_empty()
-    );
+    assert!(parsed
+        .pointer("/missing")
+        .unwrap()
+        .as_array()
+        .unwrap()
+        .is_empty());
 }
 
 #[tokio::test]
@@ -170,7 +171,9 @@ async fn tier_both_yields_total_keys() {
     populate_first_n_fast_keys(&state, FAST_KEYS.len()).await;
     for key in SLOW_KEYS {
         let env = Envelope::new(serde_json::json!({ "k": key }));
-        set_cached_json(&state.pool, key, &env, TTL_MS).await.unwrap();
+        set_cached_json(&state.pool, key, &env, TTL_MS)
+            .await
+            .unwrap();
     }
     let app = full_pipeline_router(state);
 
@@ -199,9 +202,7 @@ async fn keys_override_takes_precedence_over_tier() {
     let resp = app
         .oneshot(
             Request::builder()
-                .uri(format!(
-                    "{BOOTSTRAP_PATH}?tier=fast&keys=explicit:key:v1"
-                ))
+                .uri(format!("{BOOTSTRAP_PATH}?tier=fast&keys=explicit:key:v1"))
                 .header("origin", "http://localhost:5173")
                 .body(Body::empty())
                 .unwrap(),

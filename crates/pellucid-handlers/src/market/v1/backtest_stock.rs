@@ -268,10 +268,7 @@ struct SeederQuoteRow {
 /// `?symbols` allow-list + `?limit_universe` clamp. Pure —
 /// exported for tests.
 #[must_use]
-pub fn build_universe(
-    rows: Vec<UniverseRow>,
-    q: &BacktestStockQuery,
-) -> Vec<UniverseRow> {
+pub fn build_universe(rows: Vec<UniverseRow>, q: &BacktestStockQuery) -> Vec<UniverseRow> {
     let mut filtered: Vec<UniverseRow> = if let Some(raw) = q.symbols.as_deref() {
         let allow: Vec<String> = raw
             .split(',')
@@ -438,8 +435,7 @@ pub async fn handler(
     if universe.is_empty() {
         return Err(HandlerError::EmptyUniverse);
     }
-    let universe_symbols: Vec<String> =
-        universe.iter().map(|r| r.symbol.clone()).collect();
+    let universe_symbols: Vec<String> = universe.iter().map(|r| r.symbol.clone()).collect();
     let strategies = backtest(&universe);
     Ok(Json(BacktestStockResponse {
         strategies,
@@ -538,9 +534,7 @@ mod tests {
             row("MID_DN", -1.0),
         ];
         let result = run_strategy(Strategy::Momentum, &universe);
-        let by_symbol = |s: &str| -> &Pick {
-            result.picks.iter().find(|p| p.symbol == s).unwrap()
-        };
+        let by_symbol = |s: &str| -> &Pick { result.picks.iter().find(|p| p.symbol == s).unwrap() };
         assert!(by_symbol("WIN").weight > 0.0);
         assert!(by_symbol("MID_UP").weight > 0.0);
         assert!(by_symbol("MID_DN").weight < 0.0);
@@ -592,17 +586,16 @@ mod tests {
 
     #[test]
     fn build_universe_filters_by_symbols_csv_case_insensitive() {
-        let rows = vec![
-            row("SPY", 0.5),
-            row("QQQ", -0.2),
-            row("DIA", 0.1),
-        ];
+        let rows = vec![row("SPY", 0.5), row("QQQ", -0.2), row("DIA", 0.1)];
         let q = BacktestStockQuery {
             limit_universe: None,
             symbols: Some("spy, dia".into()),
         };
         let out = build_universe(rows, &q);
-        assert_eq!(out.iter().map(|r| r.symbol.as_str()).collect::<Vec<_>>(), vec!["SPY", "DIA"]);
+        assert_eq!(
+            out.iter().map(|r| r.symbol.as_str()).collect::<Vec<_>>(),
+            vec!["SPY", "DIA"]
+        );
     }
 
     #[test]
@@ -620,17 +613,14 @@ mod tests {
 
     #[test]
     fn handler_error_status_codes() {
-        assert_eq!(
-            HandlerError::Cache("x".into()).status(),
-            Code::BAD_GATEWAY,
-        );
-        assert_eq!(
-            HandlerError::Shape("x".into()).status(),
-            Code::BAD_GATEWAY,
-        );
+        assert_eq!(HandlerError::Cache("x".into()).status(), Code::BAD_GATEWAY,);
+        assert_eq!(HandlerError::Shape("x".into()).status(), Code::BAD_GATEWAY,);
         assert_eq!(HandlerError::EmptyUniverse.status(), Code::NOT_FOUND);
         assert_eq!(
-            HandlerError::Outage { retry_after_secs: 30 }.status(),
+            HandlerError::Outage {
+                retry_after_secs: 30
+            }
+            .status(),
             Code::SERVICE_UNAVAILABLE,
         );
     }
@@ -660,7 +650,9 @@ mod tests {
     async fn handler_returns_404_when_symbols_filter_excludes_everything() {
         let (app, pool) = migrated_router().await;
         let env = Envelope::new(snapshot(vec![("SPY", 0.5)]));
-        set_cached_json(&pool, CACHE_KEY, &env, 60_000).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &env, 60_000)
+            .await
+            .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()
@@ -676,7 +668,9 @@ mod tests {
             .unwrap();
         let parsed: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(
-            parsed.pointer("/error/code").and_then(serde_json::Value::as_str),
+            parsed
+                .pointer("/error/code")
+                .and_then(serde_json::Value::as_str),
             Some("empty_universe"),
         );
     }
@@ -690,7 +684,9 @@ mod tests {
             ("DIA", 0.1),
             ("IWM", -0.4),
         ]));
-        set_cached_json(&pool, CACHE_KEY, &env, 60_000).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &env, 60_000)
+            .await
+            .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()

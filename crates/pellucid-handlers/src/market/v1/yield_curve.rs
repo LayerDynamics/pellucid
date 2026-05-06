@@ -157,7 +157,10 @@ struct SnapshotPayload {
 #[must_use]
 pub fn spreads(points: &[YieldPoint]) -> YieldSpreads {
     let yld = |months: u32| -> Option<f64> {
-        points.iter().find(|p| p.maturity_months == months).map(|p| p.yield_pct)
+        points
+            .iter()
+            .find(|p| p.maturity_months == months)
+            .map(|p| p.yield_pct)
     };
     YieldSpreads {
         ten_minus_two: match (yld(120), yld(24)) {
@@ -203,8 +206,8 @@ pub async fn handler(
     };
 
     let inner = unwrap_envelope_data(value);
-    let payload: SnapshotPayload = serde_json::from_value(inner)
-        .map_err(|e| HandlerError::Shape(e.to_string()))?;
+    let payload: SnapshotPayload =
+        serde_json::from_value(inner).map_err(|e| HandlerError::Shape(e.to_string()))?;
 
     let mut points: Vec<YieldPoint> = payload
         .points
@@ -292,7 +295,13 @@ mod tests {
 
     #[test]
     fn spreads_compute_from_canonical_maturities() {
-        let points = vec![pt(3, 5.0), pt(24, 4.5), pt(60, 4.2), pt(120, 4.1), pt(360, 4.4)];
+        let points = vec![
+            pt(3, 5.0),
+            pt(24, 4.5),
+            pt(60, 4.2),
+            pt(120, 4.1),
+            pt(360, 4.4),
+        ];
         let s = spreads(&points);
         assert!((s.ten_minus_two.unwrap() - -0.4).abs() < 1e-9);
         assert!((s.ten_minus_three_month.unwrap() - -0.9).abs() < 1e-9);
@@ -346,7 +355,9 @@ mod tests {
             ("DGS10", "10Y", 120, 4.1),
             ("DGS30", "30Y", 360, 4.4),
         ]));
-        set_cached_json(&pool, CACHE_KEY, &env, 60_000).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &env, 60_000)
+            .await
+            .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()
@@ -363,7 +374,10 @@ mod tests {
         let parsed: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert!(parsed.pointer("/points/0/seriesCode").is_some());
         assert!(parsed.pointer("/spreads/tenMinusTwo").is_some());
-        assert_eq!(parsed.pointer("/inverted").and_then(Value::as_bool), Some(true));
+        assert_eq!(
+            parsed.pointer("/inverted").and_then(Value::as_bool),
+            Some(true)
+        );
     }
 
     #[tokio::test]
@@ -392,7 +406,9 @@ mod tests {
     async fn handler_returns_502_on_shape_mismatch() {
         let (app, pool) = migrated_router().await;
         let bad = Envelope::new(serde_json::json!({ "points": "not-an-array" }));
-        set_cached_json(&pool, CACHE_KEY, &bad, 60_000).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &bad, 60_000)
+            .await
+            .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()

@@ -50,6 +50,22 @@ pub struct ConfigSource {
     pub opensky_client_secret: Option<String>,
     /// `AIS_API_KEY` — aisstream.io WebSocket subscribe key.
     pub ais_api_key: Option<String>,
+    /// `TELEGRAM_API_ID` — Telegram MTProto API ID.
+    pub telegram_api_id: Option<i32>,
+    /// `TELEGRAM_API_HASH` — Telegram MTProto API hash.
+    pub telegram_api_hash: Option<String>,
+    /// `TELEGRAM_SESSION_BASE64` — base64-encoded SQLite session bytes
+    /// for the Railway-hosted relay account. The bytes are written to
+    /// `telegram_session_path` at boot.
+    pub telegram_session_base64: Option<String>,
+    /// `TELEGRAM_SESSION_PATH` — disk location for the SQLite session
+    /// file. Defaults to `data/telegram.session`.
+    pub telegram_session_path: Option<String>,
+    /// `TELEGRAM_CHANNELS_PATH` — JSON channel-set file. Defaults to
+    /// `data/telegram-channels.json`.
+    pub telegram_channels_path: Option<String>,
+    /// `TELEGRAM_CHANNEL_SET` — comma-separated env override.
+    pub telegram_channel_set: Option<String>,
 }
 
 /// Resolve the listen-address source from the two env layers
@@ -97,6 +113,14 @@ impl ConfigSource {
             opensky_client_id: std::env::var("OPENSKY_CLIENT_ID").ok(),
             opensky_client_secret: std::env::var("OPENSKY_CLIENT_SECRET").ok(),
             ais_api_key: std::env::var("AIS_API_KEY").ok(),
+            telegram_api_id: std::env::var("TELEGRAM_API_ID")
+                .ok()
+                .and_then(|s| s.parse::<i32>().ok()),
+            telegram_api_hash: std::env::var("TELEGRAM_API_HASH").ok(),
+            telegram_session_base64: std::env::var("TELEGRAM_SESSION_BASE64").ok(),
+            telegram_session_path: std::env::var("TELEGRAM_SESSION_PATH").ok(),
+            telegram_channels_path: std::env::var("TELEGRAM_CHANNELS_PATH").ok(),
+            telegram_channel_set: std::env::var("TELEGRAM_CHANNEL_SET").ok(),
         }
     }
 }
@@ -120,6 +144,20 @@ pub struct Config {
     pub opensky_client_secret: Option<String>,
     /// AIS subscribe API key.
     pub ais_api_key: Option<String>,
+    /// Telegram API ID (T4.5.0). When `None` the relay does not start
+    /// the telegram run task — the panel falls back to the M4 outage
+    /// path until secrets are wired.
+    pub telegram_api_id: Option<i32>,
+    /// Telegram API hash. Required when `telegram_api_id` is `Some`.
+    pub telegram_api_hash: Option<String>,
+    /// Base64-encoded SQLite session bytes for the relay account.
+    pub telegram_session_base64: Option<String>,
+    /// Disk path for the SQLite session file.
+    pub telegram_session_path: std::path::PathBuf,
+    /// JSON channel-set file path.
+    pub telegram_channels_path: std::path::PathBuf,
+    /// Optional comma-separated env override of the channel set.
+    pub telegram_channel_set: Option<String>,
     /// Scheduler tick budget (`None` = unbounded).
     pub scheduler_tick_limit: Option<u64>,
     /// Background task shutdown grace period.
@@ -133,17 +171,21 @@ impl Config {
     /// # Errors
     /// See [`ConfigError`].
     pub fn parse(source: &ConfigSource) -> Result<Self, ConfigError> {
-        let raw_addr = source
-            .listen_addr
-            .as_deref()
-            .unwrap_or(DEFAULT_LISTEN_ADDR);
-        let listen_addr =
-            raw_addr
-                .parse()
-                .map_err(|e: std::net::AddrParseError| ConfigError::InvalidListenAddr {
-                    raw: raw_addr.to_string(),
-                    source: e,
-                })?;
+        let raw_addr = source.listen_addr.as_deref().unwrap_or(DEFAULT_LISTEN_ADDR);
+        let listen_addr = raw_addr.parse().map_err(|e: std::net::AddrParseError| {
+            ConfigError::InvalidListenAddr {
+                raw: raw_addr.to_string(),
+                source: e,
+            }
+        })?;
+        let telegram_session_path = source
+            .telegram_session_path
+            .clone()
+            .unwrap_or_else(|| "data/telegram.session".to_string());
+        let telegram_channels_path = source
+            .telegram_channels_path
+            .clone()
+            .unwrap_or_else(|| "data/telegram-channels.json".to_string());
         Ok(Self {
             listen_addr,
             db_url: source
@@ -154,6 +196,12 @@ impl Config {
             opensky_client_id: source.opensky_client_id.clone(),
             opensky_client_secret: source.opensky_client_secret.clone(),
             ais_api_key: source.ais_api_key.clone(),
+            telegram_api_id: source.telegram_api_id,
+            telegram_api_hash: source.telegram_api_hash.clone(),
+            telegram_session_base64: source.telegram_session_base64.clone(),
+            telegram_session_path: std::path::PathBuf::from(telegram_session_path),
+            telegram_channels_path: std::path::PathBuf::from(telegram_channels_path),
+            telegram_channel_set: source.telegram_channel_set.clone(),
             scheduler_tick_limit: DEFAULT_SCHEDULER_TICK_LIMIT,
             shutdown_grace: Duration::from_secs(5),
         })
@@ -167,10 +215,8 @@ mod tests {
 
     #[test]
     fn resolve_listen_addr_explicit_wins_over_port() {
-        let resolved = resolve_listen_addr_from_env(
-            Some("127.0.0.1:9999".into()),
-            Some("8421".into()),
-        );
+        let resolved =
+            resolve_listen_addr_from_env(Some("127.0.0.1:9999".into()), Some("8421".into()));
         assert_eq!(resolved.as_deref(), Some("127.0.0.1:9999"));
     }
 
@@ -191,8 +237,7 @@ mod tests {
         // `PORT=not-a-number` must NOT poison boot — the resolver
         // returns `None` so `Config::parse` applies the default
         // `0.0.0.0:3004`.
-        let resolved =
-            resolve_listen_addr_from_env(None, Some("not-a-number".into()));
+        let resolved = resolve_listen_addr_from_env(None, Some("not-a-number".into()));
         assert!(resolved.is_none());
         let src = ConfigSource {
             listen_addr: resolved,

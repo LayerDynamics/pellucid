@@ -28,12 +28,12 @@ pub mod kv;
 pub mod negative;
 pub mod rate_limit;
 
-pub use batch::{BatchHit, get_cached_json_batch};
-pub use coalesce::{CoalesceRegistry, cached_fetch_json};
-pub use kv::{CacheHit, KvCache, get_cached_json, set_cached_json, set_negative_sentinel};
+pub use batch::{get_cached_json_batch, BatchHit};
+pub use coalesce::{cached_fetch_json, CoalesceRegistry};
+pub use kv::{get_cached_json, set_cached_json, set_negative_sentinel, CacheHit, KvCache};
 pub use negative::DEFAULT_NEGATIVE_TTL_MS;
 pub use rate_limit::{
-    BucketConfig, BucketKind, RateLimitConfig, RateLimitDecision, check_rate_limit,
+    check_rate_limit, BucketConfig, BucketKind, RateLimitConfig, RateLimitDecision,
 };
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.

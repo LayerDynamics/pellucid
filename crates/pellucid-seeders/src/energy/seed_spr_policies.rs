@@ -99,7 +99,10 @@ pub async fn run_cycle(
             units: r.units,
         })
         .collect();
-    let latest = rows.first().cloned().ok_or(EnergySeederError::EmptyUpstream)?;
+    let latest = rows
+        .first()
+        .cloned()
+        .ok_or(EnergySeederError::EmptyUpstream)?;
     let yoy_delta = if rows.len() >= 52 {
         Some(latest.value - rows[51].value)
     } else {
@@ -124,8 +127,7 @@ pub async fn run_cycle(
         },
         data: serde_json::to_value(&snapshot).unwrap_or(serde_json::Value::Null),
     };
-    let outcome =
-        atomic_publish(pool, "energy", CACHE_KEY, &envelope, TTL).await?;
+    let outcome = atomic_publish(pool, "energy", CACHE_KEY, &envelope, TTL).await?;
     Ok(outcome)
 }
 
@@ -179,7 +181,10 @@ mod tests {
         // Build 52 rows so YoY delta computes.
         let mut rows: Vec<FetchedEiaRow> = Vec::with_capacity(52);
         for i in 0..52 {
-            rows.push(row(&format!("2026-w{i:02}"), 360_000.0 + (51 - i) as f64 * 100.0));
+            rows.push(row(
+                &format!("2026-w{i:02}"),
+                360_000.0 + (51 - i) as f64 * 100.0,
+            ));
         }
         // rows[0] = latest = 360_000 + 5100 = 365_100; rows[51] = 360_000.
         let fetcher = StaticFetcher { rows };
@@ -187,12 +192,11 @@ mod tests {
             .await
             .unwrap();
         assert!(outcome.bytes_written > 0);
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let yoy = parsed.pointer("/data/yoy_delta").unwrap().as_f64().unwrap();
         assert!((yoy - 5100.0).abs() < 1e-3);
@@ -207,12 +211,11 @@ mod tests {
         let _ = run_cycle(&pool, &fetcher, &SprPoliciesConfig::default())
             .await
             .unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         assert!(parsed.pointer("/data/yoy_delta").unwrap().is_null());
     }

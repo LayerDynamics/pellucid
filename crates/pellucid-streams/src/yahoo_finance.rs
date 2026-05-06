@@ -160,9 +160,9 @@ impl YahooFinanceClient {
     /// callers that need to distinguish error kinds should use
     /// `fetch_quote` directly.
     pub async fn fetch_quotes(&self, symbols: &[&str]) -> Vec<Option<YahooQuote>> {
-        let calls = symbols.iter().map(|s| async move {
-            self.fetch_quote(s).await.ok().flatten()
-        });
+        let calls = symbols
+            .iter()
+            .map(|s| async move { self.fetch_quote(s).await.ok().flatten() });
         join_all(calls).await
     }
 
@@ -496,11 +496,9 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/v8/finance/chart/BOGUS"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                    "chart": { "result": [], "error": null }
-                })),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "chart": { "result": [], "error": null }
+            })))
             .mount(&server)
             .await;
         let client = client_pointing_at(&server);
@@ -513,14 +511,12 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/v8/finance/chart/INVALID"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                    "chart": {
-                        "result": [],
-                        "error": { "code": "Not Found", "description": "No data found" }
-                    }
-                })),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "chart": {
+                    "result": [],
+                    "error": { "code": "Not Found", "description": "No data found" }
+                }
+            })))
             .mount(&server)
             .await;
         let client = client_pointing_at(&server);
@@ -571,7 +567,11 @@ mod tests {
     #[tokio::test]
     async fn fetch_quotes_preserves_input_order() {
         let server = MockServer::start().await;
-        for (sym, price, prev) in [("SPY", 524.0, 522.0), ("QQQ", 460.0, 458.0), ("DIA", 390.0, 389.0)] {
+        for (sym, price, prev) in [
+            ("SPY", 524.0, 522.0),
+            ("QQQ", 460.0, 458.0),
+            ("DIA", 390.0, 389.0),
+        ] {
             Mock::given(method("GET"))
                 .and(path(format!("/v8/finance/chart/{sym}")))
                 .respond_with(
@@ -593,9 +593,7 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/v8/finance/chart/SPY"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(chart_body("SPY", 524.0, 522.0)),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(chart_body("SPY", 524.0, 522.0)))
             .mount(&server)
             .await;
         Mock::given(method("GET"))

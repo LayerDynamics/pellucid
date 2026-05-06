@@ -22,7 +22,7 @@ use tokio::sync::{Mutex, OnceCell};
 use pellucid_core::{CacheTier, Envelope};
 use pellucid_db::Pool;
 
-use crate::kv::{CacheHit, get_cached_json, set_cached_json, set_negative_sentinel};
+use crate::kv::{get_cached_json, set_cached_json, set_negative_sentinel, CacheHit};
 use crate::negative::DEFAULT_NEGATIVE_TTL_MS;
 
 /// Result of a single coalesced fetch — what gets stored in the
@@ -172,14 +172,15 @@ where
     }
 }
 
-fn decode_envelope_data<T: DeserializeOwned>(envelope: &serde_json::Value) -> Result<T, sqlx::Error> {
+fn decode_envelope_data<T: DeserializeOwned>(
+    envelope: &serde_json::Value,
+) -> Result<T, sqlx::Error> {
     let inner = envelope
         .get("data")
         .cloned()
         .ok_or_else(|| sqlx::Error::Protocol("cached envelope missing `data` field".to_string()))?;
-    serde_json::from_value(inner).map_err(|e| {
-        sqlx::Error::Decode(Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
-    })
+    serde_json::from_value(inner)
+        .map_err(|e| sqlx::Error::Decode(Box::new(e) as Box<dyn std::error::Error + Send + Sync>))
 }
 
 #[cfg(test)]
@@ -233,7 +234,9 @@ mod tests {
             let result = h.await.expect("join").expect("inner");
             assert_eq!(
                 result,
-                Some(SampleData { items: vec![1, 2, 3] })
+                Some(SampleData {
+                    items: vec![1, 2, 3]
+                })
             );
         }
 
@@ -243,7 +246,11 @@ mod tests {
             1,
             "expected exactly 1 fetcher call across 32 concurrent awaiters"
         );
-        assert_eq!(registry.inflight_len(), 0, "registry must be drained after fetch");
+        assert_eq!(
+            registry.inflight_len(),
+            0,
+            "registry must be drained after fetch"
+        );
     }
 
     #[tokio::test]
@@ -285,7 +292,11 @@ mod tests {
         )
         .await
         .expect("second call");
-        assert_eq!(calls.load(Ordering::SeqCst), 1, "warm cache must skip fetcher");
+        assert_eq!(
+            calls.load(Ordering::SeqCst),
+            1,
+            "warm cache must skip fetcher"
+        );
     }
 
     #[tokio::test]
@@ -327,7 +338,11 @@ mod tests {
         .await
         .expect("second call");
         assert_eq!(r2, None);
-        assert_eq!(calls.load(Ordering::SeqCst), 1, "negative sentinel must skip fetcher");
+        assert_eq!(
+            calls.load(Ordering::SeqCst),
+            1,
+            "negative sentinel must skip fetcher"
+        );
     }
 
     #[tokio::test]
@@ -341,9 +356,9 @@ mod tests {
             "err:k",
             CacheTier::Fast,
             move || async move {
-                Err::<Option<SampleData>, _>(
-                    Box::<dyn std::error::Error + Send + Sync>::from("upstream 503"),
-                )
+                Err::<Option<SampleData>, _>(Box::<dyn std::error::Error + Send + Sync>::from(
+                    "upstream 503",
+                ))
             },
         )
         .await;

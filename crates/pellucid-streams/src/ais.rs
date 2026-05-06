@@ -276,8 +276,8 @@ impl AisClient {
 
         // Subscribe handshake.
         let sub = AisSubscribe::world(&self.api_key);
-        let payload = serde_json::to_string(&sub)
-            .map_err(|e| AisError::Subscribe(format!("encode: {e}")))?;
+        let payload =
+            serde_json::to_string(&sub).map_err(|e| AisError::Subscribe(format!("encode: {e}")))?;
         write
             .send(Message::Text(payload))
             .await
@@ -452,11 +452,7 @@ mod tests {
 
     #[test]
     fn ais_client_subscribe_returns_independent_receivers() {
-        let c = AisClient::new(
-            "wss://unused.test/ws",
-            "test-key",
-            8,
-        );
+        let c = AisClient::new("wss://unused.test/ws", "test-key", 8);
         let mut a = c.subscribe();
         let mut b = c.subscribe();
         // Drive a frame through process_text_frame using the

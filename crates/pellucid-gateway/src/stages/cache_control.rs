@@ -11,8 +11,8 @@
 use std::sync::Arc;
 
 use axum::extract::{Request, State};
-use axum::http::header::{HeaderName, HeaderValue};
 use axum::http::header;
+use axum::http::header::{HeaderName, HeaderValue};
 use axum::middleware::Next;
 use axum::response::Response;
 
@@ -66,10 +66,18 @@ mod tests {
     #[tokio::test]
     async fn default_policy_is_no_store() {
         let resp = router(RouteCacheRules::new())
-            .oneshot(AxumRequest::builder().uri("/anonymous").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/anonymous")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
-        assert_eq!(resp.headers().get(CACHE_CONTROL_HEADER).unwrap(), "no-store");
+        assert_eq!(
+            resp.headers().get(CACHE_CONTROL_HEADER).unwrap(),
+            "no-store"
+        );
     }
 
     #[tokio::test]
@@ -77,7 +85,12 @@ mod tests {
         let mut rules = RouteCacheRules::new();
         rules.set("/cacheable", CacheControlPolicy::public(60));
         let resp = router(rules)
-            .oneshot(AxumRequest::builder().uri("/cacheable").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/cacheable")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(
@@ -91,10 +104,18 @@ mod tests {
         let mut rules = RouteCacheRules::new();
         rules.set("/error", CacheControlPolicy::public(3600));
         let resp = router(rules)
-            .oneshot(AxumRequest::builder().uri("/error").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/error")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::FORBIDDEN);
-        assert_eq!(resp.headers().get(CACHE_CONTROL_HEADER).unwrap(), "no-store");
+        assert_eq!(
+            resp.headers().get(CACHE_CONTROL_HEADER).unwrap(),
+            "no-store"
+        );
     }
 }

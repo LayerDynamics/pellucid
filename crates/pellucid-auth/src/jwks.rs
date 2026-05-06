@@ -118,7 +118,9 @@ impl JwksCache {
     /// whether to refetch.
     pub async fn snapshot(&self) -> Option<(JwkSet, bool)> {
         let guard = self.inner.read().await;
-        guard.as_ref().map(|c| (c.jwks.clone(), c.is_stale(self.ttl)))
+        guard
+            .as_ref()
+            .map(|c| (c.jwks.clone(), c.is_stale(self.ttl)))
     }
 }
 
@@ -279,7 +281,10 @@ mod tests {
 
     #[test]
     fn fetcher_records_url() {
-        let f = JwksFetcher::new("https://clerk.test/.well-known/jwks.json", reqwest::Client::new());
+        let f = JwksFetcher::new(
+            "https://clerk.test/.well-known/jwks.json",
+            reqwest::Client::new(),
+        );
         assert_eq!(f.url(), "https://clerk.test/.well-known/jwks.json");
     }
 }

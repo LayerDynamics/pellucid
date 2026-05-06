@@ -112,8 +112,10 @@ fn spawn_authorized_probe(env_pairs: &[(&str, &str)]) -> AuthorizedProbe {
         .collect();
     owned.push(("PELLUCID_RELAY_LISTEN_ADDR".into(), listen));
     owned.push(("PELLUCID_DB_URL".into(), "sqlite::memory:".into()));
-    let pairs: Vec<(&str, &str)> =
-        owned.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+    let pairs: Vec<(&str, &str)> = owned
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.as_str()))
+        .collect();
 
     let mut child = build_command(&pairs)
         .stdout(Stdio::piped())
@@ -236,8 +238,7 @@ fn no_secret_no_opt_in_dev_refuses() {
 
 #[test]
 fn allow_unauthenticated_in_dev_authorizes_with_warning() {
-    let probe =
-        spawn_authorized_probe(&[(env_names::ALLOW_UNAUTHENTICATED_RELAY, "true")]);
+    let probe = spawn_authorized_probe(&[(env_names::ALLOW_UNAUTHENTICATED_RELAY, "true")]);
     assert!(
         probe.stderr.contains("WARNING") && probe.stderr.contains("dev mode"),
         "stderr should warn loudly.\nstdout: {}\nstderr: {}",

@@ -259,10 +259,9 @@ impl TokenRotator {
         if state.current_token == token {
             return true;
         }
-        if let (Some(prev), Some(retired)) = (
-            state.previous_token.as_ref(),
-            state.previous_retired_at_ms,
-        ) {
+        if let (Some(prev), Some(retired)) =
+            (state.previous_token.as_ref(), state.previous_retired_at_ms)
+        {
             if prev == token {
                 let now = self.clock.monotonic_ms();
                 if now.saturating_sub(retired) < self.overlap_ms {
@@ -355,7 +354,8 @@ mod tests {
         let t = generate_token().unwrap();
         assert_eq!(t.len(), 64, "32 bytes => 64 hex chars");
         assert!(
-            t.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()),
+            t.chars()
+                .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()),
             "token must be lowercase hex, got {t}"
         );
     }
@@ -366,7 +366,10 @@ mod tests {
         let mut set = HashSet::new();
         for _ in 0..1_000 {
             let t = generate_token().unwrap();
-            assert!(set.insert(t), "duplicate token from getrandom (impossible);");
+            assert!(
+                set.insert(t),
+                "duplicate token from getrandom (impossible);"
+            );
         }
     }
 
@@ -499,8 +502,7 @@ mod tests {
             5,
             DEFAULT_OVERLAP_MS,
         ));
-        let received: Arc<RwLock<Vec<RotationOutcome>>> =
-            Arc::new(RwLock::new(Vec::new()));
+        let received: Arc<RwLock<Vec<RotationOutcome>>> = Arc::new(RwLock::new(Vec::new()));
         let recv2 = received.clone();
         let handle = spawn_rotation_loop(r.clone(), move |out| {
             recv2.write().push(out);
@@ -520,8 +522,7 @@ mod tests {
             log.len()
         );
         // Rotated tokens must all be unique.
-        let mut tokens: Vec<&str> =
-            log.iter().map(|o| o.new_token.as_str()).collect();
+        let mut tokens: Vec<&str> = log.iter().map(|o| o.new_token.as_str()).collect();
         tokens.sort_unstable();
         let pre = tokens.len();
         tokens.dedup();

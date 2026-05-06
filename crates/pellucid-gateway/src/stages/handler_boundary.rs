@@ -59,14 +59,21 @@ mod tests {
     use tower::util::ServiceExt;
 
     fn router_with(handler: axum::routing::MethodRouter) -> Router {
-        Router::new().route("/x", handler).layer(from_fn(handler_boundary))
+        Router::new()
+            .route("/x", handler)
+            .layer(from_fn(handler_boundary))
     }
 
     #[tokio::test]
     async fn ok_passes_through_unchanged() {
         let r = router_with(get(|| async { "ok" }));
         let resp = r
-            .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/x")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
@@ -78,7 +85,12 @@ mod tests {
             (StatusCode::INTERNAL_SERVER_ERROR, "boom")
         }));
         let resp = r
-            .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/x")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
@@ -88,7 +100,9 @@ mod tests {
                 .unwrap(),
             "handler_error"
         );
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(parsed["code"], "handler_error");
     }
@@ -101,7 +115,12 @@ mod tests {
             crate::error_mapper::GatewayError::ClerkUnauthorized
         }));
         let resp = r
-            .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/x")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);

@@ -27,9 +27,7 @@ pub const SOURCE_VERSION: &str = "gulf-economies-composite-v1";
 pub const CASCADE_GROUP: &str = "economic";
 
 /// Default ISO-3 country basket (GCC + Iran).
-pub const DEFAULT_COUNTRIES: &[&str] = &[
-    "SAU", "ARE", "QAT", "KWT", "BHR", "OMN", "IRN",
-];
+pub const DEFAULT_COUNTRIES: &[&str] = &["SAU", "ARE", "QAT", "KWT", "BHR", "OMN", "IRN"];
 
 /// One country row.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -155,8 +153,7 @@ mod tests {
         async fn fetch_basket(
             &self,
             _isos: &[&str],
-        ) -> Result<Vec<FetchedGulfRow>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Vec<FetchedGulfRow>, Box<dyn std::error::Error + Send + Sync>> {
             Ok(self.rows.clone())
         }
     }
@@ -195,13 +192,11 @@ mod tests {
             ],
         };
         let _ = run_cycle(&pool, &fetcher).await.unwrap();
-        let row: (String,) = sqlx::query_as(
-            "SELECT payload FROM kv_envelope WHERE cache_key = ?",
-        )
-        .bind(CACHE_KEY)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let isos: Vec<&str> = parsed
             .pointer("/data/rows")

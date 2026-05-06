@@ -195,7 +195,11 @@ pub fn format_iso8601_utc(unix_secs: i64) -> String {
 
 fn epoch_days_to_ymd(days: i64) -> (i32, u32, u32) {
     let days = days + 719_468;
-    let era = if days >= 0 { days / 146_097 } else { (days - 146_096) / 146_097 };
+    let era = if days >= 0 {
+        days / 146_097
+    } else {
+        (days - 146_096) / 146_097
+    };
     let doe = (days - era * 146_097) as u64;
     let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
     let y = yoe as i64 + era * 400;
@@ -226,8 +230,7 @@ mod tests {
             last_mod_start: &str,
             last_mod_end: &str,
             _results_per_page: u32,
-        ) -> Result<FetchedNvdResponse, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<FetchedNvdResponse, Box<dyn std::error::Error + Send + Sync>> {
             *self.last_window.lock().unwrap() =
                 (last_mod_start.to_string(), last_mod_end.to_string());
             Ok(self.response.clone())
@@ -244,8 +247,7 @@ mod tests {
             _last_mod_start: &str,
             _last_mod_end: &str,
             _results_per_page: u32,
-        ) -> Result<FetchedNvdResponse, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<FetchedNvdResponse, Box<dyn std::error::Error + Send + Sync>> {
             Err("upstream down".into())
         }
     }
@@ -302,18 +304,15 @@ mod tests {
         .await
         .unwrap();
         assert!(outcome.bytes_written > 0);
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 2);
-        assert!(
-            (rows[0].get("cvss_base_score").unwrap().as_f64().unwrap() - 9.8).abs() < 1e-9
-        );
+        assert!((rows[0].get("cvss_base_score").unwrap().as_f64().unwrap() - 9.8).abs() < 1e-9);
         // Date window is the lookback derived from now_unix_secs.
         let (start, end) = fetcher.last_window.lock().unwrap().clone();
         assert_eq!(end, "2026-05-04T07:00:00.000Z");

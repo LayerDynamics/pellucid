@@ -104,8 +104,7 @@ pub async fn run_cycle(
         .map(|r| r.time_period.clone())
         .max()
         .ok_or(EnergySeederError::EmptyUpstream)?;
-    let countries: std::collections::HashSet<String> =
-        config.countries.iter().cloned().collect();
+    let countries: std::collections::HashSet<String> = config.countries.iter().cloned().collect();
     let rows: Vec<StockLevelRow> = fetched
         .into_iter()
         .filter(|r| r.time_period == latest_period && countries.contains(&r.country))
@@ -132,8 +131,7 @@ pub async fn run_cycle(
         },
         data: serde_json::to_value(&snapshot).unwrap_or(serde_json::Value::Null),
     };
-    let outcome =
-        atomic_publish(pool, "energy", CACHE_KEY, &envelope, TTL).await?;
+    let outcome = atomic_publish(pool, "energy", CACHE_KEY, &envelope, TTL).await?;
     Ok(outcome)
 }
 
@@ -202,12 +200,11 @@ mod tests {
             .await
             .unwrap();
         assert!(outcome.bytes_written > 0);
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 3);

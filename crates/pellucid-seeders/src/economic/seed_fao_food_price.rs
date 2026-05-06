@@ -25,8 +25,7 @@ pub const CASCADE_GROUP: &str = "economic";
 
 /// FAO sub-indices. The composite Food Price Index is the
 /// weighted average of these.
-pub const SUBINDEX_LABELS: &[&str] =
-    &["meat", "dairy", "cereals", "oils", "sugar"];
+pub const SUBINDEX_LABELS: &[&str] = &["meat", "dairy", "cereals", "oils", "sugar"];
 
 /// One observation row.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -104,7 +103,9 @@ pub async fn run_cycle(
         })
         .collect();
     history.sort_by(|a, b| a.period.cmp(&b.period));
-    let latest = history.last().cloned().expect("non-empty after check");
+    let Some(latest) = history.last().cloned() else {
+        return Err(EconomicSeederError::EmptyUpstream);
+    };
     // YoY: compare latest to the observation 12 entries back when present.
     let yoy = if history.len() >= 13 {
         let year_ago = &history[history.len() - 13];
@@ -151,8 +152,7 @@ mod tests {
         async fn fetch_history(
             &self,
             _n: usize,
-        ) -> Result<Vec<FetchedFaoObservation>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Vec<FetchedFaoObservation>, Box<dyn std::error::Error + Send + Sync>> {
             Ok(self.rows.clone())
         }
     }
@@ -189,16 +189,16 @@ mod tests {
         rows.reverse();
         let fetcher = StaticFetcher { rows };
         let _ = run_cycle(&pool, &fetcher, 13).await.unwrap();
-        let row: (String,) = sqlx::query_as(
-            "SELECT payload FROM kv_envelope WHERE cache_key = ?",
-        )
-        .bind(CACHE_KEY)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         assert_eq!(
-            parsed.pointer("/data/latest/period").and_then(serde_json::Value::as_str),
+            parsed
+                .pointer("/data/latest/period")
+                .and_then(serde_json::Value::as_str),
             Some("2025-13"),
         );
         // YoY: (112 - 100) / 100 * 100 = 12.0.

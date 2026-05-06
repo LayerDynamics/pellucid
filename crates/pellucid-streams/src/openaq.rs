@@ -127,17 +127,17 @@ impl OpenAqClient {
             .json()
             .await
             .map_err(|e| StreamsError::Parse(e.to_string()))?;
-        Ok(body.results.into_iter().map(AirQualityStation::from_raw).collect())
+        Ok(body
+            .results
+            .into_iter()
+            .map(AirQualityStation::from_raw)
+            .collect())
     }
 
-    fn build_latest_url(
-        &self,
-        countries: &[&str],
-        limit: u32,
-    ) -> Result<Url, StreamsError> {
+    fn build_latest_url(&self, countries: &[&str], limit: u32) -> Result<Url, StreamsError> {
         let raw = format!("{}/v2/latest", self.config.base_url);
-        let mut url = Url::parse(&raw)
-            .map_err(|e| StreamsError::Parse(format!("openaq url: {e}")))?;
+        let mut url =
+            Url::parse(&raw).map_err(|e| StreamsError::Parse(format!("openaq url: {e}")))?;
         {
             let mut q = url.query_pairs_mut();
             q.append_pair("limit", &limit.to_string());

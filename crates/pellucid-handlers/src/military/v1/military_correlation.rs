@@ -13,9 +13,7 @@ use pellucid_cache::get_cached_json;
 use std::collections::BTreeMap;
 
 use crate::conflict::v1::ucdp_events;
-use crate::economic::v1::shared::{
-    decode_optional, HandlerError, DEFAULT_RETRY_AFTER_SECS,
-};
+use crate::economic::v1::shared::{decode_optional, HandlerError, DEFAULT_RETRY_AFTER_SECS};
 use crate::state::AppState;
 
 use super::strategic_posture;
@@ -222,14 +220,22 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         let parsed: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(parsed.pointer("/total").and_then(Value::as_u64), Some(1));
         assert_eq!(
             parsed.pointer("/rows/0/theater").and_then(Value::as_str),
             Some("EUCOM")
         );
-        assert!(parsed.pointer("/rows/0/correlation").and_then(Value::as_u64).unwrap() >= 40);
+        assert!(
+            parsed
+                .pointer("/rows/0/correlation")
+                .and_then(Value::as_u64)
+                .unwrap()
+                >= 40
+        );
     }
 
     #[test]

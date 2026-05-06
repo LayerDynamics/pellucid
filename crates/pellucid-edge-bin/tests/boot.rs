@@ -50,7 +50,9 @@ fn aviation_response_body() -> Value {
 async fn healthz_returns_200_with_ok_body() {
     let cfg = Config::parse(&ConfigSource::default()).unwrap();
     let base = spawn_edge(cfg).await;
-    let resp = reqwest::get(format!("{base}{HEALTHCHECK_PATH}")).await.unwrap();
+    let resp = reqwest::get(format!("{base}{HEALTHCHECK_PATH}"))
+        .await
+        .unwrap();
     assert_eq!(resp.status(), 200);
     let body: HealthcheckBody = resp.json().await.unwrap();
     assert!(body.ok);
@@ -76,9 +78,8 @@ async fn aviation_v1_get_flight_status_returns_envelope_via_real_pipeline() {
     let cfg = Config::parse(&src).unwrap();
     let base = spawn_edge(cfg).await;
 
-    let url = format!(
-        "{base}/api/aviation/v1/get-flight-status?flight=AA100&date=2026-04-25&origin=JFK"
-    );
+    let url =
+        format!("{base}/api/aviation/v1/get-flight-status?flight=AA100&date=2026-04-25&origin=JFK");
     let resp = reqwest::Client::new()
         .get(&url)
         .header("origin", "http://localhost:5173")
@@ -114,9 +115,7 @@ async fn malformed_aviation_query_returns_400_envelope() {
     let cfg = Config::parse(&ConfigSource::default()).unwrap();
     let base = spawn_edge(cfg).await;
     // Missing `origin` → axum's Query extractor rejects.
-    let url = format!(
-        "{base}/api/aviation/v1/get-flight-status?flight=AA100&date=2026-04-25"
-    );
+    let url = format!("{base}/api/aviation/v1/get-flight-status?flight=AA100&date=2026-04-25");
     let resp = reqwest::Client::new()
         .get(&url)
         .header("origin", "http://localhost:5173")

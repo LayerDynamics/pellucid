@@ -175,12 +175,14 @@ pub async fn run_cycle(
 
     let mut rows: Vec<ActorRow> = by_actor
         .into_iter()
-        .map(|(actor, (event_count, total_fatalities, breakdown))| ActorRow {
-            actor,
-            event_count,
-            total_fatalities,
-            country_breakdown: breakdown.into_iter().collect(),
-        })
+        .map(
+            |(actor, (event_count, total_fatalities, breakdown))| ActorRow {
+                actor,
+                event_count,
+                total_fatalities,
+                country_breakdown: breakdown.into_iter().collect(),
+            },
+        )
         .collect();
     rows.sort_by(|a, b| b.event_count.cmp(&a.event_count));
     rows.truncate(config.top_actors);
@@ -203,15 +205,18 @@ pub async fn run_cycle(
         },
         data: serde_json::to_value(&snapshot).unwrap_or(serde_json::Value::Null),
     };
-    let outcome =
-        atomic_publish(pool, "conflict", CACHE_KEY, &envelope, TTL).await?;
+    let outcome = atomic_publish(pool, "conflict", CACHE_KEY, &envelope, TTL).await?;
     Ok(outcome)
 }
 
 fn today_utc_ymd() -> (u16, u8, u8) {
     let secs = pellucid_core::now_ms() / 1000;
     let days = secs / 86_400 + 719_468;
-    let era = if days >= 0 { days / 146_097 } else { (days - 146_096) / 146_097 };
+    let era = if days >= 0 {
+        days / 146_097
+    } else {
+        (days - 146_096) / 146_097
+    };
     let doe = (days - era * 146_097) as u64;
     let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
     let y = yoe as i64 + era * 400;
@@ -279,8 +284,7 @@ mod tests {
             _start_date: &str,
             _end_date: &str,
             _limit: u32,
-        ) -> Result<Vec<FetchedAcledEvent>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Vec<FetchedAcledEvent>, Box<dyn std::error::Error + Send + Sync>> {
             Ok(self.events.clone())
         }
     }
@@ -296,8 +300,7 @@ mod tests {
             _start_date: &str,
             _end_date: &str,
             _limit: u32,
-        ) -> Result<Vec<FetchedAcledEvent>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Vec<FetchedAcledEvent>, Box<dyn std::error::Error + Send + Sync>> {
             Err("upstream down".into())
         }
     }
@@ -365,12 +368,11 @@ mod tests {
         };
         let outcome = run_cycle(&pool, &fetcher, &config_for(6)).await.unwrap();
         assert!(outcome.bytes_written > 0);
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 3);
@@ -380,7 +382,10 @@ mod tests {
         assert_eq!(rows[0].get("total_fatalities").unwrap().as_i64(), Some(23));
         assert_eq!(rows[1].get("actor").unwrap().as_str().unwrap(), "Hamas");
         assert_eq!(rows[2].get("actor").unwrap().as_str().unwrap(), "Houthis");
-        assert_eq!(parsed.pointer("/data/total_events").unwrap().as_u64(), Some(6));
+        assert_eq!(
+            parsed.pointer("/data/total_events").unwrap().as_u64(),
+            Some(6)
+        );
     }
 
     #[tokio::test]
@@ -390,12 +395,11 @@ mod tests {
             events: vec![ev("e1", "", "Syria", 5), ev("e2", "ISIS", "Syria", 3)],
         };
         let _ = run_cycle(&pool, &fetcher, &config_for(2)).await.unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 1);
@@ -420,12 +424,11 @@ mod tests {
             top_actors: 5,
         };
         let _ = run_cycle(&pool, &fetcher, &cfg).await.unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 5);
@@ -437,7 +440,9 @@ mod tests {
     async fn run_cycle_empty_errors() {
         let pool = open_in_memory().await.unwrap();
         let fetcher = StaticFetcher { events: vec![] };
-        let err = run_cycle(&pool, &fetcher, &config_for(0)).await.unwrap_err();
+        let err = run_cycle(&pool, &fetcher, &config_for(0))
+            .await
+            .unwrap_err();
         assert!(matches!(err, ConflictSeederError::EmptyUpstream));
     }
 

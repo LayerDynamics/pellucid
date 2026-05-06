@@ -175,15 +175,18 @@ pub async fn run_cycle(
         },
         data: serde_json::to_value(&snapshot).unwrap_or(serde_json::Value::Null),
     };
-    let outcome =
-        atomic_publish(pool, "conflict", CACHE_KEY, &envelope, TTL).await?;
+    let outcome = atomic_publish(pool, "conflict", CACHE_KEY, &envelope, TTL).await?;
     Ok(outcome)
 }
 
 fn today_year() -> u16 {
     let secs = pellucid_core::now_ms() / 1000;
     let days = secs / 86_400 + 719_468;
-    let era = if days >= 0 { days / 146_097 } else { (days - 146_096) / 146_097 };
+    let era = if days >= 0 {
+        days / 146_097
+    } else {
+        (days - 146_096) / 146_097
+    };
     let doe = (days - era * 146_097) as u64;
     let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
     let y = yoe as i64 + era * 400;
@@ -265,19 +268,21 @@ mod tests {
             .await
             .unwrap();
         assert!(outcome.bytes_written > 0);
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 3);
         assert_eq!(rows[0].get("id").unwrap().as_str().unwrap(), "GED-2");
         assert_eq!(rows[1].get("id").unwrap().as_str().unwrap(), "GED-3");
         assert_eq!(rows[2].get("id").unwrap().as_str().unwrap(), "GED-1");
-        assert_eq!(parsed.pointer("/data/total_count").unwrap().as_u64(), Some(1234));
+        assert_eq!(
+            parsed.pointer("/data/total_count").unwrap().as_u64(),
+            Some(1234)
+        );
     }
 
     #[tokio::test]

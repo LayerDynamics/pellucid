@@ -365,7 +365,10 @@ mod tests {
             .code(),
             "invalid_request"
         );
-        assert_eq!(HandlerError::Upstream("x".into()).code(), "upstream_failure");
+        assert_eq!(
+            HandlerError::Upstream("x".into()).code(),
+            "upstream_failure"
+        );
         assert_eq!(HandlerError::Cache("x".into()).code(), "cache_failure");
     }
 
@@ -395,7 +398,9 @@ mod tests {
             .await
             .unwrap()
             .with_aviation(upstream.clone());
-        let _ = handler(State(state.clone()), Query(good_query())).await.unwrap();
+        let _ = handler(State(state.clone()), Query(good_query()))
+            .await
+            .unwrap();
         let _ = handler(State(state), Query(good_query())).await.unwrap();
         assert_eq!(upstream.calls(), 1, "second call must hit the cache");
     }
@@ -446,7 +451,10 @@ mod tests {
         q.flight = String::new();
         let err = handler(State(state), Query(q)).await.unwrap_err();
         assert_eq!(err.code(), "invalid_request");
-        assert_eq!(upstream.calls(), 0, "validation failure must not touch the upstream");
+        assert_eq!(
+            upstream.calls(),
+            0,
+            "validation failure must not touch the upstream"
+        );
     }
 }
-

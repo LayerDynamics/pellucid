@@ -130,8 +130,8 @@ impl PolymarketClient {
 
     fn build_url(&self, limit: u32) -> Result<Url, StreamsError> {
         let raw = format!("{}/markets", self.config.base_url);
-        let mut url = Url::parse(&raw)
-            .map_err(|e| StreamsError::Parse(format!("polymarket url: {e}")))?;
+        let mut url =
+            Url::parse(&raw).map_err(|e| StreamsError::Parse(format!("polymarket url: {e}")))?;
         {
             let mut q = url.query_pairs_mut();
             q.append_pair("active", "true");
@@ -230,7 +230,10 @@ fn parse_f64(v: &Value) -> f64 {
 fn parse_string_array(v: &Value) -> Vec<String> {
     match v {
         Value::String(s) => serde_json::from_str::<Vec<String>>(s).unwrap_or_default(),
-        Value::Array(arr) => arr.iter().filter_map(|x| x.as_str().map(str::to_string)).collect(),
+        Value::Array(arr) => arr
+            .iter()
+            .filter_map(|x| x.as_str().map(str::to_string))
+            .collect(),
         _ => Vec::new(),
     }
 }
@@ -314,7 +317,10 @@ mod tests {
         let markets = client.fetch_active_markets(100).await.unwrap();
         assert_eq!(markets.len(), 2);
         assert_eq!(markets[0].id, "12345");
-        assert_eq!(markets[0].outcomes, vec!["Yes".to_string(), "No".to_string()]);
+        assert_eq!(
+            markets[0].outcomes,
+            vec!["Yes".to_string(), "No".to_string()]
+        );
         assert_eq!(markets[0].outcome_prices, vec![0.62, 0.38]);
         assert!((markets[0].volume_24hr - 12345.67).abs() < 1e-3);
         // Second row: id is numeric, prices are array of numbers, volume is numeric, volume24hr is string.
@@ -378,7 +384,10 @@ mod tests {
 
     #[test]
     fn parse_helpers_handle_strings_and_numbers() {
-        assert_eq!(parse_string_array(&Value::String("[\"a\", \"b\"]".into())), vec!["a", "b"]);
+        assert_eq!(
+            parse_string_array(&Value::String("[\"a\", \"b\"]".into())),
+            vec!["a", "b"]
+        );
         assert_eq!(
             parse_f64_array(&Value::String("[\"0.62\", \"0.38\"]".into())),
             vec![0.62, 0.38]

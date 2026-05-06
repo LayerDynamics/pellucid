@@ -269,8 +269,7 @@ impl OpenSkyClient {
     /// Trigger the 90 s cooldown. Subsequent fetches return
     /// `Ok(None)` immediately until it elapses.
     fn enter_cooldown(&self) {
-        *self.state.cooldown_until.lock() =
-            Some(Instant::now() + RATE_LIMIT_COOLDOWN);
+        *self.state.cooldown_until.lock() = Some(Instant::now() + RATE_LIMIT_COOLDOWN);
     }
 
     /// Fetch the `/states/all` endpoint constrained to a bounding
@@ -303,9 +302,7 @@ impl OpenSkyClient {
                 "invalid OpenSky bbox: ({lamin}, {lomin}, {lamax}, {lomax})"
             )));
         }
-        let path = format!(
-            "/states/all?lamin={lamin}&lomin={lomin}&lamax={lamax}&lomax={lomax}"
-        );
+        let path = format!("/states/all?lamin={lamin}&lomin={lomin}&lamax={lamax}&lomax={lomax}");
         self.fetch_path(&path).await
     }
 
@@ -379,9 +376,7 @@ impl OpenSkyClient {
             value: body.clone(),
             cached_at_ms: pellucid_core::now_ms(),
         };
-        self.state
-            .positive
-            .insert(path.to_string(), entry);
+        self.state.positive.insert(path.to_string(), entry);
         Ok(Some(body))
     }
 }
@@ -452,7 +447,13 @@ mod tests {
         c.record_negative("/p");
         c.record_negative("/p");
         c.record_negative("/p");
-        let count = c.state.negative.lock().iter().filter(|(p, _)| p == "/p").count();
+        let count = c
+            .state
+            .negative
+            .lock()
+            .iter()
+            .filter(|(p, _)| p == "/p")
+            .count();
         assert_eq!(count, 1, "duplicate paths must collapse");
     }
 

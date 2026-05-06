@@ -36,19 +36,19 @@ pub const CASCADE_GROUP: &str = "supply-chain-ports";
 /// Qingdao, Busan, Tianjin, Rotterdam, Antwerp, LA/Long Beach,
 /// New York/New Jersey, Hamburg).
 pub const DEFAULT_PORTS: &[NamedBBox] = &[
-    ("shanghai",       (30.5,  121.5,  31.5,  122.5)),
-    ("singapore",      ( 1.1,  103.5,   1.5,  104.0)),
-    ("ningbo-zhoushan",(29.7,  121.3,  30.3,  122.5)),
-    ("shenzhen",       (22.4,  113.7,  22.7,  114.4)),
-    ("guangzhou",      (23.0,  113.5,  23.3,  113.8)),
-    ("qingdao",        (35.9,  119.9,  36.3,  120.6)),
-    ("busan",          (35.0,  128.8,  35.2,  129.2)),
-    ("tianjin",        (38.9,  117.5,  39.2,  118.0)),
-    ("rotterdam",      (51.8,    3.9,  52.0,    4.5)),
-    ("antwerp",        (51.2,    4.2,  51.4,    4.5)),
-    ("la-long-beach",  (33.6, -118.4,  33.9, -118.0)),
-    ("ny-nj",          (40.5,  -74.4,  40.8,  -73.8)),
-    ("hamburg",        (53.5,    9.7,  53.7,   10.2)),
+    ("shanghai", (30.5, 121.5, 31.5, 122.5)),
+    ("singapore", (1.1, 103.5, 1.5, 104.0)),
+    ("ningbo-zhoushan", (29.7, 121.3, 30.3, 122.5)),
+    ("shenzhen", (22.4, 113.7, 22.7, 114.4)),
+    ("guangzhou", (23.0, 113.5, 23.3, 113.8)),
+    ("qingdao", (35.9, 119.9, 36.3, 120.6)),
+    ("busan", (35.0, 128.8, 35.2, 129.2)),
+    ("tianjin", (38.9, 117.5, 39.2, 118.0)),
+    ("rotterdam", (51.8, 3.9, 52.0, 4.5)),
+    ("antwerp", (51.2, 4.2, 51.4, 4.5)),
+    ("la-long-beach", (33.6, -118.4, 33.9, -118.0)),
+    ("ny-nj", (40.5, -74.4, 40.8, -73.8)),
+    ("hamburg", (53.5, 9.7, 53.7, 10.2)),
 ];
 
 /// Run-time configuration.
@@ -106,11 +106,7 @@ pub async fn run_cycle(
     if reader.vessel_count() == 0 {
         return Err(LogisticsSeederError::EmptyUpstream);
     }
-    let bboxes: Vec<NamedBBox> = config
-        .ports
-        .iter()
-        .map(|(n, b)| (n.as_str(), *b))
-        .collect();
+    let bboxes: Vec<NamedBBox> = config.ports.iter().map(|(n, b)| (n.as_str(), *b)).collect();
     let counts = reader.vessels_by_region(&bboxes);
     let rows: Vec<PortRow> = config
         .ports
@@ -145,8 +141,7 @@ pub async fn run_cycle(
         },
         data: serde_json::to_value(&snapshot).unwrap_or(serde_json::Value::Null),
     };
-    let outcome =
-        atomic_publish(pool, "supply-chain", CACHE_KEY, &envelope, TTL).await?;
+    let outcome = atomic_publish(pool, "supply-chain", CACHE_KEY, &envelope, TTL).await?;
     Ok(outcome)
 }
 
@@ -201,12 +196,11 @@ mod tests {
         let _ = run_cycle(&pool, &reader, &PortCongestionConfig::default())
             .await
             .unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 13);

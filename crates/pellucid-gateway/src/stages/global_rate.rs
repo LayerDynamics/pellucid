@@ -42,21 +42,28 @@ mod tests {
         Router::new()
             .route("/x", get(|| async { "ok" }))
             .layer(from_fn(global_rate))
-            .layer(axum::middleware::from_fn(move |mut req: Request, next: Next| {
-                let m = insert_marker;
-                async move {
-                    if m {
-                        req.extensions_mut().insert(RateLimitChecked);
+            .layer(axum::middleware::from_fn(
+                move |mut req: Request, next: Next| {
+                    let m = insert_marker;
+                    async move {
+                        if m {
+                            req.extensions_mut().insert(RateLimitChecked);
+                        }
+                        next.run(req).await
                     }
-                    next.run(req).await
-                }
-            }))
+                },
+            ))
     }
 
     #[tokio::test]
     async fn marker_present_passes_through() {
         let resp = router(true)
-            .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/x")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
@@ -65,7 +72,12 @@ mod tests {
     #[tokio::test]
     async fn marker_missing_still_passes_open_with_warn() {
         let resp = router(false)
-            .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/x")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);

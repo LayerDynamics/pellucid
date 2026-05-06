@@ -9,9 +9,7 @@ use serde::{Deserialize, Serialize};
 use pellucid_db::Pool;
 
 use crate::atomic_publish::{atomic_publish, PublishOutcome};
-use crate::cyber::seed_cyber_incident_feed::{
-    format_iso8601_utc, FetchedCve, NvdFetcher,
-};
+use crate::cyber::seed_cyber_incident_feed::{format_iso8601_utc, FetchedCve, NvdFetcher};
 use crate::cyber::CyberSeederError;
 use crate::envelope::{SeedEnvelope, SeedMeta};
 
@@ -189,8 +187,7 @@ mod tests {
             _last_mod_start: &str,
             _last_mod_end: &str,
             _results_per_page: u32,
-        ) -> Result<FetchedNvdResponse, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<FetchedNvdResponse, Box<dyn std::error::Error + Send + Sync>> {
             Ok(self.response.clone())
         }
     }
@@ -205,8 +202,7 @@ mod tests {
             _last_mod_start: &str,
             _last_mod_end: &str,
             _results_per_page: u32,
-        ) -> Result<FetchedNvdResponse, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<FetchedNvdResponse, Box<dyn std::error::Error + Send + Sync>> {
             Err("upstream down".into())
         }
     }
@@ -235,10 +231,10 @@ mod tests {
             response: FetchedNvdResponse {
                 total_results: 4,
                 vulnerabilities: vec![
-                    cve("CVE-2024-001", 5.5, "MEDIUM"),    // dropped
+                    cve("CVE-2024-001", 5.5, "MEDIUM"), // dropped
                     cve("CVE-2024-002", 9.8, "CRITICAL"),
                     cve("CVE-2024-003", 7.2, "HIGH"),
-                    cve("CVE-2024-004", 3.1, "LOW"),       // dropped
+                    cve("CVE-2024-004", 3.1, "LOW"), // dropped
                 ],
             },
         };
@@ -246,12 +242,11 @@ mod tests {
             .await
             .unwrap();
         assert!(outcome.bytes_written > 0);
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 2);
@@ -283,20 +278,16 @@ mod tests {
             ..CveTrendingConfig::default()
         };
         let _ = run_cycle(&pool, &fetcher, &cfg).await.unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 5);
         // Top entry has the highest CVSS — CVE-0029 (7.0 + 29*0.1 = 9.9).
-        assert_eq!(
-            rows[0].get("cve_id").unwrap().as_str().unwrap(),
-            "CVE-0029"
-        );
+        assert_eq!(rows[0].get("cve_id").unwrap().as_str().unwrap(), "CVE-0029");
     }
 
     #[tokio::test]

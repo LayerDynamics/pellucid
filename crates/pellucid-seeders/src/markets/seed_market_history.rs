@@ -254,8 +254,7 @@ mod tests {
             symbol: &str,
             interval: &str,
             range: &str,
-        ) -> Result<Vec<FetchedBar>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Vec<FetchedBar>, Box<dyn std::error::Error + Send + Sync>> {
             self.last_calls.lock().unwrap().push((
                 symbol.to_string(),
                 interval.to_string(),
@@ -280,8 +279,7 @@ mod tests {
             _symbol: &str,
             _interval: &str,
             _range: &str,
-        ) -> Result<Vec<FetchedBar>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Vec<FetchedBar>, Box<dyn std::error::Error + Send + Sync>> {
             Err("upstream down".into())
         }
     }
@@ -332,13 +330,11 @@ mod tests {
         };
         let outcome = run_cycle(&pool, &fetcher, &cfg).await.unwrap();
         assert!(outcome.bytes_written > 0);
-        let row: (String,) = sqlx::query_as(
-            "SELECT payload FROM kv_envelope WHERE cache_key = ?",
-        )
-        .bind(CACHE_KEY)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let series = parsed.pointer("/data/symbols").unwrap().as_array().unwrap();
         assert_eq!(series.len(), 2);
@@ -360,21 +356,16 @@ mod tests {
             range: "3mo".into(),
         };
         let _ = run_cycle(&pool, &fetcher, &cfg).await.unwrap();
-        let row: (String,) = sqlx::query_as(
-            "SELECT payload FROM kv_envelope WHERE cache_key = ?",
-        )
-        .bind(CACHE_KEY)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let series = parsed.pointer("/data/symbols").unwrap().as_array().unwrap();
         // Only SPY made it through; BAD was skipped.
         assert_eq!(series.len(), 1);
-        assert_eq!(
-            series[0].get("symbol").unwrap().as_str().unwrap(),
-            "SPY",
-        );
+        assert_eq!(series[0].get("symbol").unwrap().as_str().unwrap(), "SPY",);
     }
 
     #[tokio::test]
@@ -382,7 +373,10 @@ mod tests {
         let pool = open_in_memory().await.unwrap();
         let cfg = MarketHistoryConfig::default();
         let err = run_cycle(&pool, &FailingFetcher, &cfg).await.unwrap_err();
-        assert!(matches!(err, MarketsSeederError::Upstream(_)), "got {err:?}");
+        assert!(
+            matches!(err, MarketsSeederError::Upstream(_)),
+            "got {err:?}"
+        );
     }
 
     #[tokio::test]

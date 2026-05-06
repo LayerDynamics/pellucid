@@ -133,8 +133,7 @@ impl RssClient {
     pub async fn fetch(&self, url: &str) -> Result<RssFeed, StreamsError> {
         // Allowlist check happens before we touch the in-flight
         // registry so a denied URL can never poison the cache.
-        let parsed = Url::parse(url)
-            .map_err(|e| StreamsError::Parse(format!("url parse: {e}")))?;
+        let parsed = Url::parse(url).map_err(|e| StreamsError::Parse(format!("url parse: {e}")))?;
         let host = parsed
             .host_str()
             .ok_or_else(|| StreamsError::Parse(format!("url has no host: {url}")))?;
@@ -151,9 +150,7 @@ impl RssClient {
         let http = self.http.clone();
         let timeout = self.timeout;
         let outcome = cell
-            .get_or_init(move || async move {
-                fetch_and_parse(&http, &url_owned, timeout).await
-            })
+            .get_or_init(move || async move { fetch_and_parse(&http, &url_owned, timeout).await })
             .await
             .clone();
         // Evict the in-flight entry once everyone has their result
@@ -298,7 +295,10 @@ mod tests {
         assert_eq!(feed.entries.len(), 2);
         let first = &feed.entries[0];
         assert_eq!(first.title.as_deref(), Some("First entry"));
-        assert_eq!(first.link.as_deref(), Some("https://reuters.com/articles/1"));
+        assert_eq!(
+            first.link.as_deref(),
+            Some("https://reuters.com/articles/1")
+        );
         assert!(first.id.contains("reuters"));
         assert!(first.summary.as_deref().unwrap().contains("First"));
         assert!(first.published.is_some());
@@ -312,7 +312,10 @@ mod tests {
         assert_eq!(feed.entries.len(), 1);
         let only = &feed.entries[0];
         assert_eq!(only.title.as_deref(), Some("Atom entry one"));
-        assert_eq!(only.link.as_deref(), Some("https://krebsonsecurity.com/posts/1"));
+        assert_eq!(
+            only.link.as_deref(),
+            Some("https://krebsonsecurity.com/posts/1")
+        );
         assert_eq!(only.id, "tag:krebsonsecurity,2026:1");
     }
 
@@ -388,6 +391,9 @@ mod tests {
         // article URL — both load-bearing for dedup.
         let only = &normalised.entries[0];
         assert!(!only.id.is_empty());
-        assert_eq!(only.link.as_deref(), Some("https://reuters.com/articles/no-id"));
+        assert_eq!(
+            only.link.as_deref(),
+            Some("https://reuters.com/articles/no-id")
+        );
     }
 }

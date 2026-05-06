@@ -16,8 +16,8 @@
 use std::sync::Arc;
 
 use pellucid_tauri::{
-    Clock, InMemoryVault, LocalApiState, ManualClock, RotationOutcome, SidecarHandle,
-    TokenRotator, Variant, Vault, DEFAULT_OVERLAP_MS, DEFAULT_ROTATION_INTERVAL_MS,
+    Clock, InMemoryVault, LocalApiState, ManualClock, RotationOutcome, SidecarHandle, TokenRotator,
+    Variant, Vault, DEFAULT_OVERLAP_MS, DEFAULT_ROTATION_INTERVAL_MS,
 };
 
 fn boot_state(initial_token: &str) -> (LocalApiState, Arc<TokenRotator>, Arc<ManualClock>) {
@@ -67,11 +67,17 @@ async fn sidecar_accepts_both_tokens_during_overlap_then_drops_previous() {
     // Inside the overlap window both tokens are accepted.
     clock.advance(DEFAULT_OVERLAP_MS - 1);
     assert!(state.accepts_token(&v2), "current must be accepted");
-    assert!(state.accepts_token(&v1), "previous must be accepted inside overlap");
+    assert!(
+        state.accepts_token(&v1),
+        "previous must be accepted inside overlap"
+    );
 
     // After the overlap elapses the previous token must be rejected.
     clock.advance(2);
-    assert!(state.accepts_token(&v2), "current still accepted post-overlap");
+    assert!(
+        state.accepts_token(&v2),
+        "current still accepted post-overlap"
+    );
     assert!(
         !state.accepts_token(&v1),
         "previous must be dropped past 30 s — H1 regression"
@@ -88,7 +94,10 @@ async fn persist_rotation_writes_into_vault_so_restart_path_is_warm() {
     state.persist_rotation(&outcome).await.unwrap();
 
     let blob = state.vault().read().await.unwrap();
-    assert_eq!(blob.sidecar_token.as_deref(), Some(outcome.new_token.as_str()));
+    assert_eq!(
+        blob.sidecar_token.as_deref(),
+        Some(outcome.new_token.as_str())
+    );
     assert_eq!(blob.sidecar_token_previous.as_deref(), Some("v1"));
 }
 
@@ -110,7 +119,11 @@ async fn three_rotations_under_compressed_clock_yield_three_distinct_tokens() {
             "rotation produced a duplicate token"
         );
     }
-    assert_eq!(seen.len(), 4, "seed + 3 rotations should be 4 unique tokens");
+    assert_eq!(
+        seen.len(),
+        4,
+        "seed + 3 rotations should be 4 unique tokens"
+    );
 }
 
 #[tokio::test]
@@ -128,6 +141,9 @@ async fn refresh_secrets_returns_rotation_state_post_rotation() {
     state.persist_rotation(&outcome).await.unwrap();
 
     let post = state.refresh_secrets().await.unwrap();
-    assert_eq!(post.sidecar_token.as_deref(), Some(outcome.new_token.as_str()));
+    assert_eq!(
+        post.sidecar_token.as_deref(),
+        Some(outcome.new_token.as_str())
+    );
     assert_eq!(post.sidecar_token_previous.as_deref(), Some("v1"));
 }

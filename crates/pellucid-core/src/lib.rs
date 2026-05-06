@@ -18,6 +18,7 @@ pub mod fnv;
 pub mod id;
 pub mod seed_meta;
 pub mod time;
+pub mod vault;
 
 pub use cache_tier::CacheTier;
 pub use envelope::{
@@ -28,6 +29,9 @@ pub use fnv::FnvHasher;
 pub use id::RunId;
 pub use seed_meta::{SeedMeta, SeedState};
 pub use time::now_ms;
+pub use vault::{
+    EnvVault, InMemoryVault, SecretsBlob, Vault, VaultChange, VaultError, VAULT_SERVICE, VAULT_USER,
+};
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.
 ///

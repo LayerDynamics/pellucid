@@ -147,10 +147,7 @@ impl EntitlementChecker for StaticChecker {
 /// Build a gateway whose `route_tiers` is seeded directly from the
 /// live `ENDPOINT_ENTITLEMENTS` table. Any drift in the table
 /// surfaces here without an extra mapping layer.
-fn gateway_with_live_tiers(
-    handlers: Router,
-    checker: Arc<dyn EntitlementChecker>,
-) -> Router {
+fn gateway_with_live_tiers(handlers: Router, checker: Arc<dyn EntitlementChecker>) -> Router {
     let mut tiers = RouteEntitlementRules::new();
     for (path, tier) in iter_premium_paths() {
         tiers.require(path, tier);
@@ -212,10 +209,14 @@ async fn every_table_entry_gated_by_gateway() {
     // and an Always-Deny checker results in 403. This proves the
     // gateway is **actually consulting** entitlement on every path
     // — not just the 4 originals.
-    let app_allow =
-        gateway_with_live_tiers(handlers_for_every_gated_path(), Arc::new(AlwaysAllowEntitlement));
-    let app_deny =
-        gateway_with_live_tiers(handlers_for_every_gated_path(), Arc::new(AlwaysDenyEntitlement));
+    let app_allow = gateway_with_live_tiers(
+        handlers_for_every_gated_path(),
+        Arc::new(AlwaysAllowEntitlement),
+    );
+    let app_deny = gateway_with_live_tiers(
+        handlers_for_every_gated_path(),
+        Arc::new(AlwaysDenyEntitlement),
+    );
 
     let mut allow_total = 0usize;
     let mut deny_total = 0usize;

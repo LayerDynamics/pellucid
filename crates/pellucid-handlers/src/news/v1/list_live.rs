@@ -48,8 +48,7 @@ use serde_json::Value;
 use pellucid_cache::{get_cached_json, CacheHit};
 
 use crate::news::v1::list_articles::{
-    apply_filters, ListArticlesPayload, ListArticlesQuery, NewsArticle, Severity,
-    CACHE_KEY,
+    apply_filters, ListArticlesPayload, ListArticlesQuery, NewsArticle, Severity, CACHE_KEY,
 };
 use crate::state::AppState;
 
@@ -278,7 +277,9 @@ mod tests {
     async fn write_payload(pool: &pellucid_db::Pool, articles: Vec<NewsArticle>) {
         let payload = serde_json::to_value(ListArticlesPayload { articles }).unwrap();
         let env = Envelope::new(payload);
-        set_cached_json(pool, CACHE_KEY, &env, 60_000).await.unwrap();
+        set_cached_json(pool, CACHE_KEY, &env, 60_000)
+            .await
+            .unwrap();
     }
 
     /// Pull records off the stream until we've collected `n` of
@@ -341,10 +342,7 @@ mod tests {
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].name, "outage");
         assert_eq!(
-            events[0]
-                .data
-                .pointer("/reason")
-                .and_then(Value::as_str),
+            events[0].data.pointer("/reason").and_then(Value::as_str),
             Some("bootstrap_upstream_empty"),
         );
     }

@@ -96,10 +96,18 @@ fn tone_for_delta(delta: f64, neutral_above_when_neg: bool) -> &'static str {
         return "neutral";
     }
     if delta > 0.0 {
-        return if neutral_above_when_neg { "positive" } else { "negative" };
+        return if neutral_above_when_neg {
+            "positive"
+        } else {
+            "negative"
+        };
     }
     if delta < 0.0 {
-        return if neutral_above_when_neg { "negative" } else { "positive" };
+        return if neutral_above_when_neg {
+            "negative"
+        } else {
+            "positive"
+        };
     }
     "neutral"
 }
@@ -181,7 +189,12 @@ pub async fn handler(
                 label: "Financial stress".into(),
                 value: format!("{:.2}", snap.latest.value),
                 subline: None,
-                tone: if snap.latest.value > 1.0 { "negative" } else { "neutral" }.to_string(),
+                tone: if snap.latest.value > 1.0 {
+                    "negative"
+                } else {
+                    "neutral"
+                }
+                .to_string(),
             });
         }
     }
@@ -248,7 +261,12 @@ mod tests {
     async fn returns_503_when_nothing_present() {
         let (app, _) = migrated().await;
         let resp = app
-            .oneshot(Request::builder().uri(MACRO_TILES_PATH).body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri(MACRO_TILES_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
@@ -266,10 +284,17 @@ mod tests {
             .await
             .unwrap();
         let resp = app
-            .oneshot(Request::builder().uri(MACRO_TILES_PATH).body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri(MACRO_TILES_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         let parsed: MacroTilesResponse = serde_json::from_slice(&body).unwrap();
         assert_eq!(parsed.tiles.len(), 1);
         assert_eq!(parsed.tiles[0].code, "UNRATE");

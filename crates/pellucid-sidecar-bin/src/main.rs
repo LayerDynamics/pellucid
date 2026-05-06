@@ -8,14 +8,21 @@
 //! Stdin protocol (one command per line):
 //! - `TOKEN_ROTATED <new_current> <previous>` — replace the token pair.
 //! - `TOKEN_ROTATED <new_current> -` — replace current, clear previous.
+//! - `TELEGRAM_SESSION_UPDATED <base64>` — host pushed new MTProto
+//!   session bytes (T4.5.0). The sidecar's `IpcSessionStore` updates
+//!   in-memory and emits `Updated` to subscribers.
+//! - `TELEGRAM_SESSION_CLEARED` — host cleared the MTProto session
+//!   (user logged out). Sidecar's run task drains gracefully.
 //! - `SHUTDOWN` — graceful exit.
 
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
 use std::io::Write;
+use std::sync::Arc;
 
-use pellucid_sidecar::{serve_on_random_port, TokenSet, STDOUT_PORT_PREFIX};
-use tokio::io::{AsyncBufReadExt, BufReader};
+use pellucid_sidecar::{process_stdin_loop, serve_on_random_port, TokenSet, STDOUT_PORT_PREFIX};
+use pellucid_streams::telegram::session::IpcSessionStore;
+use tokio::io::BufReader;
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main(flavor = "multi_thread")]
@@ -33,26 +40,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     tracing::info!(target: "pellucid::sidecar", port = handle.port, "sidecar listening");
 
+    let session_store = Arc::new(IpcSessionStore::new());
+
     let stdin = tokio::io::stdin();
-    let mut lines = BufReader::new(stdin).lines();
-    while let Ok(Some(line)) = lines.next_line().await {
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-        if trimmed == "SHUTDOWN" {
-            tracing::info!(target: "pellucid::sidecar", "received SHUTDOWN, exiting");
-            break;
-        }
-        if let Some(rest) = trimmed.strip_prefix("TOKEN_ROTATED ") {
-            apply_token_rotated(&tokens, rest);
-            continue;
-        }
-        tracing::warn!(
-            target: "pellucid::sidecar",
-            "unrecognised control line: {trimmed:?}"
-        );
-    }
+    process_stdin_loop(BufReader::new(stdin), &tokens, &session_store).await;
 
     handle.task.abort();
     Ok(())
@@ -87,27 +78,10 @@ fn read_initial_token_from_env() -> String {
 /// short-lived bootstrap path only.
 fn read_dev_urandom(buf: &mut [u8]) -> Result<(), ()> {
     use std::io::Read;
-    match std::fs::File::open("/dev/urandom")
-        .and_then(|mut f| f.read_exact(buf))
-    {
+    match std::fs::File::open("/dev/urandom").and_then(|mut f| f.read_exact(buf)) {
         Ok(()) => Ok(()),
         Err(_) => Err(()),
     }
-}
-
-fn apply_token_rotated(tokens: &TokenSet, rest: &str) {
-    let mut parts = rest.split_whitespace();
-    let Some(new_current) = parts.next() else {
-        tracing::warn!(target: "pellucid::sidecar", "TOKEN_ROTATED missing new current");
-        return;
-    };
-    let previous = parts.next();
-    let previous = match previous {
-        Some("-") | None => None,
-        Some(other) => Some(other.to_string()),
-    };
-    tokens.set_pair(new_current.to_string(), previous);
-    tracing::info!(target: "pellucid::sidecar", "token pair updated via stdin");
 }
 
 fn init_tracing() {
@@ -119,31 +93,8 @@ fn init_tracing() {
         .try_init();
 }
 
-#[cfg(test)]
-#[allow(clippy::panic, clippy::unwrap_used, clippy::expect_used)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn apply_token_rotated_with_dash_clears_previous() {
-        let t = TokenSet::new("c".into());
-        apply_token_rotated(&t, "fresh -");
-        assert_eq!(t.current(), "fresh");
-        assert!(t.previous().is_none());
-    }
-
-    #[test]
-    fn apply_token_rotated_with_two_args_records_pair() {
-        let t = TokenSet::new("c".into());
-        apply_token_rotated(&t, "fresh stale");
-        assert_eq!(t.current(), "fresh");
-        assert_eq!(t.previous().as_deref(), Some("stale"));
-    }
-
-    #[test]
-    fn apply_token_rotated_ignores_empty_payload() {
-        let t = TokenSet::new("c".into());
-        apply_token_rotated(&t, "");
-        assert_eq!(t.current(), "c");
-    }
-}
+// T4.5.0 — `apply_token_rotated` moved into
+// `pellucid_sidecar::stdin_protocol`. The token-rotation behavior
+// previously asserted here is now covered by
+// `tests/stdin_telegram_protocol.rs::token_rotated_continues_to_work_alongside_telegram_lines`
+// and the existing `tests/token_rotation.rs` integration test.

@@ -22,9 +22,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use pellucid_tauri::{
-    resolve_sidecar_binary_path, Clock, InMemoryVault, LocalApiState, ManualClock,
-    SidecarHandle, SidecarSupervisor, TokenRotator, Variant, Vault,
-    DEFAULT_OVERLAP_MS, DEFAULT_ROTATION_INTERVAL_MS,
+    resolve_sidecar_binary_path, Clock, InMemoryVault, LocalApiState, ManualClock, SidecarHandle,
+    SidecarSupervisor, TokenRotator, Variant, Vault, DEFAULT_OVERLAP_MS,
+    DEFAULT_ROTATION_INTERVAL_MS,
 };
 
 const SEED_TOKEN: &str = "m0gate-seed-token";
@@ -54,13 +54,12 @@ fn ensure_sidecar_binary() -> PathBuf {
         .status()
         .expect("invoke cargo build for pellucid-sidecar-bin");
     assert!(status.success(), "cargo build of sidecar bin failed");
-    resolve_sidecar_binary_path(&target_debug)
-        .expect("sidecar binary present after build")
+    resolve_sidecar_binary_path(&target_debug).expect("sidecar binary present after build")
 }
 
 async fn echo(port: u16, bearer: Option<&str>) -> reqwest::StatusCode {
-    let mut req = reqwest::Client::new()
-        .get(format!("http://127.0.0.1:{port}/api/echo?message=ping"));
+    let mut req =
+        reqwest::Client::new().get(format!("http://127.0.0.1:{port}/api/echo?message=ping"));
     if let Some(b) = bearer {
         req = req.header("authorization", format!("Bearer {b}"));
     }
@@ -112,10 +111,7 @@ async fn m0_gate_round_trip_via_real_sidecar() {
         .await
         .expect("persist rotation");
     state
-        .forward_token_rotation_to_sidecar(
-            &outcome.new_token,
-            Some(outcome.retired_token.as_str()),
-        )
+        .forward_token_rotation_to_sidecar(&outcome.new_token, Some(outcome.retired_token.as_str()))
         .await
         .expect("forward TOKEN_ROTATED to sidecar");
 

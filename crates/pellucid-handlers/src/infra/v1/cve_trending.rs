@@ -52,7 +52,11 @@ pub async fn handler(
         .map_err(|e| HandlerError::Cache(e.to_string()))?;
     let (snap, stale) = decode_required::<Snap>(raw)?;
     let total = snap.rows.len();
-    let max_cvss = snap.rows.iter().map(|r| r.cvss_score).fold(0.0_f64, f64::max);
+    let max_cvss = snap
+        .rows
+        .iter()
+        .map(|r| r.cvss_score)
+        .fold(0.0_f64, f64::max);
     Ok(Json(CveTrendingResponse {
         rows: snap.rows,
         max_cvss,
@@ -76,14 +80,25 @@ mod tests {
     async fn migrated() -> (axum::Router, pellucid_db::Pool) {
         let state = AppState::for_tests_async().await.unwrap();
         let pool = state.pool.clone();
-        let app = axum::Router::new().route(CVE_TRENDING_PATH, axum::routing::get(handler).with_state(state));
+        let app = axum::Router::new().route(
+            CVE_TRENDING_PATH,
+            axum::routing::get(handler).with_state(state),
+        );
         (app, pool)
     }
 
     #[tokio::test]
     async fn returns_503_when_empty() {
         let (app, _) = migrated().await;
-        let resp = app.oneshot(Request::builder().uri(CVE_TRENDING_PATH).body(Body::empty()).unwrap()).await.unwrap();
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .uri(CVE_TRENDING_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
         assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
     }
 
@@ -97,12 +112,30 @@ mod tests {
             ],
             "assembled_at_ms": 1_700_000_000_000_i64,
         });
-        set_cached_json(&pool, CACHE_KEY, &Envelope::new(snap), 60_000).await.unwrap();
-        let resp = app.oneshot(Request::builder().uri(CVE_TRENDING_PATH).body(Body::empty()).unwrap()).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &Envelope::new(snap), 60_000)
+            .await
+            .unwrap();
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .uri(CVE_TRENDING_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         let parsed: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(parsed.pointer("/maxCvss").and_then(Value::as_f64), Some(9.8));
-        assert_eq!(parsed.pointer("/rows/0/cveId").and_then(Value::as_str), Some("CVE-2026-1234"));
+        assert_eq!(
+            parsed.pointer("/maxCvss").and_then(Value::as_f64),
+            Some(9.8)
+        );
+        assert_eq!(
+            parsed.pointer("/rows/0/cveId").and_then(Value::as_str),
+            Some("CVE-2026-1234")
+        );
     }
 }

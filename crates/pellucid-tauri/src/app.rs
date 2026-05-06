@@ -37,6 +37,11 @@ pub(crate) fn builder() -> Builder<Wry> {
             ipc::set_variant,
             ipc::request_updater_check,
             ipc::open_external,
+            ipc::telegram_login_request_code,
+            ipc::telegram_login_submit_code,
+            ipc::telegram_login_submit_password,
+            ipc::telegram_logout,
+            ipc::telegram_session_present,
         ])
         .setup(setup_main_window)
 }
@@ -116,7 +121,9 @@ pub(crate) fn setup_main_window(app: &mut App) -> Result<(), Box<dyn std::error:
     spawn_rotation_loop(rotator, move |outcome| {
         let state = state_for_loop.clone();
         let handle = app_handle.clone();
-        let payload = TokenRotatedPayload { at_ms: outcome.at_ms };
+        let payload = TokenRotatedPayload {
+            at_ms: outcome.at_ms,
+        };
         let outcome_for_persist = outcome.clone();
         tauri::async_runtime::spawn(async move {
             if let Err(err) = state.persist_rotation(&outcome_for_persist).await {
@@ -156,14 +163,9 @@ pub(crate) fn setup_main_window(app: &mut App) -> Result<(), Box<dyn std::error:
     // with the discovered port, and stays attached so the rotation
     // loop above can forward control lines into the child's stdin.
     let state_for_sidecar = state.inner().clone();
-    let initial_token_for_sidecar = state
-        .inner()
-        .local_api_token()
-        .unwrap_or_default();
+    let initial_token_for_sidecar = state.inner().local_api_token().unwrap_or_default();
     tauri::async_runtime::spawn(async move {
-        if let Err(err) =
-            launch_sidecar(state_for_sidecar, initial_token_for_sidecar).await
-        {
+        if let Err(err) = launch_sidecar(state_for_sidecar, initial_token_for_sidecar).await {
             tracing::error!(
                 target: "pellucid::sidecar",
                 "sidecar launch failed: {err}"
@@ -184,13 +186,25 @@ async fn launch_sidecar(
     initial_token: String,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let bin = sidecar_binary_path()?;
-    let env = vec![
-        ("PELLUCID_SIDECAR_TOKEN".to_string(), initial_token),
-    ];
+    let env = vec![("PELLUCID_SIDECAR_TOKEN".to_string(), initial_token)];
     let supervisor = SidecarSupervisor::spawn_with_env(&bin, &[], &env).await?;
     let port = supervisor.handle().port();
     state.set_sidecar_port(port);
+
+    // Take the telegram-session receiver BEFORE wrapping the supervisor
+    // in an Arc — `take_telegram_session_rx` requires `&self` access
+    // and is single-shot. The harvest loop persists every received
+    // blob into the OS keychain (T4.5.0).
+    let telegram_rx = supervisor.take_telegram_session_rx().await;
     state.attach_sidecar_supervisor(Arc::new(supervisor));
+    if let Some(rx) = telegram_rx {
+        // The harvest loop is fire-and-forget; the join handle is
+        // intentionally discarded. The task ends only when the mpsc
+        // sender (owned by the supervisor's stdout drain task) closes,
+        // which happens at process shutdown.
+        drop(state.spawn_telegram_session_harvest_loop(rx));
+    }
+
     tracing::info!(
         target: "pellucid::sidecar",
         port,

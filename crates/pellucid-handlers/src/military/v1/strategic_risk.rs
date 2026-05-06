@@ -11,9 +11,7 @@ use serde_json::Value;
 use pellucid_cache::get_cached_json;
 
 use crate::conflict::v1::ucdp_events;
-use crate::economic::v1::shared::{
-    decode_optional, HandlerError, DEFAULT_RETRY_AFTER_SECS,
-};
+use crate::economic::v1::shared::{decode_optional, HandlerError, DEFAULT_RETRY_AFTER_SECS};
 use crate::state::AppState;
 
 use super::strategic_posture;
@@ -29,7 +27,10 @@ pub struct StrategicRiskResponse {
     pub rationale: String,
     #[serde(rename = "ucdpFatalities24h", skip_serializing_if = "Option::is_none")]
     pub ucdp_fatalities_24h: Option<u32>,
-    #[serde(rename = "highReadinessTheaters", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "highReadinessTheaters",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub high_readiness_theaters: Option<usize>,
     #[serde(rename = "sanctions24h", skip_serializing_if = "Option::is_none")]
     pub sanctions_24h: Option<usize>,
@@ -114,11 +115,18 @@ pub async fn handler(
     let (p, s2) = decode_optional::<PostureSnap>(raw_p)?;
     let (s, s3) = decode_optional::<SanctionsSnap>(raw_s)?;
 
-    let fatalities = u.as_ref().map(|u| u.rows.iter().map(|r| r.fatalities).sum::<u32>());
+    let fatalities = u
+        .as_ref()
+        .map(|u| u.rows.iter().map(|r| r.fatalities).sum::<u32>());
     let high_readiness = p.as_ref().map(|p| {
         p.rows
             .iter()
-            .filter(|r| matches!(r.readiness.as_str(), "C-1" | "DEFCON-1" | "DEFCON-2" | "high"))
+            .filter(|r| {
+                matches!(
+                    r.readiness.as_str(),
+                    "C-1" | "DEFCON-1" | "DEFCON-2" | "high"
+                )
+            })
             .count()
     });
     let sanctions = s.as_ref().map(|s| s.rows.len());
@@ -217,9 +225,14 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         let parsed: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(parsed.pointer("/level").and_then(Value::as_str), Some("low"));
+        assert_eq!(
+            parsed.pointer("/level").and_then(Value::as_str),
+            Some("low")
+        );
     }
 
     #[test]

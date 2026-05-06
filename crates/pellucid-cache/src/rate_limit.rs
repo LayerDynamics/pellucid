@@ -128,13 +128,11 @@ pub async fn check_rate_limit(
         (&global_key, config.global.window_ms),
         (&aggregate_key, config.aggregate.window_ms),
     ] {
-        sqlx::query(
-            "DELETE FROM rate_limit_window WHERE bucket_key = ?1 AND request_at_ms <= ?2",
-        )
-        .bind(key)
-        .bind(now - window)
-        .execute(&mut *tx)
-        .await?;
+        sqlx::query("DELETE FROM rate_limit_window WHERE bucket_key = ?1 AND request_at_ms <= ?2")
+            .bind(key)
+            .bind(now - window)
+            .execute(&mut *tx)
+            .await?;
     }
 
     // Read window counts.
@@ -205,7 +203,11 @@ const fn saturating_remaining(limit: u32, used: i64) -> u32 {
 
 const fn retry_after(earliest_ms: i64, window_ms: i64, now: i64) -> i64 {
     let release = earliest_ms.saturating_add(window_ms);
-    if release > now { release - now } else { 0 }
+    if release > now {
+        release - now
+    } else {
+        0
+    }
 }
 
 async fn window_count(
@@ -223,12 +225,10 @@ async fn earliest_in_window(
     tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
     bucket_key: &str,
 ) -> Result<i64, sqlx::Error> {
-    let row = sqlx::query(
-        "SELECT MIN(request_at_ms) FROM rate_limit_window WHERE bucket_key = ?1",
-    )
-    .bind(bucket_key)
-    .fetch_one(&mut **tx)
-    .await?;
+    let row = sqlx::query("SELECT MIN(request_at_ms) FROM rate_limit_window WHERE bucket_key = ?1")
+        .bind(bucket_key)
+        .fetch_one(&mut **tx)
+        .await?;
     let v: Option<i64> = row.try_get(0).ok();
     Ok(v.unwrap_or(0))
 }
@@ -238,13 +238,11 @@ async fn insert_request(
     bucket_key: &str,
     request_at_ms: i64,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        "INSERT INTO rate_limit_window (bucket_key, request_at_ms) VALUES (?1, ?2)",
-    )
-    .bind(bucket_key)
-    .bind(request_at_ms)
-    .execute(&mut **tx)
-    .await?;
+    sqlx::query("INSERT INTO rate_limit_window (bucket_key, request_at_ms) VALUES (?1, ?2)")
+        .bind(bucket_key)
+        .bind(request_at_ms)
+        .execute(&mut **tx)
+        .await?;
     Ok(())
 }
 
@@ -256,12 +254,10 @@ async fn next_request_at(
     bucket_key: &str,
     now: i64,
 ) -> Result<i64, sqlx::Error> {
-    let row = sqlx::query(
-        "SELECT MAX(request_at_ms) FROM rate_limit_window WHERE bucket_key = ?1",
-    )
-    .bind(bucket_key)
-    .fetch_one(&mut **tx)
-    .await?;
+    let row = sqlx::query("SELECT MAX(request_at_ms) FROM rate_limit_window WHERE bucket_key = ?1")
+        .bind(bucket_key)
+        .fetch_one(&mut **tx)
+        .await?;
     let prev_max: Option<i64> = row.try_get(0).ok();
     Ok(match prev_max {
         Some(m) if m >= now => m.saturating_add(1),
@@ -277,9 +273,18 @@ mod tests {
 
     fn small_config(endpoint: u32, global: u32, aggregate: u32) -> RateLimitConfig {
         RateLimitConfig {
-            endpoint: BucketConfig { limit: endpoint, window_ms: 60_000 },
-            global: BucketConfig { limit: global, window_ms: 60_000 },
-            aggregate: BucketConfig { limit: aggregate, window_ms: 60_000 },
+            endpoint: BucketConfig {
+                limit: endpoint,
+                window_ms: 60_000,
+            },
+            global: BucketConfig {
+                limit: global,
+                window_ms: 60_000,
+            },
+            aggregate: BucketConfig {
+                limit: aggregate,
+                window_ms: 60_000,
+            },
         }
     }
 
@@ -287,9 +292,10 @@ mod tests {
     async fn first_request_is_allowed() {
         let pool = open_in_memory().await.expect("pool");
         let cfg = RateLimitConfig::default();
-        let decision = check_rate_limit(&pool, "/api/aviation/v1/get-flight-status", "1.2.3.4", &cfg)
-            .await
-            .expect("check");
+        let decision =
+            check_rate_limit(&pool, "/api/aviation/v1/get-flight-status", "1.2.3.4", &cfg)
+                .await
+                .expect("check");
         match decision {
             RateLimitDecision::Allowed { remaining_min, .. } => assert!(remaining_min > 0),
             other => panic!("expected Allowed, got {other:?}"),
@@ -303,11 +309,15 @@ mod tests {
         // Allow → Allow → Deny on third.
         for _ in 0..2 {
             assert!(matches!(
-                check_rate_limit(&pool, "rpc", "1.2.3.4", &cfg).await.expect("check"),
+                check_rate_limit(&pool, "rpc", "1.2.3.4", &cfg)
+                    .await
+                    .expect("check"),
                 RateLimitDecision::Allowed { .. }
             ));
         }
-        let third = check_rate_limit(&pool, "rpc", "1.2.3.4", &cfg).await.expect("check");
+        let third = check_rate_limit(&pool, "rpc", "1.2.3.4", &cfg)
+            .await
+            .expect("check");
         assert_eq!(
             third,
             RateLimitDecision::Denied {
@@ -326,9 +336,15 @@ mod tests {
         // should be the one that trips the global bucket.
         let pool = open_in_memory().await.expect("pool");
         let cfg = small_config(100, 2, 100);
-        check_rate_limit(&pool, "rpc-a", "1.2.3.4", &cfg).await.expect("a1");
-        check_rate_limit(&pool, "rpc-b", "1.2.3.4", &cfg).await.expect("b1");
-        let third = check_rate_limit(&pool, "rpc-c", "1.2.3.4", &cfg).await.expect("c1");
+        check_rate_limit(&pool, "rpc-a", "1.2.3.4", &cfg)
+            .await
+            .expect("a1");
+        check_rate_limit(&pool, "rpc-b", "1.2.3.4", &cfg)
+            .await
+            .expect("b1");
+        let third = check_rate_limit(&pool, "rpc-c", "1.2.3.4", &cfg)
+            .await
+            .expect("c1");
         match third {
             RateLimitDecision::Denied { bucket, .. } => assert_eq!(bucket, BucketKind::Global),
             other => panic!("expected Denied(Global), got {other:?}"),
@@ -342,10 +358,18 @@ mod tests {
         // umbrella must trip.
         let pool = open_in_memory().await.expect("pool");
         let cfg = small_config(1000, 1000, 3);
-        check_rate_limit(&pool, "rpc-a", "1.2.3.4", &cfg).await.expect("a1");
-        check_rate_limit(&pool, "rpc-b", "1.2.3.4", &cfg).await.expect("b1");
-        check_rate_limit(&pool, "rpc-c", "1.2.3.4", &cfg).await.expect("c1");
-        let fourth = check_rate_limit(&pool, "rpc-d", "1.2.3.4", &cfg).await.expect("d1");
+        check_rate_limit(&pool, "rpc-a", "1.2.3.4", &cfg)
+            .await
+            .expect("a1");
+        check_rate_limit(&pool, "rpc-b", "1.2.3.4", &cfg)
+            .await
+            .expect("b1");
+        check_rate_limit(&pool, "rpc-c", "1.2.3.4", &cfg)
+            .await
+            .expect("c1");
+        let fourth = check_rate_limit(&pool, "rpc-d", "1.2.3.4", &cfg)
+            .await
+            .expect("d1");
         match fourth {
             RateLimitDecision::Denied { bucket, .. } => assert_eq!(bucket, BucketKind::Aggregate),
             other => panic!("expected Denied(Aggregate), got {other:?}"),
@@ -356,10 +380,16 @@ mod tests {
     async fn separate_ips_have_independent_buckets() {
         let pool = open_in_memory().await.expect("pool");
         let cfg = small_config(2, 100, 100);
-        check_rate_limit(&pool, "rpc", "1.1.1.1", &cfg).await.expect("a1");
-        check_rate_limit(&pool, "rpc", "1.1.1.1", &cfg).await.expect("a2");
+        check_rate_limit(&pool, "rpc", "1.1.1.1", &cfg)
+            .await
+            .expect("a1");
+        check_rate_limit(&pool, "rpc", "1.1.1.1", &cfg)
+            .await
+            .expect("a2");
         // a's third call would be denied; b should still be allowed.
-        let b = check_rate_limit(&pool, "rpc", "2.2.2.2", &cfg).await.expect("b1");
+        let b = check_rate_limit(&pool, "rpc", "2.2.2.2", &cfg)
+            .await
+            .expect("b1");
         assert!(matches!(b, RateLimitDecision::Allowed { .. }));
     }
 
@@ -367,10 +397,16 @@ mod tests {
     async fn separate_endpoints_have_independent_endpoint_buckets() {
         let pool = open_in_memory().await.expect("pool");
         let cfg = small_config(2, 100, 100);
-        check_rate_limit(&pool, "rpc-a", "1.1.1.1", &cfg).await.expect("a1");
-        check_rate_limit(&pool, "rpc-a", "1.1.1.1", &cfg).await.expect("a2");
+        check_rate_limit(&pool, "rpc-a", "1.1.1.1", &cfg)
+            .await
+            .expect("a1");
+        check_rate_limit(&pool, "rpc-a", "1.1.1.1", &cfg)
+            .await
+            .expect("a2");
         // rpc-a is now at endpoint cap; rpc-b is independent.
-        let b = check_rate_limit(&pool, "rpc-b", "1.1.1.1", &cfg).await.expect("b1");
+        let b = check_rate_limit(&pool, "rpc-b", "1.1.1.1", &cfg)
+            .await
+            .expect("b1");
         assert!(matches!(b, RateLimitDecision::Allowed { .. }));
     }
 
@@ -378,12 +414,19 @@ mod tests {
     async fn retry_after_is_positive_after_deny() {
         let pool = open_in_memory().await.expect("pool");
         let cfg = small_config(1, 100, 100);
-        check_rate_limit(&pool, "rpc", "1.1.1.1", &cfg).await.expect("first");
-        let denied = check_rate_limit(&pool, "rpc", "1.1.1.1", &cfg).await.expect("second");
+        check_rate_limit(&pool, "rpc", "1.1.1.1", &cfg)
+            .await
+            .expect("first");
+        let denied = check_rate_limit(&pool, "rpc", "1.1.1.1", &cfg)
+            .await
+            .expect("second");
         match denied {
             RateLimitDecision::Denied { retry_after_ms, .. } => {
                 assert!(retry_after_ms > 0, "retry_after_ms must be positive");
-                assert!(retry_after_ms <= 60_000, "retry_after_ms cannot exceed window");
+                assert!(
+                    retry_after_ms <= 60_000,
+                    "retry_after_ms cannot exceed window"
+                );
             }
             other => panic!("expected Denied, got {other:?}"),
         }

@@ -61,10 +61,7 @@ async fn shutdown(mut s: SpawnedSidecar) {
 #[tokio::test]
 async fn echo_get_with_valid_bearer_returns_200_and_message_round_trip() {
     let sidecar = spawn_sidecar().await;
-    let url = format!(
-        "http://127.0.0.1:{}/api/echo?message=ping",
-        sidecar.port
-    );
+    let url = format!("http://127.0.0.1:{}/api/echo?message=ping", sidecar.port);
     let resp = reqwest::Client::new()
         .get(&url)
         .header("authorization", format!("Bearer {TOKEN}"))

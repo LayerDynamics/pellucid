@@ -27,14 +27,14 @@ pub const CASCADE_GROUP: &str = "maritime-chokepoint";
 /// Default chokepoints — Suez, Hormuz, Malacca, Bosporus,
 /// Panama, Bab el-Mandeb, Dover, Gibraltar.
 pub const DEFAULT_CHOKEPOINTS: &[NamedBBox] = &[
-    ("suez",          ( 27.5,  32.0,  32.5,  34.0)),
-    ("hormuz",        ( 25.0,  55.5,  27.5,  57.5)),
-    ("malacca",       (  1.0,  98.0,   6.0, 105.0)),
-    ("bosporus",      ( 40.5,  28.5,  41.5,  29.5)),
-    ("panama",        (  8.5, -80.5,   9.5, -79.0)),
-    ("bab-el-mandeb", ( 12.0,  43.0,  14.0,  44.0)),
-    ("dover",         ( 50.5,   1.0,  51.5,   1.5)),
-    ("gibraltar",     ( 35.5,  -5.5,  36.5,  -5.0)),
+    ("suez", (27.5, 32.0, 32.5, 34.0)),
+    ("hormuz", (25.0, 55.5, 27.5, 57.5)),
+    ("malacca", (1.0, 98.0, 6.0, 105.0)),
+    ("bosporus", (40.5, 28.5, 41.5, 29.5)),
+    ("panama", (8.5, -80.5, 9.5, -79.0)),
+    ("bab-el-mandeb", (12.0, 43.0, 14.0, 44.0)),
+    ("dover", (50.5, 1.0, 51.5, 1.5)),
+    ("gibraltar", (35.5, -5.5, 36.5, -5.0)),
 ];
 
 /// Run-time configuration.
@@ -120,8 +120,7 @@ pub async fn run_cycle(
         },
         data: serde_json::to_value(&snapshot).unwrap_or(serde_json::Value::Null),
     };
-    let outcome =
-        atomic_publish(pool, "maritime", CACHE_KEY, &envelope, TTL).await?;
+    let outcome = atomic_publish(pool, "maritime", CACHE_KEY, &envelope, TTL).await?;
     Ok(outcome)
 }
 
@@ -181,12 +180,11 @@ mod tests {
         let _ = run_cycle(&pool, &reader, &ChokepointStatusConfig::default())
             .await
             .unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 8);

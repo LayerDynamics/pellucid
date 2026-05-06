@@ -180,10 +180,7 @@ impl axum::response::IntoResponse for HandlerError {
 
 /// Apply `?limit` + `?channel` filters. Pure.
 #[must_use]
-pub fn apply_filters(
-    rows: Vec<TelegramMessage>,
-    q: &FeedQuery,
-) -> (Vec<TelegramMessage>, usize) {
+pub fn apply_filters(rows: Vec<TelegramMessage>, q: &FeedQuery) -> (Vec<TelegramMessage>, usize) {
     let mut filtered: Vec<TelegramMessage> = if let Some(channel) = q.channel.as_deref() {
         let needle = channel.trim().to_ascii_lowercase();
         rows.into_iter()
@@ -220,8 +217,8 @@ pub async fn handler(
     };
 
     let inner = unwrap_envelope_data(value);
-    let payload: SnapshotPayload = serde_json::from_value(inner)
-        .map_err(|e| HandlerError::Shape(e.to_string()))?;
+    let payload: SnapshotPayload =
+        serde_json::from_value(inner).map_err(|e| HandlerError::Shape(e.to_string()))?;
     let (rows, total) = apply_filters(payload.rows, &q);
     Ok(Json(FeedResponse {
         rows,
@@ -284,10 +281,8 @@ mod tests {
     async fn migrated_router() -> (axum::Router, pellucid_db::Pool) {
         let state = AppState::for_tests_async().await.unwrap();
         let pool = state.pool.clone();
-        let app = axum::Router::new().route(
-            FEED_PATH,
-            axum::routing::get(handler).with_state(state),
-        );
+        let app =
+            axum::Router::new().route(FEED_PATH, axum::routing::get(handler).with_state(state));
         (app, pool)
     }
 
@@ -298,8 +293,7 @@ mod tests {
 
     #[test]
     fn apply_filters_default_limit_is_fifty() {
-        let rows: Vec<TelegramMessage> =
-            (0..120).map(|i| message("rt_intl_news", i)).collect();
+        let rows: Vec<TelegramMessage> = (0..120).map(|i| message("rt_intl_news", i)).collect();
         let (out, total) = apply_filters(rows, &FeedQuery::default());
         assert_eq!(out.len(), DEFAULT_LIMIT);
         assert_eq!(total, 120);
@@ -351,7 +345,10 @@ mod tests {
         assert_eq!(HandlerError::Cache("x".into()).code(), "cache_failure");
         assert_eq!(HandlerError::Shape("x".into()).code(), "cache_shape");
         assert_eq!(
-            HandlerError::Outage { retry_after_secs: 30 }.code(),
+            HandlerError::Outage {
+                retry_after_secs: 30
+            }
+            .code(),
             "bootstrap_upstream_empty",
         );
     }

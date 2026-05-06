@@ -108,9 +108,7 @@ async fn cold_cache_calls_upstream_once_warm_cache_serves_locally() {
     let state = wired_state(&server).await;
     let app = full_pipeline_router(state);
 
-    let url = format!(
-        "{GET_FLIGHT_STATUS_PATH}?flight=AA100&date=2026-04-25&origin=JFK"
-    );
+    let url = format!("{GET_FLIGHT_STATUS_PATH}?flight=AA100&date=2026-04-25&origin=JFK");
     let mk_req = || {
         Request::builder()
             .uri(&url)
@@ -155,9 +153,7 @@ async fn upstream_503_surfaces_as_handler_error() {
     let state = wired_state(&server).await;
     let app = full_pipeline_router(state);
 
-    let url = format!(
-        "{GET_FLIGHT_STATUS_PATH}?flight=AA100&date=2026-04-25&origin=JFK"
-    );
+    let url = format!("{GET_FLIGHT_STATUS_PATH}?flight=AA100&date=2026-04-25&origin=JFK");
     let resp = app
         .oneshot(
             Request::builder()
@@ -190,18 +186,14 @@ async fn upstream_empty_data_surfaces_as_404_envelope() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/v1/flights"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(serde_json::json!({ "data": [] })),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({ "data": [] })))
         .mount(&server)
         .await;
 
     let state = wired_state(&server).await;
     let app = full_pipeline_router(state);
 
-    let url = format!(
-        "{GET_FLIGHT_STATUS_PATH}?flight=ZZ999&date=2026-04-25&origin=JFK"
-    );
+    let url = format!("{GET_FLIGHT_STATUS_PATH}?flight=ZZ999&date=2026-04-25&origin=JFK");
     let resp = app
         .oneshot(
             Request::builder()

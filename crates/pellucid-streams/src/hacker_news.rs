@@ -85,9 +85,10 @@ impl HackerNewsClient {
     /// - [`StreamsError::Parse`] for body shape mismatches.
     pub async fn fetch_top_stories(&self, limit: usize) -> Result<Vec<HnStory>, StreamsError> {
         let ids = self.fetch_top_ids().await?;
-        let calls = ids.iter().take(limit).map(|id| async move {
-            self.fetch_item(*id).await.ok().flatten()
-        });
+        let calls = ids
+            .iter()
+            .take(limit)
+            .map(|id| async move { self.fetch_item(*id).await.ok().flatten() });
         Ok(join_all(calls).await.into_iter().flatten().collect())
     }
 
@@ -237,10 +238,11 @@ mod tests {
         for (id, score) in [(1001_u64, 500_i64), (1002, 300), (1003, 100)] {
             Mock::given(method("GET"))
                 .and(path(format!("/v0/item/{id}.json")))
-                .respond_with(
-                    ResponseTemplate::new(200)
-                        .set_body_json(item_body(id, &format!("Story {id}"), score)),
-                )
+                .respond_with(ResponseTemplate::new(200).set_body_json(item_body(
+                    id,
+                    &format!("Story {id}"),
+                    score,
+                )))
                 .mount(&server)
                 .await;
         }
@@ -265,9 +267,7 @@ mod tests {
         for id in 1_u64..=2 {
             Mock::given(method("GET"))
                 .and(path(format!("/v0/item/{id}.json")))
-                .respond_with(
-                    ResponseTemplate::new(200).set_body_json(item_body(id, "x", 1)),
-                )
+                .respond_with(ResponseTemplate::new(200).set_body_json(item_body(id, "x", 1)))
                 .mount(&server)
                 .await;
         }
@@ -281,9 +281,7 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/v0/topstories.json"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(serde_json::json!([1, 2])),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([1, 2])))
             .mount(&server)
             .await;
         Mock::given(method("GET"))

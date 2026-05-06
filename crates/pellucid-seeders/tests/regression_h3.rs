@@ -39,9 +39,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use pellucid_db::open_in_memory;
-use pellucid_seeders::theater_posture::{
-    run_cycle, OpenSkyBoxFetcher, CACHE_KEY, THEATER_BOXES,
-};
+use pellucid_seeders::theater_posture::{run_cycle, OpenSkyBoxFetcher, CACHE_KEY, THEATER_BOXES};
 use pellucid_streams::opensky::OpenSkyConfig;
 use pellucid_streams::OpenSkyClient;
 use wiremock::matchers::{method, path};
@@ -127,14 +125,17 @@ async fn theater_posture_seeder_calls_opensky_directly_not_via_loopback() {
     // path. If a loopback were live it would have written via
     // the gateway's rate-limit layer first, but no gateway is
     // running — proving the publish is direct.
-    let row: (String,) =
-        sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-            .bind(CACHE_KEY)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+        .bind(CACHE_KEY)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
     let envelope: serde_json::Value = serde_json::from_str(&row.0).unwrap();
-    let theaters = envelope.pointer("/data/theaters").unwrap().as_array().unwrap();
+    let theaters = envelope
+        .pointer("/data/theaters")
+        .unwrap()
+        .as_array()
+        .unwrap();
     assert_eq!(theaters.len(), THEATER_BOXES.len());
     for t in theaters {
         // States_body returns 1 aircraft per call.
@@ -178,8 +179,7 @@ async fn seeder_does_not_bind_any_local_port() {
         async fn fetch_box(
             &self,
             _bbox: (f64, f64, f64, f64),
-        ) -> Result<Option<serde_json::Value>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Option<serde_json::Value>, Box<dyn std::error::Error + Send + Sync>> {
             Ok(None)
         }
     }
@@ -200,8 +200,7 @@ async fn arc_dyn_dispatch_works_for_relay_wiring() {
         async fn fetch_box(
             &self,
             _bbox: (f64, f64, f64, f64),
-        ) -> Result<Option<serde_json::Value>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Option<serde_json::Value>, Box<dyn std::error::Error + Send + Sync>> {
             Ok(Some(serde_json::json!({ "states": [["x"]] })))
         }
     }

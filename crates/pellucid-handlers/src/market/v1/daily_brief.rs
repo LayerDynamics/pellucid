@@ -268,8 +268,7 @@ pub fn compose(
             .filter(|r| !r.symbol.eq_ignore_ascii_case("^VIX"))
             .collect();
         if !basket.is_empty() {
-            let avg = basket.iter().map(|r| r.percent_change).sum::<f64>()
-                / basket.len() as f64;
+            let avg = basket.iter().map(|r| r.percent_change).sum::<f64>() / basket.len() as f64;
             let mut sorted = basket.clone();
             sorted.sort_by(|a, b| {
                 b.percent_change
@@ -286,8 +285,7 @@ pub fn compose(
                 DayTone::Down => "Stocks edging down",
                 DayTone::StrongDown => "Stocks broadly down",
             };
-            let mut rationale =
-                format!("Basket avg {avg:+.2}% across {} symbols", basket.len());
+            let mut rationale = format!("Basket avg {avg:+.2}% across {} symbols", basket.len());
             if let (Some(g), Some(l)) = (gainer, loser) {
                 rationale.push_str(&format!(
                     " (top gainer {} {:+.2}%, top loser {} {:+.2}%)",
@@ -331,8 +329,7 @@ pub fn compose(
             stale = true;
         }
         if !c.percent_changes.is_empty() {
-            let avg = c.percent_changes.iter().sum::<f64>()
-                / c.percent_changes.len() as f64;
+            let avg = c.percent_changes.iter().sum::<f64>() / c.percent_changes.len() as f64;
             let tone = DayTone::from_avg_pct(avg);
             let headline = match tone {
                 DayTone::StrongUp => "Crypto rallying",
@@ -361,8 +358,7 @@ pub fn compose(
             stale = true;
         }
         if !co.percent_changes.is_empty() {
-            let avg = co.percent_changes.iter().sum::<f64>()
-                / co.percent_changes.len() as f64;
+            let avg = co.percent_changes.iter().sum::<f64>() / co.percent_changes.len() as f64;
             let tone = DayTone::from_avg_pct(avg);
             let headline = match tone {
                 DayTone::StrongUp => "Commodities firming",

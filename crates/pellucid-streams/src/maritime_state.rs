@@ -270,11 +270,14 @@ mod tests {
             ("none", (60.0_f64, -150.0_f64, 70.0_f64, -140.0_f64)),
         ];
         let counts = state.vessels_by_region(&regions);
-        assert_eq!(counts, vec![
-            ("med".to_string(), 1),
-            ("malacca".to_string(), 1),
-            ("none".to_string(), 0),
-        ]);
+        assert_eq!(
+            counts,
+            vec![
+                ("med".to_string(), 1),
+                ("malacca".to_string(), 1),
+                ("none".to_string(), 0),
+            ]
+        );
     }
 
     #[test]

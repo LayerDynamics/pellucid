@@ -204,10 +204,7 @@ impl axum::response::IntoResponse for HandlerError {
 /// Apply `?limit` + `?country` filters. Pure — extracted so
 /// unit tests pin the boundaries without touching the cache.
 #[must_use]
-pub fn apply_filters(
-    rows: Vec<GdeltArticle>,
-    q: &GdeltFeedQuery,
-) -> (Vec<GdeltArticle>, usize) {
+pub fn apply_filters(rows: Vec<GdeltArticle>, q: &GdeltFeedQuery) -> (Vec<GdeltArticle>, usize) {
     let mut filtered: Vec<GdeltArticle> = if let Some(country) = q.country.as_deref() {
         let needle = country.trim().to_ascii_lowercase();
         rows.into_iter()
@@ -244,8 +241,8 @@ pub async fn handler(
     };
 
     let inner = unwrap_envelope_data(value);
-    let payload: SnapshotPayload = serde_json::from_value(inner)
-        .map_err(|e| HandlerError::Shape(e.to_string()))?;
+    let payload: SnapshotPayload =
+        serde_json::from_value(inner).map_err(|e| HandlerError::Shape(e.to_string()))?;
     let (rows, total) = apply_filters(payload.rows, &q);
     Ok(Json(GdeltFeedResponse {
         rows,
@@ -331,8 +328,7 @@ mod tests {
 
     #[test]
     fn apply_filters_default_limit_is_fifty() {
-        let rows: Vec<GdeltArticle> =
-            (0..120).map(|i| row("Iran", &format!("u{i}"))).collect();
+        let rows: Vec<GdeltArticle> = (0..120).map(|i| row("Iran", &format!("u{i}"))).collect();
         let (out, total) = apply_filters(rows, &GdeltFeedQuery::default());
         assert_eq!(out.len(), DEFAULT_LIMIT);
         assert_eq!(total, 120);
@@ -340,8 +336,9 @@ mod tests {
 
     #[test]
     fn apply_filters_clamps_limit_to_max() {
-        let rows: Vec<GdeltArticle> =
-            (0..(MAX_LIMIT + 30)).map(|i| row("Iran", &format!("u{i}"))).collect();
+        let rows: Vec<GdeltArticle> = (0..(MAX_LIMIT + 30))
+            .map(|i| row("Iran", &format!("u{i}")))
+            .collect();
         let q = GdeltFeedQuery {
             limit: Some(MAX_LIMIT * 5),
             country: None,
@@ -385,7 +382,10 @@ mod tests {
         assert_eq!(HandlerError::Cache("x".into()).code(), "cache_failure");
         assert_eq!(HandlerError::Shape("x".into()).code(), "cache_shape");
         assert_eq!(
-            HandlerError::Outage { retry_after_secs: 30 }.code(),
+            HandlerError::Outage {
+                retry_after_secs: 30
+            }
+            .code(),
             "bootstrap_upstream_empty",
         );
     }
@@ -395,14 +395,20 @@ mod tests {
         assert_eq!(HandlerError::Cache("x".into()).status(), Code::BAD_GATEWAY);
         assert_eq!(HandlerError::Shape("x".into()).status(), Code::BAD_GATEWAY);
         assert_eq!(
-            HandlerError::Outage { retry_after_secs: 30 }.status(),
+            HandlerError::Outage {
+                retry_after_secs: 30
+            }
+            .status(),
             Code::SERVICE_UNAVAILABLE,
         );
     }
 
     #[tokio::test]
     async fn outage_response_carries_retry_after_header() {
-        let resp = HandlerError::Outage { retry_after_secs: 30 }.into_response();
+        let resp = HandlerError::Outage {
+            retry_after_secs: 30,
+        }
+        .into_response();
         assert_eq!(resp.status(), Code::SERVICE_UNAVAILABLE);
         assert_eq!(resp.headers().get("retry-after").unwrap(), "30");
         assert_eq!(
@@ -474,7 +480,10 @@ mod tests {
             Some(1_700_000_000_000),
         );
         assert_eq!(parsed.pointer("/total").and_then(Value::as_u64), Some(1));
-        assert_eq!(parsed.pointer("/stale").and_then(Value::as_bool), Some(false));
+        assert_eq!(
+            parsed.pointer("/stale").and_then(Value::as_bool),
+            Some(false)
+        );
     }
 
     #[tokio::test]
@@ -561,8 +570,7 @@ mod tests {
     #[tokio::test]
     async fn handler_clamps_limit_via_query_param() {
         let (app, pool) = migrated_router().await;
-        let rows: Vec<GdeltArticle> =
-            (0..10).map(|i| row("Iran", &format!("u{i}"))).collect();
+        let rows: Vec<GdeltArticle> = (0..10).map(|i| row("Iran", &format!("u{i}"))).collect();
         let env = Envelope::new(snapshot(rows));
         set_cached_json(&pool, CACHE_KEY, &env, 60_000)
             .await

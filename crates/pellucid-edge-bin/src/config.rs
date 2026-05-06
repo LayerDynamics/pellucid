@@ -139,22 +139,20 @@ impl Config {
     /// listen address fails to parse as a `SocketAddr`.
     pub fn parse(src: &ConfigSource) -> Result<Self, ConfigError> {
         let listen_raw = src.listen_addr.as_deref().unwrap_or(DEFAULT_LISTEN_ADDR);
-        let listen_addr: SocketAddr = listen_raw.parse().map_err(|e: std::net::AddrParseError| {
-            ConfigError::InvalidListenAddr {
-                value: listen_raw.to_string(),
-                reason: e.to_string(),
-            }
-        })?;
+        let listen_addr: SocketAddr =
+            listen_raw.parse().map_err(|e: std::net::AddrParseError| {
+                ConfigError::InvalidListenAddr {
+                    value: listen_raw.to_string(),
+                    reason: e.to_string(),
+                }
+            })?;
         Ok(Self {
             listen_addr,
             db_url: src
                 .db_url
                 .clone()
                 .unwrap_or_else(|| DEFAULT_DB_URL.to_string()),
-            aviationstack_api_key: src
-                .aviationstack_api_key
-                .clone()
-                .unwrap_or_default(),
+            aviationstack_api_key: src.aviationstack_api_key.clone().unwrap_or_default(),
             aviationstack_base_url: src
                 .aviationstack_base_url
                 .clone()
@@ -170,10 +168,8 @@ mod tests {
 
     #[test]
     fn resolve_listen_addr_explicit_wins_over_port() {
-        let resolved = resolve_listen_addr_from_env(
-            Some("127.0.0.1:9999".into()),
-            Some("9210".into()),
-        );
+        let resolved =
+            resolve_listen_addr_from_env(Some("127.0.0.1:9999".into()), Some("9210".into()));
         assert_eq!(resolved.as_deref(), Some("127.0.0.1:9999"));
     }
 
@@ -191,8 +187,7 @@ mod tests {
 
     #[test]
     fn resolve_listen_addr_unparseable_port_falls_through_to_none() {
-        let resolved =
-            resolve_listen_addr_from_env(None, Some("not-a-number".into()));
+        let resolved = resolve_listen_addr_from_env(None, Some("not-a-number".into()));
         assert!(resolved.is_none());
         // Parser then applies the documented edge default.
         let src = ConfigSource {

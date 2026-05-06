@@ -185,14 +185,18 @@ impl EiaClient {
             .map_err(|e| StreamsError::Parse(e.to_string()))?;
         Ok(EiaResponse {
             total: body.response.total,
-            rows: body.response.data.into_iter().map(EiaRow::from_raw).collect(),
+            rows: body
+                .response
+                .data
+                .into_iter()
+                .map(EiaRow::from_raw)
+                .collect(),
         })
     }
 
     fn build_url(&self, query: &EiaQuery) -> Result<Url, StreamsError> {
         let raw = format!("{}/v2/{}/data/", self.config.base_url, query.path);
-        let mut url = Url::parse(&raw)
-            .map_err(|e| StreamsError::Parse(format!("eia url: {e}")))?;
+        let mut url = Url::parse(&raw).map_err(|e| StreamsError::Parse(format!("eia url: {e}")))?;
         {
             let mut q = url.query_pairs_mut();
             q.append_pair("api_key", &self.config.api_key);

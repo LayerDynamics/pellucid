@@ -6,7 +6,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use sqlx::Row;
 
-use pellucid_core::{Envelope, validate_envelope_size};
+use pellucid_core::{validate_envelope_size, Envelope};
 use pellucid_db::Pool;
 
 use crate::negative::DEFAULT_NEGATIVE_TTL_MS;
@@ -126,8 +126,9 @@ pub async fn get_cached_json<T: DeserializeOwned>(
     }
 
     let payload: String = row.get(0);
-    let value: T = serde_json::from_str(&payload)
-        .map_err(|e| sqlx::Error::Decode(Box::new(e) as Box<dyn std::error::Error + Send + Sync>))?;
+    let value: T = serde_json::from_str(&payload).map_err(|e| {
+        sqlx::Error::Decode(Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+    })?;
 
     let fetched: i64 = row.get(1);
     let ttl: i64 = row.get(2);
@@ -150,8 +151,9 @@ pub async fn set_cached_json<T: Serialize>(
     value: &Envelope<T>,
     ttl_ms: i64,
 ) -> Result<(), sqlx::Error> {
-    let payload = serde_json::to_string(value)
-        .map_err(|e| sqlx::Error::Encode(Box::new(e) as Box<dyn std::error::Error + Send + Sync>))?;
+    let payload = serde_json::to_string(value).map_err(|e| {
+        sqlx::Error::Encode(Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+    })?;
 
     if let Err(too_big) = validate_envelope_size(payload.as_bytes()) {
         return Err(sqlx::Error::Protocol(too_big.to_string()));
@@ -187,11 +189,7 @@ pub async fn set_cached_json<T: Serialize>(
 ///
 /// # Errors
 /// Returns [`sqlx::Error`] on write failure.
-pub async fn set_negative_sentinel(
-    pool: &Pool,
-    key: &str,
-    ttl_ms: i64,
-) -> Result<(), sqlx::Error> {
+pub async fn set_negative_sentinel(pool: &Pool, key: &str, ttl_ms: i64) -> Result<(), sqlx::Error> {
     let now = pellucid_core::now_ms();
     sqlx::query(
         "INSERT INTO kv_envelope
@@ -237,7 +235,9 @@ mod tests {
     #[tokio::test]
     async fn fresh_after_set_within_ttl() {
         let pool = open_in_memory().await.expect("pool");
-        set_cached_json(&pool, "k", &sample_envelope(), 60_000).await.expect("set");
+        set_cached_json(&pool, "k", &sample_envelope(), 60_000)
+            .await
+            .expect("set");
         let hit: CacheHit<serde_json::Value> = get_cached_json(&pool, "k").await.expect("get");
         match hit {
             CacheHit::Fresh(v) => assert_eq!(v["data"]["k"], "v"),
@@ -248,7 +248,9 @@ mod tests {
     #[tokio::test]
     async fn stale_after_zero_ttl() {
         let pool = open_in_memory().await.expect("pool");
-        set_cached_json(&pool, "k", &sample_envelope(), 0).await.expect("set");
+        set_cached_json(&pool, "k", &sample_envelope(), 0)
+            .await
+            .expect("set");
         // ttl=0 means now+0 == now, so the comparison fetched+ttl > now is false → stale.
         let hit: CacheHit<serde_json::Value> = get_cached_json(&pool, "k").await.expect("get");
         assert!(matches!(hit, CacheHit::Stale(_)));
@@ -257,7 +259,9 @@ mod tests {
     #[tokio::test]
     async fn negative_sentinel_returns_negative_within_ttl() {
         let pool = open_in_memory().await.expect("pool");
-        set_negative_sentinel(&pool, "k", 60_000).await.expect("neg");
+        set_negative_sentinel(&pool, "k", 60_000)
+            .await
+            .expect("neg");
         let hit: CacheHit<serde_json::Value> = get_cached_json(&pool, "k").await.expect("get");
         assert_eq!(hit, CacheHit::NegativeSentinel);
     }
@@ -274,7 +278,10 @@ mod tests {
     async fn delete_removes_row() {
         let pool = open_in_memory().await.expect("pool");
         let cache = KvCache::new(pool);
-        cache.set("k", &sample_envelope(), 60_000).await.expect("set");
+        cache
+            .set("k", &sample_envelope(), 60_000)
+            .await
+            .expect("set");
         cache.delete("k").await.expect("delete");
         let hit: CacheHit<serde_json::Value> = cache.get("k").await.expect("get");
         assert_eq!(hit, CacheHit::Miss);

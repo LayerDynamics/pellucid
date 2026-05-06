@@ -121,4 +121,3 @@ Add as a new section '## Root Cause Discipline' under debugging guidance\n\n## R
 - **Before claiming a fix works, verify by running tests/builds. Do NOT prematurely claim '100% parity' or 'fully fixed' without evidence.**
 - **When debugging, resist jumping to the first plausible cause. Enumerate candidates, then systematically eliminate.** Common failure mode: chasing version mismatches/dependency bumps when the real bug is in app code.
 - **If a user pushes back on a diagnosis, STOP and reconsider from scratch rather than defending the current hypothesis.**
-

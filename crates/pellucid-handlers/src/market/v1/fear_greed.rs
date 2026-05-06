@@ -302,7 +302,11 @@ pub fn compose(
         if s.stale {
             stale = true;
         }
-        if let Some(vix) = s.rows.iter().find(|r| r.symbol.eq_ignore_ascii_case("^VIX")) {
+        if let Some(vix) = s
+            .rows
+            .iter()
+            .find(|r| r.symbol.eq_ignore_ascii_case("^VIX"))
+        {
             let score = score_volatility(vix.price);
             components.push(Component {
                 name: "volatility".into(),
@@ -312,24 +316,17 @@ pub fn compose(
             });
         }
         if !s.rows.is_empty() {
-            let advancers = s
-                .rows
-                .iter()
-                .filter(|r| r.percent_change > 0.0)
-                .count();
+            let advancers = s.rows.iter().filter(|r| r.percent_change > 0.0).count();
             let total = s.rows.len();
             let m_score = score_momentum(advancers, total);
             components.push(Component {
                 name: "momentum".into(),
                 score: m_score,
                 label: SentimentLabel::from_score(m_score),
-                rationale: format!(
-                    "{}/{} symbols advancing",
-                    advancers, total
-                ),
+                rationale: format!("{}/{} symbols advancing", advancers, total),
             });
-            let avg_pct: f64 = s.rows.iter().map(|r| r.percent_change).sum::<f64>()
-                / (total as f64);
+            let avg_pct: f64 =
+                s.rows.iter().map(|r| r.percent_change).sum::<f64>() / (total as f64);
             let st_score = score_strength(avg_pct);
             components.push(Component {
                 name: "strength".into(),
@@ -363,10 +360,7 @@ pub fn compose(
     if components.is_empty() {
         return None;
     }
-    let composite = (components
-        .iter()
-        .map(|c| u32::from(c.score))
-        .sum::<u32>() as f64
+    let composite = (components.iter().map(|c| u32::from(c.score)).sum::<u32>() as f64
         / components.len() as f64)
         .round() as u8;
 
@@ -552,7 +546,10 @@ mod tests {
         assert_eq!(SentimentLabel::from_score(56), SentimentLabel::Greed);
         assert_eq!(SentimentLabel::from_score(75), SentimentLabel::Greed);
         assert_eq!(SentimentLabel::from_score(76), SentimentLabel::ExtremeGreed);
-        assert_eq!(SentimentLabel::from_score(100), SentimentLabel::ExtremeGreed);
+        assert_eq!(
+            SentimentLabel::from_score(100),
+            SentimentLabel::ExtremeGreed
+        );
     }
 
     #[test]
@@ -672,16 +669,16 @@ mod tests {
             assembled_at_ms: 1,
             stale: false,
             rows: vec![
-                EtfRowOwned { activity_ratio: 1.5 },
-                EtfRowOwned { activity_ratio: 1.5 },
+                EtfRowOwned {
+                    activity_ratio: 1.5,
+                },
+                EtfRowOwned {
+                    activity_ratio: 1.5,
+                },
             ],
         };
         let resp = compose(None, Some(etf)).expect("composite");
-        let v = resp
-            .components
-            .iter()
-            .find(|c| c.name == "volume")
-            .unwrap();
+        let v = resp.components.iter().find(|c| c.name == "volume").unwrap();
         assert_eq!(v.score, 100);
     }
 
@@ -715,7 +712,9 @@ mod tests {
         let etf = EtfRollupOwned {
             assembled_at_ms: 9,
             stale: false,
-            rows: vec![EtfRowOwned { activity_ratio: 1.0 }],
+            rows: vec![EtfRowOwned {
+                activity_ratio: 1.0,
+            }],
         };
         let resp = compose(Some(stocks), Some(etf)).unwrap();
         assert_eq!(resp.assembled_at_ms, 9);
@@ -740,10 +739,7 @@ mod tests {
     #[tokio::test]
     async fn handler_serves_when_only_stocks_present() {
         let (app, pool) = migrated_router().await;
-        let env = Envelope::new(stocks_snapshot(&[
-            ("^VIX", 12.0, 0.0),
-            ("SPY", 100.0, 1.5),
-        ]));
+        let env = Envelope::new(stocks_snapshot(&[("^VIX", 12.0, 0.0), ("SPY", 100.0, 1.5)]));
         set_cached_json(&pool, STOCKS_CACHE_KEY, &env, 60_000)
             .await
             .unwrap();

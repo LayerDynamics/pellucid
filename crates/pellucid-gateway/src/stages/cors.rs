@@ -20,10 +20,7 @@ pub async fn cors_merge(
     request: Request,
     next: Next,
 ) -> Response {
-    let request_origin = request
-        .headers()
-        .get(header::ORIGIN)
-        .cloned();
+    let request_origin = request.headers().get(header::ORIGIN).cloned();
     let mut response = next.run(request).await;
     let headers = response.headers_mut();
 
@@ -114,12 +111,16 @@ mod tests {
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
         assert_eq!(
-            resp.headers().get(header::ACCESS_CONTROL_ALLOW_ORIGIN).unwrap(),
+            resp.headers()
+                .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+                .unwrap(),
             "https://app.test"
         );
         assert_eq!(resp.headers().get(header::VARY).unwrap(), "Origin");
         assert_eq!(
-            resp.headers().get(header::ACCESS_CONTROL_ALLOW_CREDENTIALS).unwrap(),
+            resp.headers()
+                .get(header::ACCESS_CONTROL_ALLOW_CREDENTIALS)
+                .unwrap(),
             "true"
         );
     }
@@ -128,7 +129,12 @@ mod tests {
     async fn no_origin_with_credentials_omits_origin_header() {
         let cfg = CorsConfig::default();
         let resp = router(Arc::new(cfg))
-            .oneshot(AxumRequest::builder().uri("/echo").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/echo")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert!(resp
@@ -150,8 +156,14 @@ mod tests {
             )
             .await
             .unwrap();
-        let methods = resp.headers().get(header::ACCESS_CONTROL_ALLOW_METHODS).unwrap();
-        let headers = resp.headers().get(header::ACCESS_CONTROL_ALLOW_HEADERS).unwrap();
+        let methods = resp
+            .headers()
+            .get(header::ACCESS_CONTROL_ALLOW_METHODS)
+            .unwrap();
+        let headers = resp
+            .headers()
+            .get(header::ACCESS_CONTROL_ALLOW_HEADERS)
+            .unwrap();
         assert!(methods.to_str().unwrap().contains("GET"));
         assert!(methods.to_str().unwrap().contains("POST"));
         assert!(methods.to_str().unwrap().contains("OPTIONS"));
@@ -165,11 +177,18 @@ mod tests {
             ..CorsConfig::default()
         };
         let resp = router(Arc::new(cfg))
-            .oneshot(AxumRequest::builder().uri("/echo").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/echo")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(
-            resp.headers().get(header::ACCESS_CONTROL_ALLOW_ORIGIN).unwrap(),
+            resp.headers()
+                .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+                .unwrap(),
             "*"
         );
     }

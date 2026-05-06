@@ -131,7 +131,10 @@ impl JodiClient {
                 status: status.as_u16(),
             });
         }
-        let body = resp.text().await.map_err(|e| StreamsError::Io(e.to_string()))?;
+        let body = resp
+            .text()
+            .await
+            .map_err(|e| StreamsError::Io(e.to_string()))?;
         parse_csv(&body, country, flow_breakdown)
     }
 }
@@ -250,7 +253,10 @@ RUS,CRUDEOIL,INDPROD,KBD,2026-04,9500.0,1
             .mount(&server)
             .await;
         let client = client_pointing_at(&server);
-        let rows = client.fetch_world(JodiDataset::Oil, None, None).await.unwrap();
+        let rows = client
+            .fetch_world(JodiDataset::Oil, None, None)
+            .await
+            .unwrap();
         assert_eq!(rows.len(), 4);
         assert_eq!(rows[0].country, "USA");
         assert!((rows[0].obs_value - 12_500.5).abs() < 1e-6);
@@ -317,7 +323,10 @@ RUS,CRUDEOIL,INDPROD,KBD,2026-04,9500.0,1
             .mount(&server)
             .await;
         let client = client_pointing_at(&server);
-        let rows = client.fetch_world(JodiDataset::Gas, None, None).await.unwrap();
+        let rows = client
+            .fetch_world(JodiDataset::Gas, None, None)
+            .await
+            .unwrap();
         assert_eq!(rows.len(), 4);
     }
 

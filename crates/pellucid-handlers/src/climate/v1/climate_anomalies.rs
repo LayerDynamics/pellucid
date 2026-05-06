@@ -9,9 +9,7 @@ use serde_json::Value;
 
 use pellucid_cache::get_cached_json;
 
-use crate::economic::v1::shared::{
-    decode_optional, HandlerError, DEFAULT_RETRY_AFTER_SECS,
-};
+use crate::economic::v1::shared::{decode_optional, HandlerError, DEFAULT_RETRY_AFTER_SECS};
 use crate::state::AppState;
 
 pub const ANOMALY_KEY: &str = "climate:latest-anomaly:global:v1";
@@ -111,7 +109,12 @@ mod tests {
     async fn returns_503_when_both_empty() {
         let (app, _) = migrated().await;
         let resp = app
-            .oneshot(Request::builder().uri(ANOMALIES_PATH).body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri(ANOMALIES_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
@@ -121,11 +124,26 @@ mod tests {
     async fn returns_partial_anomaly_only() {
         let (app, pool) = migrated().await;
         let snap = serde_json::json!({ "anomaly_c": 1.42, "period": "2026-04" });
-        set_cached_json(&pool, ANOMALY_KEY, &Envelope::new(snap), 60_000).await.unwrap();
-        let resp = app.oneshot(Request::builder().uri(ANOMALIES_PATH).body(Body::empty()).unwrap()).await.unwrap();
+        set_cached_json(&pool, ANOMALY_KEY, &Envelope::new(snap), 60_000)
+            .await
+            .unwrap();
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .uri(ANOMALIES_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         let parsed: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(parsed.pointer("/globalAnomalyC").and_then(Value::as_f64), Some(1.42));
+        assert_eq!(
+            parsed.pointer("/globalAnomalyC").and_then(Value::as_f64),
+            Some(1.42)
+        );
     }
 }

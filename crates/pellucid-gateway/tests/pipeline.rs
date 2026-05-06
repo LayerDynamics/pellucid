@@ -17,12 +17,12 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::routing::get;
 use axum::Router;
+use pellucid_gateway::traits::ClerkVerifyError;
 use pellucid_gateway::{
     build_router, AlwaysAllowEntitlement, AlwaysDenyEntitlement, ApiKeyDecision, ApiKeyStore,
     CacheControlPolicy, ClerkClaims, ClerkVerifier, EntitlementChecker, EntitlementDecision,
     GatewayConfig, OriginAllowList, RouteCacheRules, RouteEntitlementRules, Tier,
 };
-use pellucid_gateway::traits::ClerkVerifyError;
 use tower::util::ServiceExt;
 
 // ---------- helpers ----------
@@ -82,7 +82,9 @@ struct UpstreamDownChecker;
 #[async_trait]
 impl EntitlementChecker for UpstreamDownChecker {
     async fn check(&self, _user: &str, _required: Tier) -> EntitlementDecision {
-        EntitlementDecision::UpstreamDown { retry_after_secs: 30 }
+        EntitlementDecision::UpstreamDown {
+            retry_after_secs: 30,
+        }
     }
 }
 
@@ -92,14 +94,25 @@ impl EntitlementChecker for UpstreamDownChecker {
 async fn happy_path_returns_200_with_full_header_set() {
     let app = build_router(handlers(), permissive_config());
     let resp = app
-        .oneshot(Request::builder().uri("/api/echo").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/api/echo")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     assert!(resp.headers().get("etag").is_some());
     assert_eq!(resp.headers().get("cache-control").unwrap(), "no-store");
-    assert_eq!(resp.headers().get("x-pellucid-stack").unwrap(), "pellucid-gateway/1");
-    assert_eq!(resp.headers().get("x-content-type-options").unwrap(), "nosniff");
+    assert_eq!(
+        resp.headers().get("x-pellucid-stack").unwrap(),
+        "pellucid-gateway/1"
+    );
+    assert_eq!(
+        resp.headers().get("x-content-type-options").unwrap(),
+        "nosniff"
+    );
 }
 
 // ---------- stage 1 — origin ----------
@@ -166,7 +179,9 @@ async fn stage2_cors_echoes_origin_back_in_response() {
         "http://127.0.0.1:5173"
     );
     assert_eq!(
-        resp.headers().get("access-control-allow-credentials").unwrap(),
+        resp.headers()
+            .get("access-control-allow-credentials")
+            .unwrap(),
         "true"
     );
 }
@@ -188,10 +203,7 @@ async fn stage3_options_returns_204_with_cors_headers() {
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::NO_CONTENT);
-    assert!(resp
-        .headers()
-        .get("access-control-allow-methods")
-        .is_some());
+    assert!(resp.headers().get("access-control-allow-methods").is_some());
 }
 
 // ---------- stage 5 — Clerk ----------
@@ -206,7 +218,12 @@ async fn stage5_clerk_required_returns_401_without_token() {
         .build();
     let app = build_router(handlers(), cfg);
     let resp = app
-        .oneshot(Request::builder().uri("/api/secure").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/api/secure")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
@@ -396,11 +413,19 @@ async fn stage7_entitlement_allow_passes_through() {
 async fn stage10_unknown_route_returns_404_with_pellucid_headers() {
     let app = build_router(handlers(), permissive_config());
     let resp = app
-        .oneshot(Request::builder().uri("/api/missing").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/api/missing")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
-    assert_eq!(resp.headers().get("x-pellucid-stack").unwrap(), "pellucid-gateway/1");
+    assert_eq!(
+        resp.headers().get("x-pellucid-stack").unwrap(),
+        "pellucid-gateway/1"
+    );
 }
 
 #[tokio::test]
@@ -451,8 +476,14 @@ async fn stage12_standard_headers_attached_on_every_response() {
             .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
             .await
             .unwrap();
-        assert_eq!(resp.headers().get("x-pellucid-stack").unwrap(), "pellucid-gateway/1");
-        assert_eq!(resp.headers().get("x-content-type-options").unwrap(), "nosniff");
+        assert_eq!(
+            resp.headers().get("x-pellucid-stack").unwrap(),
+            "pellucid-gateway/1"
+        );
+        assert_eq!(
+            resp.headers().get("x-content-type-options").unwrap(),
+            "nosniff"
+        );
         assert_eq!(
             resp.headers().get("referrer-policy").unwrap(),
             "strict-origin-when-cross-origin"
@@ -466,7 +497,12 @@ async fn stage12_standard_headers_attached_on_every_response() {
 async fn stage13_etag_attached_on_2xx() {
     let app = build_router(handlers(), permissive_config());
     let resp = app
-        .oneshot(Request::builder().uri("/api/echo").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/api/echo")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
@@ -480,7 +516,12 @@ async fn stage13_if_none_match_returns_304_with_empty_body() {
     let app = build_router(handlers(), permissive_config());
     let first = app
         .clone()
-        .oneshot(Request::builder().uri("/api/echo").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/api/echo")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
     let etag = first.headers().get("etag").unwrap().clone();
@@ -495,7 +536,9 @@ async fn stage13_if_none_match_returns_304_with_empty_body() {
         .await
         .unwrap();
     assert_eq!(second.status(), StatusCode::NOT_MODIFIED);
-    let body = axum::body::to_bytes(second.into_body(), 1_000_000).await.unwrap();
+    let body = axum::body::to_bytes(second.into_body(), 1_000_000)
+        .await
+        .unwrap();
     assert!(body.is_empty());
 }
 
@@ -505,7 +548,12 @@ async fn stage13_if_none_match_returns_304_with_empty_body() {
 async fn stage14_default_cache_control_is_no_store() {
     let app = build_router(handlers(), permissive_config());
     let resp = app
-        .oneshot(Request::builder().uri("/api/echo").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/api/echo")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert_eq!(resp.headers().get("cache-control").unwrap(), "no-store");
@@ -518,7 +566,12 @@ async fn stage14_per_route_override_attached() {
     let cfg = GatewayConfig::builder().cache_rules(rules).build();
     let app = build_router(handlers(), cfg);
     let resp = app
-        .oneshot(Request::builder().uri("/api/echo").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/api/echo")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert_eq!(

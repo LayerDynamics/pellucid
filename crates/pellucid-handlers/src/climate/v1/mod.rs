@@ -24,12 +24,36 @@ pub const NATURAL_EVENTS_PATH: &str = "/api/climate/v1/natural-events";
 
 pub fn router(state: AppState) -> Router {
     Router::new()
-        .route(SUMMARY_PATH, axum::routing::get(climate_summary::handler).with_state(state.clone()))
-        .route(WILDFIRE_PATH, axum::routing::get(wildfire::handler).with_state(state.clone()))
-        .route(EARTHQUAKES_PATH, axum::routing::get(earthquakes::handler).with_state(state.clone()))
-        .route(AIR_QUALITY_PATH, axum::routing::get(air_quality::handler).with_state(state.clone()))
-        .route(VOLCANO_PATH, axum::routing::get(volcano_activity::handler).with_state(state.clone()))
-        .route(NOAA_ALERTS_PATH, axum::routing::get(noaa_alerts::handler).with_state(state.clone()))
-        .route(ANOMALIES_PATH, axum::routing::get(climate_anomalies::handler).with_state(state.clone()))
-        .route(NATURAL_EVENTS_PATH, axum::routing::get(natural_events::handler).with_state(state))
+        .route(
+            SUMMARY_PATH,
+            axum::routing::get(climate_summary::handler).with_state(state.clone()),
+        )
+        .route(
+            WILDFIRE_PATH,
+            axum::routing::get(wildfire::handler).with_state(state.clone()),
+        )
+        .route(
+            EARTHQUAKES_PATH,
+            axum::routing::get(earthquakes::handler).with_state(state.clone()),
+        )
+        .route(
+            AIR_QUALITY_PATH,
+            axum::routing::get(air_quality::handler).with_state(state.clone()),
+        )
+        .route(
+            VOLCANO_PATH,
+            axum::routing::get(volcano_activity::handler).with_state(state.clone()),
+        )
+        .route(
+            NOAA_ALERTS_PATH,
+            axum::routing::get(noaa_alerts::handler).with_state(state.clone()),
+        )
+        .route(
+            ANOMALIES_PATH,
+            axum::routing::get(climate_anomalies::handler).with_state(state.clone()),
+        )
+        .route(
+            NATURAL_EVENTS_PATH,
+            axum::routing::get(natural_events::handler).with_state(state),
+        )
 }

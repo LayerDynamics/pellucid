@@ -99,12 +99,12 @@ pub async fn serve_on_random_port(
     let listener = TcpListener::bind("127.0.0.1:0")
         .await
         .map_err(ServerLaunchError::Bind)?;
-    let addr: SocketAddr = listener.local_addr().map_err(ServerLaunchError::LocalAddr)?;
+    let addr: SocketAddr = listener
+        .local_addr()
+        .map_err(ServerLaunchError::LocalAddr)?;
     let port = addr.port();
     let app = build_router(tokens);
-    let task = tokio::spawn(async move {
-        axum::serve(listener, app.into_make_service()).await
-    });
+    let task = tokio::spawn(async move { axum::serve(listener, app.into_make_service()).await });
     Ok(ServerHandle { port, task })
 }
 
@@ -249,11 +249,7 @@ mod tests {
                 )
                 .await
                 .unwrap();
-            assert_eq!(
-                resp.status().as_u16(),
-                200,
-                "token {tok} must be accepted"
-            );
+            assert_eq!(resp.status().as_u16(), 200, "token {tok} must be accepted");
         }
     }
 

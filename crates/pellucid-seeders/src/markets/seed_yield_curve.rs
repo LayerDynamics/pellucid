@@ -52,8 +52,7 @@ pub const SERIES_CODES: &[&str] = &[
 ];
 
 /// Human-readable maturity labels matching [`SERIES_CODES`].
-pub const MATURITY_LABELS: &[&str] =
-    &["1M", "3M", "6M", "1Y", "2Y", "5Y", "10Y", "30Y"];
+pub const MATURITY_LABELS: &[&str] = &["1M", "3M", "6M", "1Y", "2Y", "5Y", "10Y", "30Y"];
 
 /// Maturity expressed in months — for spread computation and
 /// chart x-axis positioning.
@@ -270,13 +269,11 @@ mod tests {
             .await
             .unwrap();
         assert!(outcome.bytes_written > 0);
-        let row: (String,) = sqlx::query_as(
-            "SELECT payload FROM kv_envelope WHERE cache_key = ?",
-        )
-        .bind(CACHE_KEY)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let pts = parsed.pointer("/data/points").unwrap().as_array().unwrap();
         // 7 points (DGS3MO skipped).

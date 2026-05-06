@@ -147,8 +147,7 @@ impl HuggingFaceClient {
 
     fn build_url(&self, sort_by: HfSortBy, limit: u32) -> Result<Url, StreamsError> {
         let raw = format!("{}/api/models", self.config.base_url);
-        let mut url = Url::parse(&raw)
-            .map_err(|e| StreamsError::Parse(format!("hf url: {e}")))?;
+        let mut url = Url::parse(&raw).map_err(|e| StreamsError::Parse(format!("hf url: {e}")))?;
         {
             let mut q = url.query_pairs_mut();
             q.append_pair("sort", sort_by.slug());
@@ -272,7 +271,10 @@ mod tests {
             .mount(&server)
             .await;
         let client = client_pointing_at(&server);
-        let err = client.fetch_models(HfSortBy::Downloads, 20).await.unwrap_err();
+        let err = client
+            .fetch_models(HfSortBy::Downloads, 20)
+            .await
+            .unwrap_err();
         assert!(matches!(err, StreamsError::Status { status: 503 }));
     }
 
@@ -285,7 +287,10 @@ mod tests {
             .mount(&server)
             .await;
         let client = client_pointing_at(&server);
-        let err = client.fetch_models(HfSortBy::Downloads, 20).await.unwrap_err();
+        let err = client
+            .fetch_models(HfSortBy::Downloads, 20)
+            .await
+            .unwrap_err();
         assert!(matches!(err, StreamsError::Parse(_)));
     }
 
@@ -299,7 +304,10 @@ mod tests {
             },
             reqwest::Client::new(),
         );
-        let err = client.fetch_models(HfSortBy::Downloads, 20).await.unwrap_err();
+        let err = client
+            .fetch_models(HfSortBy::Downloads, 20)
+            .await
+            .unwrap_err();
         assert!(matches!(err, StreamsError::Io(_)));
     }
 

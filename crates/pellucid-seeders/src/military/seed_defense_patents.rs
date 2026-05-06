@@ -167,16 +167,19 @@ mod tests {
     async fn run_cycle_writes_sorted_descending() {
         let pool = open_in_memory().await.unwrap();
         let fetcher = StaticFetcher {
-            rows: vec![pat("F41A", 80, 12.0), pat("B64G", 220, 41.0), pat("G01S", 140, -3.0)],
+            rows: vec![
+                pat("F41A", 80, 12.0),
+                pat("B64G", 220, 41.0),
+                pat("G01S", 140, -3.0),
+            ],
             period: "2026-W18".into(),
         };
         let _ = run_cycle(&pool, &fetcher).await.unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let cpcs: Vec<&str> = parsed
             .pointer("/data/rows")

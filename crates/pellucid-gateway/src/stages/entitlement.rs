@@ -106,7 +106,9 @@ mod tests {
     #[async_trait]
     impl EntitlementChecker for UpstreamDownChecker {
         async fn check(&self, _user: &str, _required: Tier) -> EntitlementDecision {
-            EntitlementDecision::UpstreamDown { retry_after_secs: 30 }
+            EntitlementDecision::UpstreamDown {
+                retry_after_secs: 30,
+            }
         }
     }
 
@@ -118,25 +120,32 @@ mod tests {
         Router::new()
             .route("/x", get(report))
             .layer(from_fn_with_state(checker, entitlement))
-            .layer(axum::middleware::from_fn(move |mut req: Request, next: Next| {
-                let r = required;
-                async move {
-                    req.extensions_mut().insert(RequiredTier(r));
-                    req.extensions_mut().insert(ClientIdentity {
-                        user_id: "u".into(),
-                        session_id: "s".into(),
-                        tier: None,
-                    });
-                    next.run(req).await
-                }
-            }))
+            .layer(axum::middleware::from_fn(
+                move |mut req: Request, next: Next| {
+                    let r = required;
+                    async move {
+                        req.extensions_mut().insert(RequiredTier(r));
+                        req.extensions_mut().insert(ClientIdentity {
+                            user_id: "u".into(),
+                            session_id: "s".into(),
+                            tier: None,
+                        });
+                        next.run(req).await
+                    }
+                },
+            ))
     }
 
     #[tokio::test]
     async fn anonymous_route_skipped() {
         let r = router(Arc::new(AlwaysDenyEntitlement), Tier::Anonymous);
         let resp = r
-            .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/x")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_ne!(resp.status(), StatusCode::FORBIDDEN);
@@ -146,11 +155,18 @@ mod tests {
     async fn allow_inserts_effective_tier_into_extensions() {
         let r = router(Arc::new(AlwaysAllowEntitlement), Tier::Free);
         let resp = r
-            .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/x")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         assert_eq!(&body[..], b"Some(Tier2)");
     }
 
@@ -158,7 +174,12 @@ mod tests {
     async fn deny_returns_403_with_entitlement_code() {
         let r = router(Arc::new(AlwaysDenyEntitlement), Tier::Tier1);
         let resp = r
-            .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/x")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::FORBIDDEN);
@@ -174,7 +195,12 @@ mod tests {
     async fn upstream_down_returns_503_with_retry_after() {
         let r = router(Arc::new(UpstreamDownChecker), Tier::Tier2);
         let resp = r
-            .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/x")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);

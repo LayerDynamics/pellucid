@@ -71,12 +71,11 @@ pub async fn acquire_seed_lock(
 
     let mut tx = pool.begin().await?;
     // Read current row under the BEGIN IMMEDIATE write lock.
-    let existing: Option<(String, i64)> = sqlx::query_as(
-        "SELECT run_id, expires_at_ms FROM seed_lock WHERE domain = ?1",
-    )
-    .bind(domain)
-    .fetch_optional(&mut *tx)
-    .await?;
+    let existing: Option<(String, i64)> =
+        sqlx::query_as("SELECT run_id, expires_at_ms FROM seed_lock WHERE domain = ?1")
+            .bind(domain)
+            .fetch_optional(&mut *tx)
+            .await?;
 
     match existing {
         None => {
@@ -94,13 +93,11 @@ pub async fn acquire_seed_lock(
         }
         Some((existing_run, existing_exp)) if existing_run == run_id => {
             // Re-entrant — refresh the lease and return Acquired.
-            sqlx::query(
-                "UPDATE seed_lock SET expires_at_ms = ?1 WHERE domain = ?2",
-            )
-            .bind(expires_at.max(existing_exp))
-            .bind(domain)
-            .execute(&mut *tx)
-            .await?;
+            sqlx::query("UPDATE seed_lock SET expires_at_ms = ?1 WHERE domain = ?2")
+                .bind(expires_at.max(existing_exp))
+                .bind(domain)
+                .execute(&mut *tx)
+                .await?;
             tx.commit().await?;
             Ok(LockOutcome::Acquired)
         }
@@ -134,30 +131,23 @@ pub async fn acquire_seed_lock(
 ///
 /// # Errors
 /// Sqlx transport errors propagate.
-pub async fn release_seed_lock(
-    pool: &Pool,
-    domain: &str,
-    run_id: &str,
-) -> Result<bool, LockError> {
-    let result = sqlx::query(
-        "DELETE FROM seed_lock WHERE domain = ?1 AND run_id = ?2",
-    )
-    .bind(domain)
-    .bind(run_id)
-    .execute(pool)
-    .await?;
+pub async fn release_seed_lock(pool: &Pool, domain: &str, run_id: &str) -> Result<bool, LockError> {
+    let result = sqlx::query("DELETE FROM seed_lock WHERE domain = ?1 AND run_id = ?2")
+        .bind(domain)
+        .bind(run_id)
+        .execute(pool)
+        .await?;
     Ok(result.rows_affected() > 0)
 }
 
 /// Read the live holder for diagnostics / `/health` output.
 /// Returns `None` if no row, or the row has expired.
 pub async fn current_holder(pool: &Pool, domain: &str) -> Result<Option<String>, LockError> {
-    let row: Option<(String, i64)> = sqlx::query_as(
-        "SELECT run_id, expires_at_ms FROM seed_lock WHERE domain = ?1",
-    )
-    .bind(domain)
-    .fetch_optional(pool)
-    .await?;
+    let row: Option<(String, i64)> =
+        sqlx::query_as("SELECT run_id, expires_at_ms FROM seed_lock WHERE domain = ?1")
+            .bind(domain)
+            .fetch_optional(pool)
+            .await?;
     let now = now_ms();
     Ok(row.and_then(|(rid, exp)| if exp > now { Some(rid) } else { None }))
 }
@@ -210,15 +200,13 @@ mod tests {
     async fn expired_lock_is_stolen() {
         let pool = open_in_memory().await.unwrap();
         // Insert directly with expires_at in the past.
-        sqlx::query(
-            "INSERT INTO seed_lock (domain, run_id, expires_at_ms) VALUES (?, ?, ?)",
-        )
-        .bind("aviation")
-        .bind("crashed-run")
-        .bind(now_ms() - 1_000)
-        .execute(&pool)
-        .await
-        .unwrap();
+        sqlx::query("INSERT INTO seed_lock (domain, run_id, expires_at_ms) VALUES (?, ?, ?)")
+            .bind("aviation")
+            .bind("crashed-run")
+            .bind(now_ms() - 1_000)
+            .execute(&pool)
+            .await
+            .unwrap();
         let result = acquire_seed_lock(&pool, "aviation", "fresh-run", Duration::from_secs(60))
             .await
             .unwrap();
@@ -244,7 +232,9 @@ mod tests {
         let _ = acquire_seed_lock(&pool, "aviation", "run-1", Duration::from_secs(60))
             .await
             .unwrap();
-        let released = release_seed_lock(&pool, "aviation", "imposter").await.unwrap();
+        let released = release_seed_lock(&pool, "aviation", "imposter")
+            .await
+            .unwrap();
         assert!(!released);
         assert_eq!(
             current_holder(&pool, "aviation").await.unwrap(),
@@ -262,15 +252,13 @@ mod tests {
     #[tokio::test]
     async fn current_holder_excludes_expired() {
         let pool = open_in_memory().await.unwrap();
-        sqlx::query(
-            "INSERT INTO seed_lock (domain, run_id, expires_at_ms) VALUES (?, ?, ?)",
-        )
-        .bind("aviation")
-        .bind("expired-run")
-        .bind(now_ms() - 1)
-        .execute(&pool)
-        .await
-        .unwrap();
+        sqlx::query("INSERT INTO seed_lock (domain, run_id, expires_at_ms) VALUES (?, ?, ?)")
+            .bind("aviation")
+            .bind("expired-run")
+            .bind(now_ms() - 1)
+            .execute(&pool)
+            .await
+            .unwrap();
         assert_eq!(current_holder(&pool, "aviation").await.unwrap(), None);
     }
 }

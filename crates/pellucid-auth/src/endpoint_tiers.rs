@@ -38,43 +38,43 @@ use pellucid_gateway::traits::Tier;
 ///
 /// Only paths that require *more* than `Anonymous` are listed.
 pub const ENDPOINT_ENTITLEMENTS: &[(&str, u8)] = &[
-    ("/api/aviation/v1/get-flight-history",        1),
-    ("/api/aviation/v1/get-notams",                1),
-    ("/api/climate/v1/get-anomaly-grid",           1),
-    ("/api/climate/v1/get-station-record",         1),
-    ("/api/conflict/v1/get-actor-history",         1),
-    ("/api/conflict/v1/get-events",                1),
-    ("/api/consumer-prices/v1/get-cpi-series",     1),
-    ("/api/cyber/v1/get-cve-detail",               1),
-    ("/api/cyber/v1/get-incident-feed",            1),
-    ("/api/displacement/v1/get-camp-population",   1),
-    ("/api/economic/v1/get-indicator",             1),
-    ("/api/eia/v1/get-petroleum-stocks",           1),
-    ("/api/forecast/v1/get-extended",              1),
-    ("/api/health/v1/get-disease-surveillance",    1),
-    ("/api/imagery/v1/get-tile",                   1),
-    ("/api/infrastructure/v1/get-grid-stress",     1),
+    ("/api/aviation/v1/get-flight-history", 1),
+    ("/api/aviation/v1/get-notams", 1),
+    ("/api/climate/v1/get-anomaly-grid", 1),
+    ("/api/climate/v1/get-station-record", 1),
+    ("/api/conflict/v1/get-actor-history", 1),
+    ("/api/conflict/v1/get-events", 1),
+    ("/api/consumer-prices/v1/get-cpi-series", 1),
+    ("/api/cyber/v1/get-cve-detail", 1),
+    ("/api/cyber/v1/get-incident-feed", 1),
+    ("/api/displacement/v1/get-camp-population", 1),
+    ("/api/economic/v1/get-indicator", 1),
+    ("/api/eia/v1/get-petroleum-stocks", 1),
+    ("/api/forecast/v1/get-extended", 1),
+    ("/api/health/v1/get-disease-surveillance", 1),
+    ("/api/imagery/v1/get-tile", 1),
+    ("/api/infrastructure/v1/get-grid-stress", 1),
     ("/api/intelligence/v1/get-correlation-graph", 1),
-    ("/api/maritime/v1/get-ais-tracks",            1),
-    ("/api/maritime/v1/get-chokepoint-status",     1),
-    ("/api/market/v1/analyze-stock",               3),
-    ("/api/market/v1/backtest-stock",              3),
-    ("/api/market/v1/get-stock-analysis-history",  3),
+    ("/api/maritime/v1/get-ais-tracks", 1),
+    ("/api/maritime/v1/get-chokepoint-status", 1),
+    ("/api/market/v1/analyze-stock", 3),
+    ("/api/market/v1/backtest-stock", 3),
+    ("/api/market/v1/get-stock-analysis-history", 3),
     ("/api/market/v1/list-stored-stock-backtests", 3),
-    ("/api/military/v1/get-theater-posture",       1),
-    ("/api/natural/v1/get-volcano-feed",           1),
-    ("/api/news/v1/get-breaking",                  1),
-    ("/api/news/v1/get-source-feed",               1),
-    ("/api/positive-events/v1/get-feed",           1),
-    ("/api/prediction/v1/get-scenario-output",     1),
-    ("/api/radiation/v1/get-station-readings",     1),
-    ("/api/research/v1/get-arxiv-feed",            1),
-    ("/api/resilience/v1/get-cii-score",           1),
-    ("/api/sanctions/v1/get-entity-list",          1),
-    ("/api/seismology/v1/get-recent-quakes",       1),
-    ("/api/supply-chain/v1/get-stress-index",      1),
-    ("/api/thermal/v1/get-anomaly-feed",           1),
-    ("/api/wildfire/v1/get-active-perimeters",     1),
+    ("/api/military/v1/get-theater-posture", 1),
+    ("/api/natural/v1/get-volcano-feed", 1),
+    ("/api/news/v1/get-breaking", 1),
+    ("/api/news/v1/get-source-feed", 1),
+    ("/api/positive-events/v1/get-feed", 1),
+    ("/api/prediction/v1/get-scenario-output", 1),
+    ("/api/radiation/v1/get-station-readings", 1),
+    ("/api/research/v1/get-arxiv-feed", 1),
+    ("/api/resilience/v1/get-cii-score", 1),
+    ("/api/sanctions/v1/get-entity-list", 1),
+    ("/api/seismology/v1/get-recent-quakes", 1),
+    ("/api/supply-chain/v1/get-stress-index", 1),
+    ("/api/thermal/v1/get-anomaly-feed", 1),
+    ("/api/wildfire/v1/get-active-perimeters", 1),
 ];
 
 /// Required tier for `path`. Defaults to [`Tier::Anonymous`] for any
@@ -133,7 +133,10 @@ mod tests {
     fn unmapped_path_defaults_to_anonymous() {
         assert_eq!(tier_for_path("/api/anything"), Tier::Anonymous);
         assert_eq!(tier_for_path(""), Tier::Anonymous);
-        assert_eq!(tier_for_path("/api/market/v1/get-flight-status"), Tier::Anonymous);
+        assert_eq!(
+            tier_for_path("/api/market/v1/get-flight-status"),
+            Tier::Anonymous
+        );
     }
 
     #[test]
@@ -144,11 +147,7 @@ mod tests {
     #[test]
     fn all_four_tier2_paths_present_after_migration() {
         for p in TIER2_PATHS {
-            assert_eq!(
-                tier_for_path(p),
-                Tier::Tier2,
-                "{p} must require Tier2"
-            );
+            assert_eq!(tier_for_path(p), Tier::Tier2, "{p} must require Tier2");
         }
     }
 
@@ -228,8 +227,14 @@ mod tests {
         // Original WorldMonitor gating was case-sensitive on the
         // path component; preserving that behaviour avoids accidental
         // privilege escalation via path-case spoofing.
-        assert_eq!(tier_for_path("/API/market/v1/analyze-stock"), Tier::Anonymous);
-        assert_eq!(tier_for_path("/api/MARKET/v1/analyze-stock"), Tier::Anonymous);
+        assert_eq!(
+            tier_for_path("/API/market/v1/analyze-stock"),
+            Tier::Anonymous
+        );
+        assert_eq!(
+            tier_for_path("/api/MARKET/v1/analyze-stock"),
+            Tier::Anonymous
+        );
     }
 
     #[test]

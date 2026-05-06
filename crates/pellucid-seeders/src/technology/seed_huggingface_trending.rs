@@ -167,8 +167,7 @@ pub async fn run_cycle(
         },
         data: serde_json::to_value(&snapshot).unwrap_or(serde_json::Value::Null),
     };
-    let outcome =
-        atomic_publish(pool, "technology", CACHE_KEY, &envelope, TTL).await?;
+    let outcome = atomic_publish(pool, "technology", CACHE_KEY, &envelope, TTL).await?;
     Ok(outcome)
 }
 
@@ -243,12 +242,11 @@ mod tests {
         let _ = run_cycle(&pool, &fetcher, &HuggingFaceTrendingConfig::default())
             .await
             .unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 2);
@@ -271,9 +269,13 @@ mod tests {
     #[tokio::test]
     async fn run_cycle_upstream_failure_propagates() {
         let pool = open_in_memory().await.unwrap();
-        let err = run_cycle(&pool, &FailingFetcher, &HuggingFaceTrendingConfig::default())
-            .await
-            .unwrap_err();
+        let err = run_cycle(
+            &pool,
+            &FailingFetcher,
+            &HuggingFaceTrendingConfig::default(),
+        )
+        .await
+        .unwrap_err();
         assert!(matches!(err, TechnologySeederError::Upstream(_)));
     }
 }

@@ -56,10 +56,18 @@ pub struct EarningsEvent {
     /// Timing.
     pub timing: EarningsTiming,
     /// EPS estimate.
-    #[serde(rename = "epsEstimate", alias = "eps_estimate", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "epsEstimate",
+        alias = "eps_estimate",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub eps_estimate: Option<f64>,
     /// Prior-quarter EPS actual.
-    #[serde(rename = "epsActualPrior", alias = "eps_actual_prior", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "epsActualPrior",
+        alias = "eps_actual_prior",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub eps_actual_prior: Option<f64>,
 }
 
@@ -250,8 +258,8 @@ pub async fn handler(
     };
 
     let inner = unwrap_envelope_data(value);
-    let payload: SnapshotPayload = serde_json::from_value(inner)
-        .map_err(|e| HandlerError::Shape(e.to_string()))?;
+    let payload: SnapshotPayload =
+        serde_json::from_value(inner).map_err(|e| HandlerError::Shape(e.to_string()))?;
 
     let projected: Vec<EarningsEvent> = payload
         .events
@@ -321,10 +329,8 @@ mod tests {
     async fn migrated_router() -> (axum::Router, pellucid_db::Pool) {
         let state = AppState::for_tests_async().await.unwrap();
         let pool = state.pool.clone();
-        let app = axum::Router::new().route(
-            EARNINGS_PATH,
-            axum::routing::get(handler).with_state(state),
-        );
+        let app =
+            axum::Router::new().route(EARNINGS_PATH, axum::routing::get(handler).with_state(state));
         (app, pool)
     }
 
@@ -411,9 +417,16 @@ mod tests {
         let (app, pool) = migrated_router().await;
         let env = Envelope::new(snapshot(&[
             ("SPY", "S&P 500", "2026-05-06", EarningsTiming::BeforeOpen),
-            ("QQQ", "Invesco QQQ", "2026-05-08", EarningsTiming::AfterClose),
+            (
+                "QQQ",
+                "Invesco QQQ",
+                "2026-05-08",
+                EarningsTiming::AfterClose,
+            ),
         ]));
-        set_cached_json(&pool, CACHE_KEY, &env, 60_000).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &env, 60_000)
+            .await
+            .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()
@@ -439,9 +452,16 @@ mod tests {
         let (app, pool) = migrated_router().await;
         let env = Envelope::new(snapshot(&[
             ("SPY", "S&P 500", "2026-05-06", EarningsTiming::BeforeOpen),
-            ("QQQ", "Invesco QQQ", "2026-05-08", EarningsTiming::AfterClose),
+            (
+                "QQQ",
+                "Invesco QQQ",
+                "2026-05-08",
+                EarningsTiming::AfterClose,
+            ),
         ]));
-        set_cached_json(&pool, CACHE_KEY, &env, 60_000).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &env, 60_000)
+            .await
+            .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()
@@ -462,9 +482,12 @@ mod tests {
     #[tokio::test]
     async fn handler_marks_stale_response() {
         let (app, pool) = migrated_router().await;
-        let env = Envelope::new(snapshot(&[
-            ("SPY", "S&P 500", "2026-05-06", EarningsTiming::BeforeOpen),
-        ]));
+        let env = Envelope::new(snapshot(&[(
+            "SPY",
+            "S&P 500",
+            "2026-05-06",
+            EarningsTiming::BeforeOpen,
+        )]));
         set_cached_json(&pool, CACHE_KEY, &env, 0).await.unwrap();
         tokio::time::sleep(std::time::Duration::from_millis(20)).await;
         let resp = app
@@ -487,7 +510,9 @@ mod tests {
     async fn handler_returns_502_on_shape_mismatch() {
         let (app, pool) = migrated_router().await;
         let bad = Envelope::new(serde_json::json!({ "events": "not-an-array" }));
-        set_cached_json(&pool, CACHE_KEY, &bad, 60_000).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &bad, 60_000)
+            .await
+            .unwrap();
         let resp = app
             .oneshot(
                 Request::builder()

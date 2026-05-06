@@ -164,7 +164,9 @@ impl CftcCotClient {
                 status: status.as_u16(),
             });
         }
-        resp.text().await.map_err(|e| StreamsError::Io(e.to_string()))
+        resp.text()
+            .await
+            .map_err(|e| StreamsError::Io(e.to_string()))
     }
 
     fn build_socrata_url(&self, codes: &[&str]) -> Result<Url, StreamsError> {
@@ -175,8 +177,8 @@ impl CftcCotClient {
             .collect::<Vec<_>>()
             .join(",");
         let raw = format!("{}/resource/jun7-fc8e.json", self.config.socrata_base_url);
-        let mut url = Url::parse(&raw)
-            .map_err(|e| StreamsError::Parse(format!("cftc socrata url: {e}")))?;
+        let mut url =
+            Url::parse(&raw).map_err(|e| StreamsError::Parse(format!("cftc socrata url: {e}")))?;
         {
             let mut q = url.query_pairs_mut();
             q.append_pair(

@@ -72,11 +72,7 @@ impl OriginAllowList {
         if self.exact.iter().any(|e| e == origin) {
             return true;
         }
-        if self
-            .suffixes
-            .iter()
-            .any(|s| origin.ends_with(s.as_str()))
-        {
+        if self.suffixes.iter().any(|s| origin.ends_with(s.as_str())) {
             return true;
         }
         if self.allow_loopback && is_loopback_origin(origin) {
@@ -160,10 +156,7 @@ impl RouteEntitlementRules {
     /// Required tier for `path`. Defaults to `Tier::Anonymous`.
     #[must_use]
     pub fn required_for(&self, path: &str) -> Tier {
-        self.by_path
-            .get(path)
-            .copied()
-            .unwrap_or(Tier::Anonymous)
+        self.by_path.get(path).copied().unwrap_or(Tier::Anonymous)
     }
 }
 
@@ -189,11 +182,7 @@ impl RouteRateLimitRules {
     /// Override `path`'s endpoint bucket only.
     pub fn override_endpoint(&mut self, path: impl Into<String>, cfg: BucketConfig) -> &mut Self {
         let key = path.into();
-        let mut existing = self
-            .by_path
-            .get(&key)
-            .copied()
-            .unwrap_or(self.default);
+        let mut existing = self.by_path.get(&key).copied().unwrap_or(self.default);
         existing.endpoint = cfg;
         self.by_path.insert(key, existing);
         self
@@ -263,7 +252,10 @@ impl RouteCacheRules {
     /// Resolve the policy for `path`.
     #[must_use]
     pub fn for_path(&self, path: &str) -> CacheControlPolicy {
-        self.by_path.get(path).cloned().unwrap_or_else(|| self.default.clone())
+        self.by_path
+            .get(path)
+            .cloned()
+            .unwrap_or_else(|| self.default.clone())
     }
 }
 
@@ -391,10 +383,7 @@ impl GatewayConfigBuilder {
 
     /// Plug in the rate-limit pool (T1.4 sqlite handle).
     #[must_use]
-    pub fn rate_limit_pool(
-        mut self,
-        value: Arc<RwLock<Option<pellucid_db::Pool>>>,
-    ) -> Self {
+    pub fn rate_limit_pool(mut self, value: Arc<RwLock<Option<pellucid_db::Pool>>>) -> Self {
         self.rate_limit_pool = Some(value);
         self
     }
@@ -514,7 +503,10 @@ mod tests {
             .allowed_headers
             .iter()
             .any(|h| h.as_str() == "authorization"));
-        assert!(c.allowed_headers.iter().any(|h| h.as_str() == "content-type"));
+        assert!(c
+            .allowed_headers
+            .iter()
+            .any(|h| h.as_str() == "content-type"));
     }
 
     #[test]

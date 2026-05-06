@@ -112,7 +112,9 @@ pub async fn run_cycle(
         })
         .collect();
     history.sort_by(|a, b| a.date.cmp(&b.date));
-    let latest = history.last().cloned().expect("non-empty after check");
+    let Some(latest) = history.last().cloned() else {
+        return Err(EconomicSeederError::EmptyUpstream);
+    };
     let prior = if history.len() >= 2 {
         history.get(history.len() - 2).cloned()
     } else {
@@ -190,20 +192,22 @@ mod tests {
         let _ = run_cycle(&pool, &fetcher, &FinancialStressConfig::default())
             .await
             .unwrap();
-        let row: (String,) = sqlx::query_as(
-            "SELECT payload FROM kv_envelope WHERE cache_key = ?",
-        )
-        .bind(CACHE_KEY)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         assert_eq!(
-            parsed.pointer("/data/latest/date").and_then(serde_json::Value::as_str),
+            parsed
+                .pointer("/data/latest/date")
+                .and_then(serde_json::Value::as_str),
             Some("2026-04-29"),
         );
         assert_eq!(
-            parsed.pointer("/data/prior/date").and_then(serde_json::Value::as_str),
+            parsed
+                .pointer("/data/prior/date")
+                .and_then(serde_json::Value::as_str),
             Some("2026-04-22"),
         );
     }

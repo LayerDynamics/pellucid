@@ -213,10 +213,11 @@ mod tests {
             &self,
             symbols: &[&str],
             lookahead_days: u32,
-        ) -> Result<Vec<FetchedEarningsEvent>, Box<dyn std::error::Error + Send + Sync>>
-        {
-            *self.last_call.lock().unwrap() =
-                (symbols.iter().map(|s| s.to_string()).collect(), lookahead_days);
+        ) -> Result<Vec<FetchedEarningsEvent>, Box<dyn std::error::Error + Send + Sync>> {
+            *self.last_call.lock().unwrap() = (
+                symbols.iter().map(|s| s.to_string()).collect(),
+                lookahead_days,
+            );
             Ok(self.rows.clone())
         }
     }
@@ -230,18 +231,12 @@ mod tests {
             &self,
             _symbols: &[&str],
             _lookahead_days: u32,
-        ) -> Result<Vec<FetchedEarningsEvent>, Box<dyn std::error::Error + Send + Sync>>
-        {
+        ) -> Result<Vec<FetchedEarningsEvent>, Box<dyn std::error::Error + Send + Sync>> {
             Err("upstream down".into())
         }
     }
 
-    fn ev(
-        symbol: &str,
-        company: &str,
-        date: &str,
-        timing: EarningsTiming,
-    ) -> FetchedEarningsEvent {
+    fn ev(symbol: &str, company: &str, date: &str, timing: EarningsTiming) -> FetchedEarningsEvent {
         FetchedEarningsEvent {
             symbol: symbol.into(),
             company: company.into(),
@@ -274,9 +269,24 @@ mod tests {
         let pool = open_in_memory().await.unwrap();
         let fetcher = StaticFetcher {
             rows: vec![
-                ev("QQQ", "Invesco QQQ", "2026-05-08", EarningsTiming::AfterClose),
-                ev("SPY", "SPDR S&P 500 ETF", "2026-05-06", EarningsTiming::BeforeOpen),
-                ev("DIA", "SPDR Dow Jones ETF", "2026-05-06", EarningsTiming::Unknown),
+                ev(
+                    "QQQ",
+                    "Invesco QQQ",
+                    "2026-05-08",
+                    EarningsTiming::AfterClose,
+                ),
+                ev(
+                    "SPY",
+                    "SPDR S&P 500 ETF",
+                    "2026-05-06",
+                    EarningsTiming::BeforeOpen,
+                ),
+                ev(
+                    "DIA",
+                    "SPDR Dow Jones ETF",
+                    "2026-05-06",
+                    EarningsTiming::Unknown,
+                ),
             ],
             last_call: Mutex::new((vec![], 0)),
         };
@@ -286,13 +296,11 @@ mod tests {
         };
         let outcome = run_cycle(&pool, &fetcher, &cfg).await.unwrap();
         assert!(outcome.bytes_written > 0);
-        let row: (String,) = sqlx::query_as(
-            "SELECT payload FROM kv_envelope WHERE cache_key = ?",
-        )
-        .bind(CACHE_KEY)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let events = parsed.pointer("/data/events").unwrap().as_array().unwrap();
         // Sorted by date asc, then symbol asc → DIA(05-06) / SPY(05-06) / QQQ(05-08).
@@ -329,7 +337,12 @@ mod tests {
     async fn run_cycle_writes_seed_meta() {
         let pool = open_in_memory().await.unwrap();
         let fetcher = StaticFetcher {
-            rows: vec![ev("SPY", "S&P 500", "2026-05-06", EarningsTiming::BeforeOpen)],
+            rows: vec![ev(
+                "SPY",
+                "S&P 500",
+                "2026-05-06",
+                EarningsTiming::BeforeOpen,
+            )],
             last_call: Mutex::new((vec![], 0)),
         };
         let _ = run_cycle(&pool, &fetcher, &EarningsCalendarConfig::default())
@@ -350,7 +363,12 @@ mod tests {
     async fn run_cycle_passes_symbols_and_lookahead_through() {
         let pool = open_in_memory().await.unwrap();
         let fetcher = StaticFetcher {
-            rows: vec![ev("SPY", "S&P 500", "2026-05-06", EarningsTiming::BeforeOpen)],
+            rows: vec![ev(
+                "SPY",
+                "S&P 500",
+                "2026-05-06",
+                EarningsTiming::BeforeOpen,
+            )],
             last_call: Mutex::new((vec![], 0)),
         };
         let cfg = EarningsCalendarConfig {

@@ -87,7 +87,10 @@ pub async fn run_cycle(
         return Err(EnergySeederError::EmptyUpstream);
     }
     let rows: Vec<PriceRow> = fetched.into_iter().map(map_row).collect();
-    let latest = rows.first().cloned().ok_or(EnergySeederError::EmptyUpstream)?;
+    let latest = rows
+        .first()
+        .cloned()
+        .ok_or(EnergySeederError::EmptyUpstream)?;
 
     let assembled_at_ms = pellucid_core::now_ms();
     let snapshot = FuelPricesSnapshot {
@@ -106,8 +109,7 @@ pub async fn run_cycle(
         },
         data: serde_json::to_value(&snapshot).unwrap_or(serde_json::Value::Null),
     };
-    let outcome =
-        atomic_publish(pool, "energy", CACHE_KEY, &envelope, TTL).await?;
+    let outcome = atomic_publish(pool, "energy", CACHE_KEY, &envelope, TTL).await?;
     Ok(outcome)
 }
 
@@ -166,15 +168,19 @@ mod tests {
             .await
             .unwrap();
         assert!(outcome.bytes_written > 0);
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         assert!(
-            (parsed.pointer("/data/latest/value").unwrap().as_f64().unwrap() - 3.45)
+            (parsed
+                .pointer("/data/latest/value")
+                .unwrap()
+                .as_f64()
+                .unwrap()
+                - 3.45)
                 .abs()
                 < 1e-9
         );

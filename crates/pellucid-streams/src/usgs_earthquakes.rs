@@ -157,7 +157,11 @@ impl UsgsEarthquakesClient {
             .json()
             .await
             .map_err(|e| StreamsError::Parse(e.to_string()))?;
-        Ok(body.features.into_iter().filter_map(EarthquakeEvent::from_feature).collect())
+        Ok(body
+            .features
+            .into_iter()
+            .filter_map(EarthquakeEvent::from_feature)
+            .collect())
     }
 }
 
@@ -314,12 +318,17 @@ mod tests {
     async fn fetch_feed_significant_week_uses_correct_path() {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
-            .and(path("/earthquakes/feed/v1.0/summary/significant_week.geojson"))
+            .and(path(
+                "/earthquakes/feed/v1.0/summary/significant_week.geojson",
+            ))
             .respond_with(ResponseTemplate::new(200).set_body_json(body()))
             .mount(&server)
             .await;
         let client = client_pointing_at(&server);
-        let events = client.fetch_feed(FeedWindow::SignificantWeek).await.unwrap();
+        let events = client
+            .fetch_feed(FeedWindow::SignificantWeek)
+            .await
+            .unwrap();
         assert_eq!(events.len(), 1);
     }
 

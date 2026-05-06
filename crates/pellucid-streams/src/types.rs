@@ -84,7 +84,11 @@ pub struct AisSubscribe {
     /// Optional message-type filter. When `None`, every type is
     /// emitted; the relay subscribes to every type and filters
     /// downstream.
-    #[serde(rename = "FilterMessageTypes", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "FilterMessageTypes",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub filter_message_types: Option<Vec<String>>,
 }
 
@@ -131,7 +135,10 @@ mod tests {
         let env: AisEnvelope = serde_json::from_str(sample_envelope_json()).unwrap();
         assert_eq!(env.message_type, "PositionReport");
         assert_eq!(env.metadata.mmsi, 367123456);
-        assert_eq!(env.metadata.ship_name.as_deref().unwrap().trim(), "EVER GIVEN");
+        assert_eq!(
+            env.metadata.ship_name.as_deref().unwrap().trim(),
+            "EVER GIVEN"
+        );
         assert!((env.metadata.latitude - 30.5234).abs() < 1e-9);
         assert!((env.metadata.longitude - 32.3456).abs() < 1e-9);
         let pr = env.message.pointer("/PositionReport/Sog").unwrap();

@@ -45,7 +45,11 @@ pub async fn api_key(
         return next.run(request).await;
     }
 
-    let key = match request.headers().get(&API_KEY_HEADER).and_then(|v| v.to_str().ok()) {
+    let key = match request
+        .headers()
+        .get(&API_KEY_HEADER)
+        .and_then(|v| v.to_str().ok())
+    {
         Some(k) if !k.is_empty() => k.to_string(),
         _ => {
             // No api key header. Stage 5 already failed (else it would
@@ -109,20 +113,27 @@ mod tests {
         Router::new()
             .route("/x", get(echo_api))
             .layer(from_fn_with_state(store, api_key))
-            .layer(axum::middleware::from_fn(move |mut req: Request, next: Next| {
-                let r = required;
-                async move {
-                    req.extensions_mut().insert(RequiredTier(r));
-                    next.run(req).await
-                }
-            }))
+            .layer(axum::middleware::from_fn(
+                move |mut req: Request, next: Next| {
+                    let r = required;
+                    async move {
+                        req.extensions_mut().insert(RequiredTier(r));
+                        next.run(req).await
+                    }
+                },
+            ))
     }
 
     #[tokio::test]
     async fn anonymous_route_skipped() {
         let r = router(Tier::Anonymous);
         let resp = r
-            .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/x")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_ne!(resp.status(), StatusCode::UNAUTHORIZED);
@@ -132,7 +143,12 @@ mod tests {
     async fn missing_key_on_tier_gated_route_returns_401() {
         let r = router(Tier::Free);
         let resp = r
-            .oneshot(AxumRequest::builder().uri("/x").body(Body::empty()).unwrap())
+            .oneshot(
+                AxumRequest::builder()
+                    .uri("/x")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
@@ -190,7 +206,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         assert_eq!(&body[..], b"alpha-client|Tier2");
     }
 }

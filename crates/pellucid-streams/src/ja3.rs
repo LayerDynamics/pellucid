@@ -97,12 +97,11 @@ impl Ja3ClientHello {
         Self {
             tls_version: 771,
             ciphers: vec![
-                4865, 4866, 4867, 49195, 49199, 49196, 49200,
-                52393, 52392, 49171, 49172, 156, 157, 47, 53,
+                4865, 4866, 4867, 49195, 49199, 49196, 49200, 52393, 52392, 49171, 49172, 156, 157,
+                47, 53,
             ],
             extensions: vec![
-                0, 23, 65281, 10, 11, 35, 16, 5, 13, 18, 51,
-                45, 43, 27, 17513, 21,
+                0, 23, 65281, 10, 11, 35, 16, 5, 13, 18, 51, 45, 43, 27, 17513, 21,
             ],
             elliptic_curves: vec![29, 23, 24],
             ec_point_formats: vec![0],
@@ -118,7 +117,10 @@ pub fn canonical_string(c: &Ja3ClientHello) -> String {
     let extensions = join_dec(&c.extensions);
     let curves = join_dec(&c.elliptic_curves);
     let formats = join_dec_u8(&c.ec_point_formats);
-    format!("{},{},{},{},{}", c.tls_version, ciphers, extensions, curves, formats)
+    format!(
+        "{},{},{},{},{}",
+        c.tls_version, ciphers, extensions, curves, formats
+    )
 }
 
 /// Compute the JA3 fingerprint — lowercase hex MD5 over
@@ -160,8 +162,8 @@ fn join_dec_u8(values: &[u8]) -> String {
 /// curve IDs Chrome injects to keep middleboxes honest. Stripped
 /// before fingerprinting per the JA3 spec.
 pub const GREASE_VALUES: &[u16] = &[
-    0x0a0a, 0x1a1a, 0x2a2a, 0x3a3a, 0x4a4a, 0x5a5a, 0x6a6a, 0x7a7a,
-    0x8a8a, 0x9a9a, 0xaaaa, 0xbaba, 0xcaca, 0xdada, 0xeaea, 0xfafa,
+    0x0a0a, 0x1a1a, 0x2a2a, 0x3a3a, 0x4a4a, 0x5a5a, 0x6a6a, 0x7a7a, 0x8a8a, 0x9a9a, 0xaaaa, 0xbaba,
+    0xcaca, 0xdada, 0xeaea, 0xfafa,
 ];
 
 /// `true` iff `value` is a GREASE sentinel.
@@ -214,7 +216,8 @@ mod tests {
         let fp = fingerprint(&c);
         assert_eq!(fp.len(), 32);
         assert!(
-            fp.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()),
+            fp.bytes()
+                .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()),
             "fingerprint should be lowercase hex: {fp}"
         );
     }

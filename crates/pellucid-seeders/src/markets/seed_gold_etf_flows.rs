@@ -25,9 +25,7 @@ use pellucid_db::Pool;
 
 use crate::atomic_publish::{atomic_publish, PublishOutcome};
 use crate::envelope::{SeedEnvelope, SeedMeta};
-use crate::markets::seed_etf_flows::{
-    EtfFlowRow, OhlcvBar, OhlcvFetcher, OhlcvSeries,
-};
+use crate::markets::seed_etf_flows::{EtfFlowRow, OhlcvBar, OhlcvFetcher, OhlcvSeries};
 use crate::markets::MarketsSeederError;
 
 /// Cache key — SLOW-tier slot newly added to
@@ -201,14 +199,8 @@ mod tests {
         let pool = open_in_memory().await.unwrap();
         let fetcher = StaticFetcher {
             series: vec![
-                series(
-                    "GLD",
-                    &[(216.0, 5_000_000.0), (218.0, 7_000_000.0)],
-                ),
-                series(
-                    "IAU",
-                    &[(44.0, 8_000_000.0), (44.5, 8_500_000.0)],
-                ),
+                series("GLD", &[(216.0, 5_000_000.0), (218.0, 7_000_000.0)]),
+                series("IAU", &[(44.0, 8_000_000.0), (44.5, 8_500_000.0)]),
             ],
         };
         let outcome = run_cycle(&pool, &fetcher, &GoldEtfFlowsConfig::default())
@@ -216,12 +208,11 @@ mod tests {
             .unwrap();
         assert!(outcome.bytes_written > 0);
 
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 2);

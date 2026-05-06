@@ -69,14 +69,25 @@ mod tests {
     async fn migrated() -> (axum::Router, pellucid_db::Pool) {
         let state = AppState::for_tests_async().await.unwrap();
         let pool = state.pool.clone();
-        let app = axum::Router::new().route(ACTIVE_CAMPAIGNS_PATH, axum::routing::get(handler).with_state(state));
+        let app = axum::Router::new().route(
+            ACTIVE_CAMPAIGNS_PATH,
+            axum::routing::get(handler).with_state(state),
+        );
         (app, pool)
     }
 
     #[tokio::test]
     async fn returns_503_when_empty() {
         let (app, _) = migrated().await;
-        let resp = app.oneshot(Request::builder().uri(ACTIVE_CAMPAIGNS_PATH).body(Body::empty()).unwrap()).await.unwrap();
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .uri(ACTIVE_CAMPAIGNS_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
         assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
     }
 
@@ -87,11 +98,26 @@ mod tests {
             "rows": [{ "id": "c1", "title": "APT29 phishing", "actor": "APT29", "severity": "high", "sectors": ["finance", "gov"] }],
             "assembled_at_ms": 1_700_000_000_000_i64,
         });
-        set_cached_json(&pool, CACHE_KEY, &Envelope::new(snap), 60_000).await.unwrap();
-        let resp = app.oneshot(Request::builder().uri(ACTIVE_CAMPAIGNS_PATH).body(Body::empty()).unwrap()).await.unwrap();
+        set_cached_json(&pool, CACHE_KEY, &Envelope::new(snap), 60_000)
+            .await
+            .unwrap();
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .uri(ACTIVE_CAMPAIGNS_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         let parsed: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(parsed.pointer("/rows/0/actor").and_then(Value::as_str), Some("APT29"));
+        assert_eq!(
+            parsed.pointer("/rows/0/actor").and_then(Value::as_str),
+            Some("APT29")
+        );
     }
 }

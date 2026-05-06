@@ -265,7 +265,11 @@ mod tests {
         // Prime the cache directly so the verifier never makes an
         // HTTP call. The fetcher's URL stays unused.
         let jwks = CACHED_JWKS_FOR_TESTS
-            .get_or_init(|| async { jsonwebtoken::jwk::JwkSet { keys: vec![fixture_jwk()] } })
+            .get_or_init(|| async {
+                jsonwebtoken::jwk::JwkSet {
+                    keys: vec![fixture_jwk()],
+                }
+            })
             .await
             .clone();
         v.fetcher().cache().set(jwks).await;

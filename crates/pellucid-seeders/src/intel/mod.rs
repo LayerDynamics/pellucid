@@ -1,8 +1,10 @@
-//! Intel domain — minimal Telegram public-channel scrape
-//! per the SPEC-001 §17.7 "limited" note (full Telegram in
-//! M3 week 14).
-
-pub mod seed_telegram_intel_min;
+//! Intel domain — Telegram intel writes are owned by
+//! `pellucid_streams::telegram::run` (T4.5.0). The previous
+//! `seed_telegram_intel_min` web-preview scraper was removed at
+//! T4.5.0 along with `pellucid_streams::telegram_public`. This
+//! module currently has no seeders, but the shared
+//! [`IntelSeederError`] is kept because future intel seeders
+//! (M5+) will reuse it.
 
 use thiserror::Error;
 

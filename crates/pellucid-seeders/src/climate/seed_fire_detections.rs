@@ -148,7 +148,9 @@ pub async fn run_cycle(
         return Err(ClimateSeederError::EmptyUpstream);
     }
     rows.sort_by(|a, b| {
-        b.frp.partial_cmp(&a.frp).unwrap_or(std::cmp::Ordering::Equal)
+        b.frp
+            .partial_cmp(&a.frp)
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
     rows.truncate(config.top_limit);
 
@@ -229,8 +231,8 @@ mod tests {
         let fetcher = StaticFetcher {
             rows: vec![
                 det(5.0, 40.0, -118.0),
-                det(50.0, 35.0, -120.0),  // top
-                det(0.5, 30.0, -115.0),   // dropped (below min_frp)
+                det(50.0, 35.0, -120.0), // top
+                det(0.5, 30.0, -115.0),  // dropped (below min_frp)
                 det(20.0, 41.0, -117.0),
             ],
         };
@@ -238,12 +240,11 @@ mod tests {
             .await
             .unwrap();
         assert!(outcome.bytes_written > 0);
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 3);
@@ -269,19 +270,16 @@ mod tests {
             min_frp: 1.0,
         };
         let _ = run_cycle(&pool, &fetcher, &cfg).await.unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let rows = parsed.pointer("/data/rows").unwrap().as_array().unwrap();
         assert_eq!(rows.len(), 25);
         // Top entry must be FRP=1000.0
-        assert!(
-            (rows[0].get("frp").unwrap().as_f64().unwrap() - 1000.0).abs() < 1e-9
-        );
+        assert!((rows[0].get("frp").unwrap().as_f64().unwrap() - 1000.0).abs() < 1e-9);
     }
 
     #[tokio::test]

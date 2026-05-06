@@ -73,9 +73,7 @@ pub const ALLOWED_DOMAINS: &[&str] = &[
 /// `true` iff `host` is in the allowlist (case-insensitive).
 #[must_use]
 pub fn is_allowed(host: &str) -> bool {
-    ALLOWED_DOMAINS
-        .iter()
-        .any(|d| d.eq_ignore_ascii_case(host))
+    ALLOWED_DOMAINS.iter().any(|d| d.eq_ignore_ascii_case(host))
 }
 
 /// Number of distinct allowlist entries.

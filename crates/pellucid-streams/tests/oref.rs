@@ -16,14 +16,13 @@
 //!   and round-trips through `read_history`.
 
 use pellucid_db::open_in_memory;
-use pellucid_streams::oref::{
-    read_history, OrefClient, OrefConfig, HISTORY_CACHE_KEY,
-};
+use pellucid_streams::oref::{read_history, OrefClient, OrefConfig, HISTORY_CACHE_KEY};
 use pellucid_streams::StreamsError;
 use wiremock::matchers::{header_exists, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-const ALERT_OBJECT: &str = r#"{"id":"100","cat":"1","title":"רקטות","data":"שדרות","desc":"היכנסו למרחב מוגן"}"#;
+const ALERT_OBJECT: &str =
+    r#"{"id":"100","cat":"1","title":"רקטות","data":"שדרות","desc":"היכנסו למרחב מוגן"}"#;
 const ALERT_ARRAY: &str = r#"[
     {"id":"200","cat":"1","title":"a","data":"x","desc":""},
     {"id":"201","cat":"13","title":"b","data":"y","desc":""}

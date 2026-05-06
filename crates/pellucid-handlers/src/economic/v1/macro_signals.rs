@@ -140,7 +140,9 @@ pub async fn handler(
                     headline: format!("{label} {arrow}"),
                     rationale: format!(
                         "Latest {latest:.2} vs prior {} ({delta:+.2})",
-                        prior.map(|p| format!("{p:.2}")).unwrap_or_else(|| "—".to_string()),
+                        prior
+                            .map(|p| format!("{p:.2}"))
+                            .unwrap_or_else(|| "—".to_string()),
                     ),
                 });
             }
@@ -202,10 +204,22 @@ mod tests {
 
     #[test]
     fn signal_direction_from_delta() {
-        assert_eq!(SignalDirection::from_delta(0.5, 0.1), SignalDirection::Rising);
-        assert_eq!(SignalDirection::from_delta(-0.5, 0.1), SignalDirection::Falling);
-        assert_eq!(SignalDirection::from_delta(0.05, 0.1), SignalDirection::Flat);
-        assert_eq!(SignalDirection::from_delta(f64::NAN, 0.1), SignalDirection::Flat);
+        assert_eq!(
+            SignalDirection::from_delta(0.5, 0.1),
+            SignalDirection::Rising
+        );
+        assert_eq!(
+            SignalDirection::from_delta(-0.5, 0.1),
+            SignalDirection::Falling
+        );
+        assert_eq!(
+            SignalDirection::from_delta(0.05, 0.1),
+            SignalDirection::Flat
+        );
+        assert_eq!(
+            SignalDirection::from_delta(f64::NAN, 0.1),
+            SignalDirection::Flat
+        );
     }
 
     async fn migrated() -> (axum::Router, pellucid_db::Pool) {
@@ -222,7 +236,12 @@ mod tests {
     async fn returns_503_when_nothing_present() {
         let (app, _) = migrated().await;
         let resp = app
-            .oneshot(Request::builder().uri(MACRO_SIGNALS_PATH).body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri(MACRO_SIGNALS_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
@@ -240,10 +259,17 @@ mod tests {
             .await
             .unwrap();
         let resp = app
-            .oneshot(Request::builder().uri(MACRO_SIGNALS_PATH).body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri(MACRO_SIGNALS_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
-        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .unwrap();
         let parsed: MacroSignalsResponse = serde_json::from_slice(&body).unwrap();
         assert_eq!(parsed.signals[0].code, "UNRATE");
         assert_eq!(parsed.signals[0].direction, SignalDirection::Rising);

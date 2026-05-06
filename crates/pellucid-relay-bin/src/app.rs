@@ -61,6 +61,10 @@ pub struct BootedRelay {
     /// passes `None` for `seeder_jobs`; production wires the
     /// full set.
     pub scheduler: Option<JoinHandle<()>>,
+    /// Optional Telegram MTProto run-task handle (T4.5.0). `None`
+    /// when the relay was booted without `TELEGRAM_API_ID` /
+    /// `TELEGRAM_API_HASH` (dev mode).
+    pub telegram_handles: Option<crate::telegram_task::TelegramTaskHandle>,
 }
 
 impl std::fmt::Debug for BootedRelay {
@@ -82,6 +86,11 @@ impl BootedRelay {
         let mut clean = true;
         if let Some(handles) = self.ais_handles {
             if !ais_task::shutdown(handles, self.config.shutdown_grace).await {
+                clean = false;
+            }
+        }
+        if let Some(handle) = self.telegram_handles {
+            if !crate::telegram_task::shutdown(handle, self.config.shutdown_grace).await {
                 clean = false;
             }
         }
@@ -166,6 +175,18 @@ pub async fn build_app(
     let maritime_state = MaritimeState::new();
     let ais_handles = ais_task::spawn(config.ais_api_key.clone(), maritime_state.clone());
 
+    let telegram_handles = match crate::telegram_task::try_spawn(pool.clone(), &config).await {
+        Ok(handles) => handles,
+        Err(err) => {
+            tracing::warn!(
+                target: "pellucid::relay::telegram",
+                error = %err,
+                "telegram run task failed to start; relay continues without it"
+            );
+            None
+        }
+    };
+
     let scheduler = if seeder_jobs.is_empty() {
         None
     } else {
@@ -183,6 +204,7 @@ pub async fn build_app(
         ais_handles,
         config,
         scheduler,
+        telegram_handles,
     })
 }
 

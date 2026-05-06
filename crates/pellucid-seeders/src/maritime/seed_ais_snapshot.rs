@@ -35,14 +35,14 @@ pub const CASCADE_GROUP: &str = "maritime-ais";
 
 /// Default region basket — covers the major ocean basins.
 pub const DEFAULT_REGIONS: &[NamedBBox] = &[
-    ("north-atlantic",  ( 25.0, -80.0,  60.0, -10.0)),
-    ("south-atlantic",  (-50.0, -60.0,   0.0,  20.0)),
-    ("north-pacific",   ( 10.0, 120.0,  60.0, -120.0)),
-    ("south-pacific",   (-50.0, 130.0, -10.0, -70.0)),
-    ("indian-ocean",    (-50.0,  20.0,  30.0, 110.0)),
-    ("mediterranean",   ( 30.0,  -5.0,  46.0,  37.0)),
-    ("caribbean",       (  9.0, -90.0,  27.0, -60.0)),
-    ("baltic",          ( 53.0,  10.0,  66.0,  30.0)),
+    ("north-atlantic", (25.0, -80.0, 60.0, -10.0)),
+    ("south-atlantic", (-50.0, -60.0, 0.0, 20.0)),
+    ("north-pacific", (10.0, 120.0, 60.0, -120.0)),
+    ("south-pacific", (-50.0, 130.0, -10.0, -70.0)),
+    ("indian-ocean", (-50.0, 20.0, 30.0, 110.0)),
+    ("mediterranean", (30.0, -5.0, 46.0, 37.0)),
+    ("caribbean", (9.0, -90.0, 27.0, -60.0)),
+    ("baltic", (53.0, 10.0, 66.0, 30.0)),
 ];
 
 /// Run-time configuration.
@@ -135,8 +135,7 @@ pub async fn run_cycle(
         },
         data: serde_json::to_value(&snapshot).unwrap_or(serde_json::Value::Null),
     };
-    let outcome =
-        atomic_publish(pool, "maritime", CACHE_KEY, &envelope, TTL).await?;
+    let outcome = atomic_publish(pool, "maritime", CACHE_KEY, &envelope, TTL).await?;
     Ok(outcome)
 }
 
@@ -187,12 +186,11 @@ mod tests {
         let _ = run_cycle(&pool, &reader, &AisSnapshotConfig::default())
             .await
             .unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         assert_eq!(
             parsed.pointer("/data/total_vessels").unwrap().as_u64(),
@@ -200,10 +198,7 @@ mod tests {
         );
         let regions = parsed.pointer("/data/regions").unwrap().as_array().unwrap();
         assert_eq!(regions.len(), 2);
-        assert_eq!(
-            regions[0].get("vessel_count").unwrap().as_u64(),
-            Some(1500)
-        );
+        assert_eq!(regions[0].get("vessel_count").unwrap().as_u64(), Some(1500));
     }
 
     #[tokio::test]

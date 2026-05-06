@@ -124,10 +124,7 @@ impl CloudflareRadarClient {
             .http
             .get(url)
             .header("user-agent", &self.config.user_agent)
-            .header(
-                "authorization",
-                format!("Bearer {}", self.config.api_token),
-            )
+            .header("authorization", format!("Bearer {}", self.config.api_token))
             .header("accept", "application/json")
             .send()
             .await?;
@@ -142,15 +139,25 @@ impl CloudflareRadarClient {
             .await
             .map_err(|e| StreamsError::Parse(e.to_string()))?;
         if !body.success {
-            return Err(StreamsError::Parse("cloudflare radar: success=false".into()));
+            return Err(StreamsError::Parse(
+                "cloudflare radar: success=false".into(),
+            ));
         }
-        Ok(body.result.annotations.into_iter().map(OutageAnnotation::from_raw).collect())
+        Ok(body
+            .result
+            .annotations
+            .into_iter()
+            .map(OutageAnnotation::from_raw)
+            .collect())
     }
 
     fn build_url(&self, date_range: &str) -> Result<Url, StreamsError> {
-        let raw = format!("{}/client/v4/radar/annotations/outages", self.config.base_url);
-        let mut url = Url::parse(&raw)
-            .map_err(|e| StreamsError::Parse(format!("radar url: {e}")))?;
+        let raw = format!(
+            "{}/client/v4/radar/annotations/outages",
+            self.config.base_url
+        );
+        let mut url =
+            Url::parse(&raw).map_err(|e| StreamsError::Parse(format!("radar url: {e}")))?;
         {
             let mut q = url.query_pairs_mut();
             q.append_pair("dateRange", date_range);

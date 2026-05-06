@@ -150,7 +150,11 @@ pub async fn run_cycle(
 fn today_year() -> u16 {
     let secs = pellucid_core::now_ms() / 1000;
     let days = secs / 86_400 + 719_468;
-    let era = if days >= 0 { days / 146_097 } else { (days - 146_096) / 146_097 };
+    let era = if days >= 0 {
+        days / 146_097
+    } else {
+        (days - 146_096) / 146_097
+    };
     let doe = (days - era * 146_097) as u64;
     let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
     let y = yoe as i64 + era * 400;
@@ -227,7 +231,9 @@ mod tests {
         let fetcher = StaticFetcher {
             series: series(
                 2010,
-                &[0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.05, 1.08, 1.10, 1.12, 1.15, 1.18, 1.20],
+                &[
+                    0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.05, 1.08, 1.10, 1.12, 1.15, 1.18, 1.20,
+                ],
             ),
         };
         let outcome = run_cycle(
@@ -241,17 +247,20 @@ mod tests {
         .await
         .unwrap();
         assert!(outcome.bytes_written > 0);
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
         let latest = parsed.pointer("/data/latest").unwrap();
         assert_eq!(latest.get("year").unwrap().as_u64(), Some(2022));
         assert!((latest.get("anomaly_c").unwrap().as_f64().unwrap() - 1.20).abs() < 1e-9);
-        let sparkline = parsed.pointer("/data/sparkline").unwrap().as_array().unwrap();
+        let sparkline = parsed
+            .pointer("/data/sparkline")
+            .unwrap()
+            .as_array()
+            .unwrap();
         assert_eq!(sparkline.len(), 5);
         assert_eq!(sparkline[0].get("year").unwrap().as_u64(), Some(2018));
     }
@@ -272,14 +281,17 @@ mod tests {
         )
         .await
         .unwrap();
-        let row: (String,) =
-            sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
-                .bind(CACHE_KEY)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String,) = sqlx::query_as("SELECT payload FROM kv_envelope WHERE cache_key = ?")
+            .bind(CACHE_KEY)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&row.0).unwrap();
-        let sparkline = parsed.pointer("/data/sparkline").unwrap().as_array().unwrap();
+        let sparkline = parsed
+            .pointer("/data/sparkline")
+            .unwrap()
+            .as_array()
+            .unwrap();
         assert_eq!(sparkline.len(), 3);
     }
 

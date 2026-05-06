@@ -12,9 +12,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use pellucid_db::open_in_memory;
-use pellucid_seeders::{
-    atomic_publish, current_holder, PublishError, SeedEnvelope, SeedMeta,
-};
+use pellucid_seeders::{atomic_publish, current_holder, PublishError, SeedEnvelope, SeedMeta};
 use sqlx::Row;
 
 fn envelope(record_count: i64, source_version: &str) -> SeedEnvelope {

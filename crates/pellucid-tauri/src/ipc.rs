@@ -13,6 +13,7 @@
 //! so the unit tests + the `tests/ipc_real_state.rs` integration test
 //! exercise the same code path the webview hits at runtime.
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use parking_lot::RwLock;
@@ -20,6 +21,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::sidecar::{SidecarHandle, SidecarLaunchError, SidecarSupervisor};
+use crate::telegram_login::{self, LoginCtx, LoginError, RequestCodeResponse, SubmitCodeResponse};
 use crate::token_rotation::TokenRotator;
 use crate::vault::{SecretsBlob, Vault};
 
@@ -151,17 +153,22 @@ pub struct LocalApiState {
     cached: Arc<RwLock<SecretsBlob>>,
     rotator: Arc<RwLock<Option<Arc<TokenRotator>>>>,
     supervisor: Arc<RwLock<Option<Arc<SidecarSupervisor>>>>,
+    /// Login state machine — populated between
+    /// `telegram_login_request_code` and the final
+    /// `telegram_login_submit_*` call (T4.5.0). `None` while no flow
+    /// is in progress.
+    telegram_login: Arc<tokio::sync::Mutex<Option<LoginCtx>>>,
+    /// Disk path for the temporary SQLite session used during login.
+    /// Defaults to `<tempdir>/pellucid-telegram-login.session`.
+    telegram_login_session_path: Arc<PathBuf>,
 }
 
 impl LocalApiState {
     /// Construct a new state. `default_variant` is what the IPC layer
     /// reports until [`Self::set_variant`] is called.
     #[must_use]
-    pub fn new(
-        sidecar: SidecarHandle,
-        vault: Arc<dyn Vault>,
-        default_variant: Variant,
-    ) -> Self {
+    pub fn new(sidecar: SidecarHandle, vault: Arc<dyn Vault>, default_variant: Variant) -> Self {
+        let temp = std::env::temp_dir().join("pellucid-telegram-login.session");
         Self {
             sidecar,
             vault,
@@ -169,7 +176,16 @@ impl LocalApiState {
             cached: Arc::new(RwLock::new(SecretsBlob::default())),
             rotator: Arc::new(RwLock::new(None)),
             supervisor: Arc::new(RwLock::new(None)),
+            telegram_login: Arc::new(tokio::sync::Mutex::new(None)),
+            telegram_login_session_path: Arc::new(temp),
         }
+    }
+
+    /// Override the path used for the temporary login-session SQLite
+    /// file. Used by tests to keep the file inside a temp directory
+    /// they own.
+    pub fn set_telegram_login_session_path(&mut self, path: PathBuf) {
+        self.telegram_login_session_path = Arc::new(path);
     }
 
     /// Clone of the inner [`SidecarHandle`]. The host needs this when
@@ -244,7 +260,10 @@ impl LocalApiState {
         let (current, previous) = if let Some(r) = rotator {
             (Some(r.current()), r.previous())
         } else {
-            (blob.sidecar_token.clone(), blob.sidecar_token_previous.clone())
+            (
+                blob.sidecar_token.clone(),
+                blob.sidecar_token_previous.clone(),
+            )
         };
         Ok(SecretBundle {
             sidecar_token: current,
@@ -366,6 +385,191 @@ impl LocalApiState {
     pub fn vault(&self) -> &Arc<dyn Vault> {
         &self.vault
     }
+
+    /// Persist new MTProto session bytes into the consolidated vault
+    /// entry AND push them to the running sidecar via stdin so the
+    /// sidecar's run task picks them up without restart (T4.5.0).
+    /// Mirrors `persist_rotation` for the telegram session.
+    pub async fn persist_telegram_session(&self, bytes: &[u8]) -> Result<(), IpcError> {
+        use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
+        use base64::Engine as _;
+        let encoded = BASE64_STANDARD.encode(bytes);
+
+        let mut blob = self.vault.read().await?;
+        if blob.telegram_session.as_deref() == Some(encoded.as_str()) {
+            return Ok(());
+        }
+        blob.telegram_session = Some(encoded);
+        self.vault.write(&blob).await?;
+        *self.cached.write() = blob;
+
+        // Best-effort sidecar push — failures here are logged but do
+        // not break the login flow. The sidecar will pick the bytes up
+        // on next start when it reads the keychain via Tauri-host
+        // bootstrap.
+        let sup = self.supervisor.read().clone();
+        if let Some(s) = sup {
+            if let Err(err) = s.send_telegram_session_updated(bytes).await {
+                tracing::warn!(
+                    target: "pellucid::ipc",
+                    error = %err,
+                    "failed to forward telegram session bytes to sidecar; will retry on next host restart"
+                );
+            }
+        }
+        Ok(())
+    }
+
+    /// Clear the stored telegram session and notify the sidecar so its
+    /// run task drains. Mirrors a logout.
+    pub async fn clear_telegram_session(&self) -> Result<(), IpcError> {
+        let mut blob = self.vault.read().await?;
+        if blob.telegram_session.is_none() {
+            return Ok(());
+        }
+        blob.telegram_session = None;
+        self.vault.write(&blob).await?;
+        *self.cached.write() = blob;
+
+        let sup = self.supervisor.read().clone();
+        if let Some(s) = sup {
+            if let Err(err) = s.send_telegram_session_cleared().await {
+                tracing::warn!(
+                    target: "pellucid::ipc",
+                    error = %err,
+                    "failed to notify sidecar of telegram logout; sidecar will see cleared session on next restart"
+                );
+            }
+        }
+        Ok(())
+    }
+
+    /// Begin the telegram login flow — call `request_login_code` on a
+    /// fresh grammers client, store the in-flight context.
+    pub async fn telegram_login_begin(
+        &self,
+        phone: String,
+    ) -> Result<RequestCodeResponse, LoginError> {
+        let blob = self.vault.read().await?;
+        let api_id = blob
+            .telegram_api_id
+            .ok_or(LoginError::ApiCredentialsMissing)?;
+        let api_hash = blob
+            .telegram_api_hash
+            .clone()
+            .ok_or(LoginError::ApiCredentialsMissing)?;
+
+        let session_path = (*self.telegram_login_session_path).clone();
+        let (ctx, response) = telegram_login::begin(session_path, api_id, api_hash, phone).await?;
+
+        let mut guard = self.telegram_login.lock().await;
+        // Replace any in-flight ctx — caller may have abandoned a
+        // previous attempt without going through submit_*.
+        if let Some(prev) = guard.take() {
+            telegram_login::shutdown(prev).await;
+        }
+        *guard = Some(ctx);
+        Ok(response)
+    }
+
+    /// Submit the SMS code. On `Done`, persists the new session bytes
+    /// to vault + sidecar and drops the in-flight ctx.
+    pub async fn telegram_login_submit_code_step(
+        &self,
+        code: String,
+    ) -> Result<SubmitCodeResponse, LoginError> {
+        let outcome = {
+            let guard = self.telegram_login.lock().await;
+            let ctx = guard.as_ref().ok_or(LoginError::NoLoginInFlight)?;
+            telegram_login::submit_code(ctx, &code).await?
+        };
+        match outcome {
+            pellucid_streams::telegram::client::LoginCodeOutcome::Done => {
+                self.finalize_login_after_success().await?;
+                Ok(SubmitCodeResponse {
+                    ok: true,
+                    needs_password: false,
+                })
+            }
+            pellucid_streams::telegram::client::LoginCodeOutcome::NeedsPassword => {
+                Ok(SubmitCodeResponse {
+                    ok: false,
+                    needs_password: true,
+                })
+            }
+        }
+    }
+
+    /// Submit the 2FA password. Persists the new session on success.
+    pub async fn telegram_login_submit_password_step(
+        &self,
+        password: String,
+    ) -> Result<SubmitCodeResponse, LoginError> {
+        {
+            let guard = self.telegram_login.lock().await;
+            let ctx = guard.as_ref().ok_or(LoginError::NoLoginInFlight)?;
+            telegram_login::submit_password(ctx, &password).await?;
+        }
+        self.finalize_login_after_success().await?;
+        Ok(SubmitCodeResponse {
+            ok: true,
+            needs_password: false,
+        })
+    }
+
+    /// Helper: read the freshly-minted session bytes from the
+    /// in-flight client, persist to vault + sidecar, drop the ctx.
+    async fn finalize_login_after_success(&self) -> Result<(), LoginError> {
+        let bytes = {
+            let guard = self.telegram_login.lock().await;
+            let ctx = guard.as_ref().ok_or(LoginError::NoLoginInFlight)?;
+            telegram_login::current_session_bytes(ctx).await?
+        };
+        self.persist_telegram_session(&bytes)
+            .await
+            .map_err(|e| LoginError::Mtproto(e.to_string()))?;
+        let prev = {
+            let mut guard = self.telegram_login.lock().await;
+            guard.take()
+        };
+        if let Some(ctx) = prev {
+            telegram_login::shutdown(ctx).await;
+        }
+        Ok(())
+    }
+
+    /// `true` when the vault carries a non-empty `telegram_session`.
+    /// Used by the webview to decide whether to render the onboarding
+    /// dialog on first focus of the panel.
+    pub async fn telegram_session_present(&self) -> Result<bool, IpcError> {
+        let blob = self.vault.read().await?;
+        Ok(blob
+            .telegram_session
+            .as_ref()
+            .is_some_and(|s| !s.is_empty()))
+    }
+
+    /// Spawn a background task that drains
+    /// [`SidecarSupervisor::take_telegram_session_rx`] and persists
+    /// every received blob into the vault. Called once during host
+    /// boot.
+    pub fn spawn_telegram_session_harvest_loop(
+        &self,
+        mut rx: tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>,
+    ) -> tokio::task::JoinHandle<()> {
+        let state = self.clone();
+        tokio::spawn(async move {
+            while let Some(bytes) = rx.recv().await {
+                if let Err(err) = state.persist_telegram_session(&bytes).await {
+                    tracing::warn!(
+                        target: "pellucid::ipc",
+                        error = %err,
+                        "failed to persist sidecar-reported telegram session"
+                    );
+                }
+            }
+        })
+    }
 }
 
 // ---------------------------------------------------------------------
@@ -418,11 +622,50 @@ pub fn request_updater_check(state: tauri::State<'_, LocalApiState>) -> Result<(
 
 /// `open_external` — validate + open an external `https://` URL.
 #[tauri::command]
-pub fn open_external(
-    state: tauri::State<'_, LocalApiState>,
-    url: String,
-) -> Result<(), IpcError> {
+pub fn open_external(state: tauri::State<'_, LocalApiState>, url: String) -> Result<(), IpcError> {
     state.validate_external_url(&url)
+}
+
+/// `telegram_login_request_code` — start the MTProto auth flow.
+#[tauri::command]
+pub async fn telegram_login_request_code(
+    state: tauri::State<'_, LocalApiState>,
+    phone: String,
+) -> Result<RequestCodeResponse, LoginError> {
+    state.telegram_login_begin(phone).await
+}
+
+/// `telegram_login_submit_code` — submit the SMS code.
+#[tauri::command]
+pub async fn telegram_login_submit_code(
+    state: tauri::State<'_, LocalApiState>,
+    code: String,
+) -> Result<SubmitCodeResponse, LoginError> {
+    state.telegram_login_submit_code_step(code).await
+}
+
+/// `telegram_login_submit_password` — submit the 2FA password.
+#[tauri::command]
+pub async fn telegram_login_submit_password(
+    state: tauri::State<'_, LocalApiState>,
+    password: String,
+) -> Result<SubmitCodeResponse, LoginError> {
+    state.telegram_login_submit_password_step(password).await
+}
+
+/// `telegram_logout` — clear the stored session and notify the sidecar.
+#[tauri::command]
+pub async fn telegram_logout(state: tauri::State<'_, LocalApiState>) -> Result<(), IpcError> {
+    state.clear_telegram_session().await
+}
+
+/// `telegram_session_present` — `true` when the vault carries a
+/// non-empty `telegram_session`. Drives the webview's onboarding gate.
+#[tauri::command]
+pub async fn telegram_session_present(
+    state: tauri::State<'_, LocalApiState>,
+) -> Result<bool, IpcError> {
+    state.telegram_session_present().await
 }
 
 #[cfg(test)]
@@ -560,7 +803,10 @@ mod tests {
         s.attach_rotator(r.clone());
         assert_eq!(s.local_api_token().as_deref(), Some("rotator-seed"));
         let outcome = r.rotate_now().unwrap();
-        assert_eq!(s.local_api_token().as_deref(), Some(outcome.new_token.as_str()));
+        assert_eq!(
+            s.local_api_token().as_deref(),
+            Some(outcome.new_token.as_str())
+        );
         assert_eq!(
             s.local_api_token_previous().as_deref(),
             Some("rotator-seed"),
@@ -662,7 +908,9 @@ mod tests {
         s.forward_token_rotation_to_sidecar("a", Some("b"))
             .await
             .unwrap();
-        s.forward_token_rotation_to_sidecar("a", None).await.unwrap();
+        s.forward_token_rotation_to_sidecar("a", None)
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
@@ -671,10 +919,7 @@ mod tests {
         let program = std::path::PathBuf::from("/bin/sh");
         let path = "/tmp/pellucid-state-stdin-1";
         let _ = std::fs::remove_file(path);
-        let args = vec![
-            "-c".to_string(),
-            format!("echo PORT=51200; cat > {path}"),
-        ];
+        let args = vec!["-c".to_string(), format!("echo PORT=51200; cat > {path}")];
         let sup = Arc::new(
             crate::sidecar::SidecarSupervisor::spawn(&program, &args)
                 .await

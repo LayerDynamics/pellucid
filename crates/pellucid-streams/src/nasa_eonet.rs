@@ -131,17 +131,17 @@ impl NasaEonetClient {
             .json()
             .await
             .map_err(|e| StreamsError::Parse(e.to_string()))?;
-        Ok(body.events.into_iter().map(NaturalEvent::from_raw).collect())
+        Ok(body
+            .events
+            .into_iter()
+            .map(NaturalEvent::from_raw)
+            .collect())
     }
 
-    fn build_events_url(
-        &self,
-        category: Option<&str>,
-        days: u32,
-    ) -> Result<Url, StreamsError> {
+    fn build_events_url(&self, category: Option<&str>, days: u32) -> Result<Url, StreamsError> {
         let raw = format!("{}/api/v3/events", self.config.base_url);
-        let mut url = Url::parse(&raw)
-            .map_err(|e| StreamsError::Parse(format!("eonet url: {e}")))?;
+        let mut url =
+            Url::parse(&raw).map_err(|e| StreamsError::Parse(format!("eonet url: {e}")))?;
         {
             let mut q = url.query_pairs_mut();
             q.append_pair("status", "open");

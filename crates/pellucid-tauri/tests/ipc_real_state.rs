@@ -9,9 +9,7 @@
 
 use std::sync::Arc;
 
-use pellucid_tauri::{
-    InMemoryVault, LocalApiState, SecretsBlob, SidecarHandle, Variant, Vault,
-};
+use pellucid_tauri::{InMemoryVault, LocalApiState, SecretsBlob, SidecarHandle, Variant, Vault};
 
 fn state(default_variant: Variant) -> LocalApiState {
     let sidecar = SidecarHandle::from_port(46_111);
