@@ -155,6 +155,16 @@ pub const REGISTRY: &[RegistryEntry] = &[
         name: "air-quality",
         cadence: Cadence::every(Duration::from_secs(15 * 60)),
     },
+    // T4.6 climate/nature expansion — NOAA active alerts +
+    // monthly station records.
+    RegistryEntry {
+        name: "noaa-alerts",
+        cadence: Cadence::every(Duration::from_secs(15 * 60)),
+    },
+    RegistryEntry {
+        name: "station-records",
+        cadence: Cadence::every(Duration::from_secs(24 * 60 * 60)),
+    },
     // Conflict domain (T3.8) — five seeders covering the
     // FAST-tier geopolitical-incident surface area.
     RegistryEntry {

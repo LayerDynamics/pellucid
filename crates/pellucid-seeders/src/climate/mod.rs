@@ -18,6 +18,8 @@ pub mod seed_climate_anomalies;
 pub mod seed_earthquakes;
 pub mod seed_fire_detections;
 pub mod seed_natural_events;
+pub mod seed_noaa_alerts;
+pub mod seed_station_records;
 
 use thiserror::Error;
 

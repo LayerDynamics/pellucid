@@ -19,6 +19,7 @@
 
 pub mod aviation;
 pub mod bootstrap;
+pub mod climate;
 pub mod consumer_prices;
 pub mod economic;
 pub mod energy;
@@ -39,6 +40,7 @@ pub fn build_handlers(state: AppState) -> Router {
     Router::new()
         .merge(aviation::router(state.clone()))
         .merge(bootstrap::router(state.clone()))
+        .merge(climate::router(state.clone()))
         .merge(consumer_prices::router(state.clone()))
         .merge(economic::router(state.clone()))
         .merge(energy::router(state.clone()))
