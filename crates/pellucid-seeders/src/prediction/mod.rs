@@ -1,8 +1,10 @@
 //! Prediction domain — two seeders covering Polymarket
 //! prediction markets and Metaculus crowd forecasts.
 
+pub mod seed_extended_forecast;
 pub mod seed_forecasts;
 pub mod seed_polymarket;
+pub mod seed_scenario_library;
 
 use thiserror::Error;
 

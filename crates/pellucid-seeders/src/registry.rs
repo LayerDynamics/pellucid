@@ -244,6 +244,16 @@ pub const REGISTRY: &[RegistryEntry] = &[
         name: "forecasts",
         cadence: Cadence::every(Duration::from_secs(15 * 60)),
     },
+    // T4.8 forecast/prediction expansion — scenario library +
+    // extended-horizon forecasts (both SLOW, 24h cadence).
+    RegistryEntry {
+        name: "scenario-library",
+        cadence: Cadence::every(Duration::from_secs(24 * 60 * 60)),
+    },
+    RegistryEntry {
+        name: "extended-forecast",
+        cadence: Cadence::every(Duration::from_secs(24 * 60 * 60)),
+    },
     // T3.8 expansion — cyber NVD seeders (CISA KEV is in infra/).
     RegistryEntry {
         name: "cyber-incident-feed",

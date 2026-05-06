@@ -23,6 +23,7 @@ pub mod climate;
 pub mod consumer_prices;
 pub mod economic;
 pub mod energy;
+pub mod forecast;
 pub mod generated;
 pub mod infra;
 pub mod intelligence;
@@ -45,6 +46,7 @@ pub fn build_handlers(state: AppState) -> Router {
         .merge(consumer_prices::router(state.clone()))
         .merge(economic::router(state.clone()))
         .merge(energy::router(state.clone()))
+        .merge(forecast::router(state.clone()))
         .merge(infra::router(state.clone()))
         .merge(intelligence::router(state.clone()))
         .merge(market::router(state.clone()))
