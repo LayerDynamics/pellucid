@@ -91,6 +91,7 @@ pub const FAST_KEYS: &[&str] = &[
     "market:commodities-snapshot:v1",
     "market:stocks-bootstrap:v1",
     "market:crypto-snapshot:v1",
+    "market:stablecoin-snapshot:v1",
     // Military (live posture)
     "military:theater-posture:current:v1",
     "military:active-deployments:v1",
@@ -209,6 +210,9 @@ pub const SLOW_KEYS: &[&str] = &[
     "market:gold-etf-flows:current:v1",
     "market:cot-report:weekly:v1",
     "market:history:default-basket:v1",
+    "market:earnings-calendar:7d:v1",
+    "market:yield-curve:treasury:v1",
+    "market:liquidity-shifts:v1",
     // Military (deployment history)
     "military:deployment-history:v1",
     "military:basing-snapshot:v1",
@@ -326,27 +330,29 @@ mod tests {
     use std::collections::HashSet;
 
     #[test]
-    fn fast_tier_has_79_keys() {
+    fn fast_tier_has_80_keys() {
         // OP-4 originally 67; T3.8 markets +crypto-snapshot, T3.8
         // climate +air-quality, T3.8 conflict +iran-events, T3.8
         // energy +fuel-prices +gie-gas-storage, T3.8 expansion
         // (technology) +hn +github +ai-models +cloud-status
-        // +compute-spot +memory-market; T4.1.1 +news-articles-list.
-        assert_eq!(FAST_KEYS.len(), 79);
+        // +compute-spot +memory-market; T4.1.1 +news-articles-list;
+        // T4.2.10 +stablecoin-snapshot.
+        assert_eq!(FAST_KEYS.len(), 80);
     }
 
     #[test]
-    fn slow_tier_has_53_keys() {
+    fn slow_tier_has_56_keys() {
         // OP-4 originally 45; T3.8 markets +etf-flows +gold-etf-flows
         // +cot-report; T3.8 energy +spr-status +iea-oil-stocks +jodi;
         // T3.8 expansion +semiconductor-ppi (FRED follow-up); T4.2.3
-        // +market-history (default basket).
-        assert_eq!(SLOW_KEYS.len(), 53);
+        // +market-history (default basket); T4.2.8 +earnings-calendar;
+        // T4.2.9 +yield-curve; T4.2.11 +liquidity-shifts.
+        assert_eq!(SLOW_KEYS.len(), 56);
     }
 
     #[test]
-    fn total_keys_is_132() {
-        assert_eq!(TOTAL_KEYS, 132);
+    fn total_keys_is_136() {
+        assert_eq!(TOTAL_KEYS, 136);
     }
 
     #[test]

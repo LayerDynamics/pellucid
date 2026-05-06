@@ -26,10 +26,14 @@
 pub mod seed_commodity_quotes;
 pub mod seed_cot;
 pub mod seed_crypto_quotes;
+pub mod seed_earnings_calendar;
 pub mod seed_etf_flows;
 pub mod seed_gold_etf_flows;
+pub mod seed_liquidity_shifts;
 pub mod seed_market_history;
 pub mod seed_market_quotes;
+pub mod seed_stablecoin_quotes;
+pub mod seed_yield_curve;
 
 use thiserror::Error;
 
