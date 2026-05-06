@@ -181,6 +181,13 @@ pub const SLOW_KEYS: &[&str] = &[
     // Economic (long-series indicators)
     "economic:indicator-series:monthly:v1",
     "economic:fred-long-series:UNRATE:v1",
+    // Economic (M3 family 4.3 — macro/economy)
+    "economic:financial-stress:v1",
+    "economic:national-debt:v1",
+    "economic:big-mac-index:v1",
+    "economic:fao-food-price-index:v1",
+    "economic:gulf-economies:v1",
+    "consumer-prices:grocery-basket:v1",
     // EIA (weekly stocks) + T3.8 energy domain additions
     "eia:petroleum-stocks:weekly:v1",
     "energy:spr-status:current:v1",
@@ -341,18 +348,20 @@ mod tests {
     }
 
     #[test]
-    fn slow_tier_has_56_keys() {
+    fn slow_tier_has_62_keys() {
         // OP-4 originally 45; T3.8 markets +etf-flows +gold-etf-flows
         // +cot-report; T3.8 energy +spr-status +iea-oil-stocks +jodi;
         // T3.8 expansion +semiconductor-ppi (FRED follow-up); T4.2.3
-        // +market-history (default basket); T4.2.8 +earnings-calendar;
-        // T4.2.9 +yield-curve; T4.2.11 +liquidity-shifts.
-        assert_eq!(SLOW_KEYS.len(), 56);
+        // +market-history; T4.2.8 +earnings-calendar; T4.2.9
+        // +yield-curve; T4.2.11 +liquidity-shifts; T4.3 macro/economy
+        // +6 (financial-stress, national-debt, big-mac, fao-food,
+        // gulf-economies, grocery-basket).
+        assert_eq!(SLOW_KEYS.len(), 62);
     }
 
     #[test]
-    fn total_keys_is_136() {
-        assert_eq!(TOTAL_KEYS, 136);
+    fn total_keys_is_142() {
+        assert_eq!(TOTAL_KEYS, 142);
     }
 
     #[test]

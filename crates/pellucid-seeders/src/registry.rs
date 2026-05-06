@@ -92,6 +92,33 @@ pub const REGISTRY: &[RegistryEntry] = &[
         name: "market-history",
         cadence: Cadence::every(Duration::from_secs(24 * 60 * 60)),
     },
+    // Economic domain (T4.3 macro/economy family) — six SLOW-
+    // tier seeders publishing the new macro cache slots the
+    // family 4.3 panels read.
+    RegistryEntry {
+        name: "economic-financial-stress",
+        cadence: Cadence::every(Duration::from_secs(12 * 60 * 60)),
+    },
+    RegistryEntry {
+        name: "economic-national-debt",
+        cadence: Cadence::every(Duration::from_secs(24 * 60 * 60)),
+    },
+    RegistryEntry {
+        name: "economic-big-mac-index",
+        cadence: Cadence::every(Duration::from_secs(7 * 24 * 60 * 60)),
+    },
+    RegistryEntry {
+        name: "economic-fao-food-price-index",
+        cadence: Cadence::every(Duration::from_secs(24 * 60 * 60)),
+    },
+    RegistryEntry {
+        name: "economic-gulf-economies",
+        cadence: Cadence::every(Duration::from_secs(24 * 60 * 60)),
+    },
+    RegistryEntry {
+        name: "consumer-prices-grocery-basket",
+        cadence: Cadence::every(Duration::from_secs(24 * 60 * 60)),
+    },
     // Aviation domain (T3.8) — three seeders covering the
     // FAST-tier airspace surface area.
     RegistryEntry {

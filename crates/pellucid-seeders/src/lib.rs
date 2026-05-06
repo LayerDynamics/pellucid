@@ -12,6 +12,7 @@ pub mod aviation;
 pub mod climate;
 pub mod conflict;
 pub mod cyber;
+pub mod economic;
 pub mod energy;
 pub mod envelope;
 pub mod infra;
