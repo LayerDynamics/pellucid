@@ -202,6 +202,16 @@ pub const REGISTRY: &[RegistryEntry] = &[
         name: "gie-gas-storage",
         cadence: Cadence::every(Duration::from_secs(60 * 60)),
     },
+    // T4.4 energy/commodities expansion — Strait of Hormuz transit
+    // chokepoint flow + global renewable-capacity mix.
+    RegistryEntry {
+        name: "energy-hormuz-transits",
+        cadence: Cadence::every(Duration::from_secs(12 * 60 * 60)),
+    },
+    RegistryEntry {
+        name: "energy-renewable-mix",
+        cadence: Cadence::every(Duration::from_secs(24 * 60 * 60)),
+    },
     // Infra domain (T3.8) — two seeders.
     RegistryEntry {
         name: "internet-outages",
@@ -211,11 +221,10 @@ pub const REGISTRY: &[RegistryEntry] = &[
         name: "security-advisories",
         cadence: Cadence::every(Duration::from_secs(60 * 60)),
     },
-    // Intel domain (T3.8) — minimal Telegram preview scrape.
-    RegistryEntry {
-        name: "telegram-intel-min",
-        cadence: Cadence::every(Duration::from_secs(15 * 60)),
-    },
+    // Intel domain — Telegram intel is owned by
+    // `pellucid_streams::telegram::run` (T4.5.0); the previous
+    // `telegram-intel-min` web-preview seeder was removed at T4.5.0
+    // along with `pellucid_streams::telegram_public`.
     // Prediction domain (T3.8) — Polymarket + Metaculus.
     RegistryEntry {
         name: "polymarket",
@@ -462,10 +471,9 @@ mod tests {
             lookup("security-advisories").unwrap().cadence.period,
             Duration::from_secs(60 * 60)
         );
-        assert_eq!(
-            lookup("telegram-intel-min").unwrap().cadence.period,
-            Duration::from_secs(15 * 60)
-        );
+        // T4.5.0 — telegram-intel-min was removed; the test's positive
+        // assertion is replaced by a negative one in
+        // [`telegram_intel_min_no_longer_in_registry`] below.
         assert_eq!(
             lookup("polymarket").unwrap().cadence.period,
             Duration::from_secs(15 * 60)
@@ -488,6 +496,14 @@ mod tests {
     fn lookup_returns_none_for_unknown() {
         assert!(lookup("totally-fake-seeder").is_none());
         assert!(lookup("").is_none());
+    }
+
+    #[test]
+    fn telegram_intel_min_no_longer_in_registry() {
+        // T4.5.0 deletion — the web-preview scraper was removed and
+        // Telegram intel is now owned by `pellucid_streams::telegram::run`.
+        // If this test fails, the deletion got reverted.
+        assert!(lookup("telegram-intel-min").is_none());
     }
 
     #[test]

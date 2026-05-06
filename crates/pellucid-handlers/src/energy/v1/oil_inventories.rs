@@ -1,0 +1,121 @@
+//! `GET /api/energy/v1/oil-inventories` — pure cache reader for
+//! the EIA petroleum-stocks slot.
+
+use axum::extract::State;
+use axum::Json;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+use pellucid_cache::get_cached_json;
+
+use crate::economic::v1::shared::{decode_required, HandlerError};
+use crate::state::AppState;
+
+pub const CACHE_KEY: &str = "eia:petroleum-stocks:latest:v1";
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StocksRow {
+    pub product: String,
+    pub period: String,
+    #[serde(rename = "valueMb", alias = "value_mb")]
+    pub value_mb: f64,
+    #[serde(rename = "wowDeltaMb", alias = "wow_delta_mb")]
+    pub wow_delta_mb: f64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct OilInventoriesResponse {
+    pub rows: Vec<StocksRow>,
+    #[serde(rename = "assembledAtMs")]
+    pub assembled_at_ms: i64,
+    pub stale: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct Snap {
+    #[serde(default)]
+    rows: Vec<StocksRow>,
+    #[serde(default, alias = "assembledAtMs")]
+    assembled_at_ms: i64,
+}
+
+pub async fn handler(
+    State(state): State<AppState>,
+) -> Result<Json<OilInventoriesResponse>, HandlerError> {
+    let raw = get_cached_json::<Value>(&state.pool, CACHE_KEY)
+        .await
+        .map_err(|e| HandlerError::Cache(e.to_string()))?;
+    let (snap, stale) = decode_required::<Snap>(raw)?;
+    Ok(Json(OilInventoriesResponse {
+        rows: snap.rows,
+        assembled_at_ms: snap.assembled_at_ms,
+        stale,
+    }))
+}
+
+#[cfg(test)]
+#[allow(clippy::panic, clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+    use crate::energy::v1::OIL_INVENTORIES_PATH;
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use pellucid_cache::set_cached_json;
+    use pellucid_core::Envelope;
+    use tower::ServiceExt;
+
+    async fn migrated() -> (axum::Router, pellucid_db::Pool) {
+        let state = AppState::for_tests_async().await.unwrap();
+        let pool = state.pool.clone();
+        let app = axum::Router::new().route(
+            OIL_INVENTORIES_PATH,
+            axum::routing::get(handler).with_state(state),
+        );
+        (app, pool)
+    }
+
+    #[tokio::test]
+    async fn returns_503_when_cache_empty() {
+        let (app, _) = migrated().await;
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .uri(OIL_INVENTORIES_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    #[tokio::test]
+    async fn returns_camelcase_payload() {
+        let (app, pool) = migrated().await;
+        let snap = serde_json::json!({
+            "rows": [
+                { "product": "crude", "period": "2026-04-26", "value_mb": 437.5, "wow_delta_mb": -1.2 },
+            ],
+            "assembled_at_ms": 1_700_000_000_000_i64,
+        });
+        set_cached_json(&pool, CACHE_KEY, &Envelope::new(snap), 60_000)
+            .await
+            .unwrap();
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .uri(OIL_INVENTORIES_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000).await.unwrap();
+        let parsed: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(
+            parsed.pointer("/rows/0/wowDeltaMb").and_then(Value::as_f64),
+            Some(-1.2),
+        );
+    }
+}

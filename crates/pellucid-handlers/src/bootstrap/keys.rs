@@ -193,6 +193,8 @@ pub const SLOW_KEYS: &[&str] = &[
     "energy:spr-status:current:v1",
     "energy:iea-oil-stocks:monthly:v1",
     "energy:jodi:latest:v1",
+    "energy:hormuz-transits:current:v1",
+    "energy:renewable-mix:current:v1",
     // Enrichment (entity catalogs)
     "enrichment:entity-catalog:v1",
     "enrichment:gazetteer:v1",
@@ -348,20 +350,21 @@ mod tests {
     }
 
     #[test]
-    fn slow_tier_has_62_keys() {
+    fn slow_tier_has_64_keys() {
         // OP-4 originally 45; T3.8 markets +etf-flows +gold-etf-flows
         // +cot-report; T3.8 energy +spr-status +iea-oil-stocks +jodi;
         // T3.8 expansion +semiconductor-ppi (FRED follow-up); T4.2.3
         // +market-history; T4.2.8 +earnings-calendar; T4.2.9
         // +yield-curve; T4.2.11 +liquidity-shifts; T4.3 macro/economy
         // +6 (financial-stress, national-debt, big-mac, fao-food,
-        // gulf-economies, grocery-basket).
-        assert_eq!(SLOW_KEYS.len(), 62);
+        // gulf-economies, grocery-basket); T4.4 energy +2
+        // (hormuz-transits, renewable-mix).
+        assert_eq!(SLOW_KEYS.len(), 64);
     }
 
     #[test]
-    fn total_keys_is_142() {
-        assert_eq!(TOTAL_KEYS, 142);
+    fn total_keys_is_144() {
+        assert_eq!(TOTAL_KEYS, 144);
     }
 
     #[test]

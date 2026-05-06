@@ -14,9 +14,11 @@
 
 pub mod seed_fuel_prices;
 pub mod seed_gie_gas_storage;
+pub mod seed_hormuz_transits;
 pub mod seed_iea_oil_stocks;
 pub mod seed_jodi;
 pub mod seed_oil_inventories;
+pub mod seed_renewable_mix;
 pub mod seed_spr_policies;
 
 use thiserror::Error;

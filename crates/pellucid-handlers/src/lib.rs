@@ -21,6 +21,7 @@ pub mod aviation;
 pub mod bootstrap;
 pub mod consumer_prices;
 pub mod economic;
+pub mod energy;
 pub mod generated;
 pub mod intelligence;
 pub mod market;
@@ -40,6 +41,7 @@ pub fn build_handlers(state: AppState) -> Router {
         .merge(bootstrap::router(state.clone()))
         .merge(consumer_prices::router(state.clone()))
         .merge(economic::router(state.clone()))
+        .merge(energy::router(state.clone()))
         .merge(intelligence::router(state.clone()))
         .merge(market::router(state.clone()))
         .merge(news::router(state.clone()))
