@@ -228,7 +228,7 @@ impl CorrelationEngine {
             .into_iter()
             .map(|c| build_card(adapter, c, now))
             .collect();
-        cards.sort_by(|a, b| b.score.cmp(&a.score));
+        cards.sort_by_key(|c| std::cmp::Reverse(c.score));
         cards
     }
 

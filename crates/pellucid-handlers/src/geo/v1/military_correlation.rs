@@ -147,7 +147,7 @@ pub async fn handler(
             }
         })
         .collect();
-    rows.sort_by(|a, b| b.correlation.cmp(&a.correlation));
+    rows.sort_by_key(|r| std::cmp::Reverse(r.correlation));
     let total = rows.len();
     Ok(Json(MilitaryCorrelationResponse {
         rows,

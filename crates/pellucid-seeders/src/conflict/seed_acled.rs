@@ -184,7 +184,7 @@ pub async fn run_cycle(
             },
         )
         .collect();
-    rows.sort_by(|a, b| b.event_count.cmp(&a.event_count));
+    rows.sort_by_key(|r| std::cmp::Reverse(r.event_count));
     rows.truncate(config.top_actors);
 
     let assembled_at_ms = pellucid_core::now_ms();

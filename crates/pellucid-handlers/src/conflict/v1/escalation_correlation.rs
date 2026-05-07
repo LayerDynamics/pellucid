@@ -110,7 +110,7 @@ pub async fn handler(
             escalation: escalation_score(thermal, fatal),
         })
         .collect();
-    rows.sort_by(|a, b| b.escalation.cmp(&a.escalation));
+    rows.sort_by_key(|r| std::cmp::Reverse(r.escalation));
     if rows.is_empty() {
         return Err(HandlerError::Outage {
             retry_after_secs: DEFAULT_RETRY_AFTER_SECS,

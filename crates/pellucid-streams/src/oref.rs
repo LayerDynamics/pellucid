@@ -288,7 +288,7 @@ pub fn parse_oref_body(body: &str) -> Result<Option<Vec<OrefAlert>>, StreamsErro
 pub fn merge_history(existing: Vec<OrefAlert>, new_alerts: Vec<OrefAlert>) -> Vec<OrefAlert> {
     let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut out: Vec<OrefAlert> = Vec::with_capacity(existing.len() + new_alerts.len());
-    for a in new_alerts.into_iter().chain(existing.into_iter()) {
+    for a in new_alerts.into_iter().chain(existing) {
         if seen.insert(a.id.clone()) {
             out.push(a);
             if out.len() >= HISTORY_CAP {

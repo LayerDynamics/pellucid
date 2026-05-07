@@ -187,7 +187,7 @@ pub fn apply_breaking_filters(
 
     // Sort descending by published_at_ms so the banner shows the
     // freshest signal first regardless of upstream ordering.
-    filtered.sort_by(|a, b| b.published_at_ms.cmp(&a.published_at_ms));
+    filtered.sort_by_key(|n| std::cmp::Reverse(n.published_at_ms));
 
     let total = filtered.len();
     let limit = q.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT);

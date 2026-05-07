@@ -102,7 +102,7 @@ pub async fn run_cycle(
             top_filer: r.top_filer,
         })
         .collect();
-    rows.sort_by(|a, b| b.filings_30d.cmp(&a.filings_30d));
+    rows.sort_by_key(|r| std::cmp::Reverse(r.filings_30d));
 
     let assembled_at_ms = pellucid_core::now_ms();
     let snapshot = PatentTrendsSnapshot {

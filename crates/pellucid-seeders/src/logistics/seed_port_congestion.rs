@@ -111,7 +111,7 @@ pub async fn run_cycle(
     let rows: Vec<PortRow> = config
         .ports
         .iter()
-        .zip(counts.into_iter())
+        .zip(counts)
         .map(|((name, bbox), (_returned_name, vessel_count))| PortRow {
             name: name.clone(),
             bbox: *bbox,

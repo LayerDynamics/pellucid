@@ -321,7 +321,7 @@ pub fn cluster_news_core<R: TierResolver>(
         .map(|group| build_cluster(group, items, &tiers))
         .collect();
     // last_updated descending
-    out.sort_by(|a, b| b.last_updated.cmp(&a.last_updated));
+    out.sort_by_key(|c| std::cmp::Reverse(c.last_updated));
     out
 }
 
@@ -399,7 +399,7 @@ fn build_cluster(group_idx: Vec<usize>, items: &[NewsItemCore], tiers: &[u32]) -
     // before sort — `cluster` is built in inverted-index iteration
     // order, which is ascending index).
     let mut all_items: Vec<NewsItemCore> = group_idx.iter().map(|&i| items[i].clone()).collect();
-    all_items.sort_by(|a, b| a.pub_date.cmp(&b.pub_date));
+    all_items.sort_by_key(|i| i.pub_date);
 
     let id = generate_cluster_id(&all_items);
 

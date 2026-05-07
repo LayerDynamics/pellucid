@@ -155,7 +155,7 @@ pub async fn run_cycle(
             longitude: e.longitude,
         })
         .collect();
-    rows.sort_by(|a, b| b.best_fatalities.cmp(&a.best_fatalities));
+    rows.sort_by_key(|r| std::cmp::Reverse(r.best_fatalities));
 
     let assembled_at_ms = pellucid_core::now_ms();
     let snapshot = UcdpEventsSnapshot {

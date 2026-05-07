@@ -244,7 +244,7 @@ impl EntityIndex {
         // the JS source iterates in insertion order — both produce
         // the same final set because of the `seen` dedup.
         let mut aliases: Vec<(&String, &String)> = self.by_alias.iter().collect();
-        aliases.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
+        aliases.sort_unstable_by_key(|(a, _)| *a);
 
         for (alias_lower, entity_id) in aliases {
             if alias_lower.chars().count() < 3 {
@@ -276,7 +276,7 @@ impl EntityIndex {
 
         // Keywords next.
         let mut keywords: Vec<(&String, &HashSet<String>)> = self.by_keyword.iter().collect();
-        keywords.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
+        keywords.sort_unstable_by_key(|(a, _)| *a);
 
         for (keyword, entity_ids) in keywords {
             if keyword.chars().count() < 3 {

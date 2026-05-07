@@ -93,7 +93,7 @@ pub async fn run_cycle(
     let rows: Vec<ChokepointRow> = config
         .chokepoints
         .iter()
-        .zip(counts.into_iter())
+        .zip(counts)
         .map(|((name, bbox), (_returned_name, count))| ChokepointRow {
             name: name.clone(),
             bbox: *bbox,
