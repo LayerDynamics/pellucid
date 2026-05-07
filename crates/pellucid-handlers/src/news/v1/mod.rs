@@ -3,6 +3,7 @@
 pub mod get_breaking;
 pub mod list_articles;
 pub mod list_live;
+pub mod search_semantic;
 
 use axum::Router;
 
@@ -21,6 +22,10 @@ pub const LIST_LIVE_PATH: &str = "/api/news/v1/list-live";
 /// the [`BreakingNewsBanner`] panel polls.
 pub const GET_BREAKING_PATH: &str = "/api/news/v1/get-breaking";
 
+/// ML-backed semantic-search endpoint. Mirrored in
+/// `pellucid-auth::ML_ENDPOINT_ENTITLEMENTS`.
+pub use search_semantic::PATH as SEARCH_SEMANTIC_PATH;
+
 /// Build the v1 router.
 pub fn router(state: AppState) -> Router {
     Router::new()
@@ -34,6 +39,10 @@ pub fn router(state: AppState) -> Router {
         )
         .route(
             GET_BREAKING_PATH,
-            axum::routing::get(get_breaking::handler).with_state(state),
+            axum::routing::get(get_breaking::handler).with_state(state.clone()),
+        )
+        .route(
+            SEARCH_SEMANTIC_PATH,
+            axum::routing::post(search_semantic::handler).with_state(state),
         )
 }

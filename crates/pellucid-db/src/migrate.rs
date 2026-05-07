@@ -16,11 +16,18 @@ use crate::error::{DbError, Result};
 /// New migrations land here in version order. `include_str!` ensures the
 /// SQL ships with the binary so a deployed pellucid-edge or pellucid-relay
 /// can boot a fresh database without filesystem access to the source tree.
-const MIGRATIONS: &[(u32, &str, &str)] = &[(
-    1,
-    "0001_initial",
-    include_str!("../migrations/0001_initial.sql"),
-)];
+const MIGRATIONS: &[(u32, &str, &str)] = &[
+    (
+        1,
+        "0001_initial",
+        include_str!("../migrations/0001_initial.sql"),
+    ),
+    (
+        2,
+        "0002_news_embeddings",
+        include_str!("../migrations/0002_news_embeddings.sql"),
+    ),
+];
 
 /// Apply every bundled migration in version order. Idempotent.
 ///
@@ -60,7 +67,10 @@ mod tests {
     #[test]
     fn manifest_contains_initial() {
         let m = manifest();
-        assert_eq!(m, vec![(1, "0001_initial")]);
+        assert_eq!(
+            m,
+            vec![(1, "0001_initial"), (2, "0002_news_embeddings")]
+        );
     }
 
     #[test]
