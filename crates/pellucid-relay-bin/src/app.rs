@@ -24,6 +24,7 @@ use crate::config::Config;
 use crate::health::{HealthState, DEFAULT_OUTAGE_THRESHOLD};
 use crate::metrics::{install_recorder, MetricsError, MetricsState};
 use crate::proxy::ProxyState;
+use crate::scenario_task::{self, ScenarioHandle};
 
 /// Errors `build_app` can surface.
 #[derive(Debug, Error)]
@@ -61,6 +62,9 @@ pub struct BootedRelay {
     /// passes `None` for `seeder_jobs`; production wires the
     /// full set.
     pub scheduler: Option<JoinHandle<()>>,
+    /// Optional scenario worker handle. `None` when `UPSTASH_REDIS_REST_*`
+    /// env vars are absent (dev mode).
+    pub scenario_handle: Option<ScenarioHandle>,
     /// Optional Telegram MTProto run-task handle (T4.5.0). `None`
     /// when the relay was booted without `TELEGRAM_API_ID` /
     /// `TELEGRAM_API_HASH` (dev mode). Field present only with
@@ -90,6 +94,11 @@ impl BootedRelay {
         let mut clean = true;
         if let Some(handles) = self.ais_handles {
             if !ais_task::shutdown(handles, self.config.shutdown_grace).await {
+                clean = false;
+            }
+        }
+        if let Some(handle) = self.scenario_handle {
+            if !scenario_task::shutdown(handle, self.config.shutdown_grace).await {
                 clean = false;
             }
         }
@@ -180,6 +189,10 @@ pub async fn build_app(
     let maritime_state = MaritimeState::new();
     let ais_handles = ais_task::spawn(config.ais_api_key.clone(), maritime_state.clone());
 
+    // Scenario worker — spawns iff UPSTASH_REDIS_REST_URL/TOKEN are set in
+    // the process env. Dev mode boots without it.
+    let scenario_handle = scenario_task::spawn();
+
     #[cfg(feature = "telegram")]
     let telegram_handles = match crate::telegram_task::try_spawn(pool.clone(), &config).await {
         Ok(handles) => handles,
@@ -210,6 +223,7 @@ pub async fn build_app(
         ais_handles,
         config,
         scheduler,
+        scenario_handle,
         #[cfg(feature = "telegram")]
         telegram_handles,
     })

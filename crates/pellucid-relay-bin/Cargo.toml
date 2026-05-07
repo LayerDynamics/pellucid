@@ -41,6 +41,7 @@ pellucid-cache = { path = "../pellucid-cache" }
 pellucid-streams = { path = "../pellucid-streams" }
 pellucid-telegram = { path = "../pellucid-telegram", optional = true }
 pellucid-seeders = { path = "../pellucid-seeders" }
+pellucid-workers = { path = "../pellucid-workers" }
 
 [features]
 # `telegram` is **off by default**. The MTProto client links

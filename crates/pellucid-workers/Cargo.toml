@@ -11,3 +11,16 @@ description = "scenario, deep_forecast, simulation"
 workspace = true
 
 [dependencies]
+async-trait = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+
+pellucid-core = { path = "../pellucid-core" }
+
+[dev-dependencies]
+tokio = { workspace = true }
+wiremock = { workspace = true }

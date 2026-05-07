@@ -26,6 +26,7 @@ pub mod config;
 pub mod health;
 pub mod metrics;
 pub mod proxy;
+pub mod scenario_task;
 pub mod startup_check;
 #[cfg(feature = "telegram")]
 pub mod telegram_task;
