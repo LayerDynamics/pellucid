@@ -29,6 +29,15 @@ use tokio_tungstenite::tungstenite::Message;
 use pellucid_streams::ais::{AisClient, Backoff};
 use pellucid_streams::types::{AisEnvelope, AisSubscribe};
 
+/// Per-recv timeout. Each test would happily complete in <100 ms when
+/// the host is idle, but `cargo nextest run --workspace` runs ~1700
+/// tests concurrently, and on a contended runner the WebSocket
+/// loopback handshake + frame replay can stretch past two seconds.
+/// Ten seconds is generous enough to absorb the worst-case parallel
+/// load on CI / pre-push hooks while still flagging a real protocol
+/// hang within a single test cycle.
+const RECV_TIMEOUT: Duration = Duration::from_secs(10);
+
 /// Spin up a local WS server on an ephemeral port that:
 /// - accepts one client,
 /// - records the first text frame (the subscribe message),
@@ -101,7 +110,7 @@ async fn client_receives_replayed_frames_in_order() {
 
     let mut received = Vec::new();
     for _ in 0..frames.len() {
-        match tokio::time::timeout(Duration::from_secs(2), rx.recv()).await {
+        match tokio::time::timeout(RECV_TIMEOUT, rx.recv()).await {
             Ok(Ok(env)) => received.push(env),
             other => panic!("recv failed: {other:?}"),
         }
@@ -112,7 +121,7 @@ async fn client_receives_replayed_frames_in_order() {
 
     // Drop receiver so the run loop exits on the next reconnect.
     drop(rx);
-    let _ = tokio::time::timeout(Duration::from_secs(2), runner).await;
+    let _ = tokio::time::timeout(RECV_TIMEOUT, runner).await;
 
     // Assert the subscribe handshake the server saw matches what
     // we configured.
@@ -138,7 +147,7 @@ async fn client_decodes_envelope_metadata_byte_faithfully() {
     let mut rx = client.subscribe();
     let runner = tokio::spawn(client.run());
 
-    let env: AisEnvelope = tokio::time::timeout(Duration::from_secs(2), rx.recv())
+    let env: AisEnvelope = tokio::time::timeout(RECV_TIMEOUT, rx.recv())
         .await
         .unwrap()
         .unwrap();
@@ -149,7 +158,7 @@ async fn client_decodes_envelope_metadata_byte_faithfully() {
     assert!((sog.as_f64().unwrap() - 12.4).abs() < 1e-9);
 
     drop(rx);
-    let _ = tokio::time::timeout(Duration::from_secs(2), runner).await;
+    let _ = tokio::time::timeout(RECV_TIMEOUT, runner).await;
 }
 
 #[tokio::test]
@@ -172,14 +181,14 @@ async fn malformed_frame_is_skipped_session_continues() {
 
     // Only one decoded envelope should arrive (the malformed
     // frame is silently dropped).
-    let env = tokio::time::timeout(Duration::from_secs(2), rx.recv())
+    let env = tokio::time::timeout(RECV_TIMEOUT, rx.recv())
         .await
         .unwrap()
         .unwrap();
     assert_eq!(env.metadata.mmsi, 367_111_111);
 
     drop(rx);
-    let _ = tokio::time::timeout(Duration::from_secs(2), runner).await;
+    let _ = tokio::time::timeout(RECV_TIMEOUT, runner).await;
 }
 
 #[tokio::test]
@@ -196,11 +205,11 @@ async fn fan_out_to_multiple_subscribers() {
     let mut b = client.subscribe();
     let runner = tokio::spawn(client.run());
 
-    let env_a = tokio::time::timeout(Duration::from_secs(2), a.recv())
+    let env_a = tokio::time::timeout(RECV_TIMEOUT, a.recv())
         .await
         .unwrap()
         .unwrap();
-    let env_b = tokio::time::timeout(Duration::from_secs(2), b.recv())
+    let env_b = tokio::time::timeout(RECV_TIMEOUT, b.recv())
         .await
         .unwrap()
         .unwrap();
@@ -208,5 +217,5 @@ async fn fan_out_to_multiple_subscribers() {
 
     drop(a);
     drop(b);
-    let _ = tokio::time::timeout(Duration::from_secs(2), runner).await;
+    let _ = tokio::time::timeout(RECV_TIMEOUT, runner).await;
 }
