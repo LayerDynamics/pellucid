@@ -17,9 +17,11 @@
 //!
 //! Unrecognised lines are logged at `warn` and ignored.
 
+#[cfg(feature = "telegram")]
 use std::sync::Arc;
 
-use pellucid_streams::telegram::session::IpcSessionStore;
+#[cfg(feature = "telegram")]
+use pellucid_telegram::session::IpcSessionStore;
 use tokio::io::{AsyncBufRead, AsyncBufReadExt};
 
 use crate::auth::TokenSet;
@@ -27,10 +29,14 @@ use crate::auth::TokenSet;
 /// Drive the stdin control loop. Returns when `SHUTDOWN` is read or
 /// EOF is reached. Pure (apart from `tracing` calls) so integration
 /// tests can feed canned line streams.
+///
+/// `session_store` is only present when the `telegram` feature is
+/// enabled; with the feature off, the `TELEGRAM_SESSION_*` lines
+/// fall through to the unrecognised-line warning.
 pub async fn process_stdin_loop<R: AsyncBufRead + Unpin>(
     reader: R,
     tokens: &TokenSet,
-    session_store: &Arc<IpcSessionStore>,
+    #[cfg(feature = "telegram")] session_store: &Arc<IpcSessionStore>,
 ) {
     let mut lines = reader.lines();
     while let Ok(Some(line)) = lines.next_line().await {
@@ -46,10 +52,12 @@ pub async fn process_stdin_loop<R: AsyncBufRead + Unpin>(
             apply_token_rotated(tokens, rest);
             continue;
         }
+        #[cfg(feature = "telegram")]
         if let Some(rest) = trimmed.strip_prefix("TELEGRAM_SESSION_UPDATED ") {
             apply_telegram_session_updated(session_store, rest);
             continue;
         }
+        #[cfg(feature = "telegram")]
         if trimmed == "TELEGRAM_SESSION_CLEARED" {
             session_store.apply_ipc_cleared();
             tracing::info!(
@@ -80,6 +88,7 @@ fn apply_token_rotated(tokens: &TokenSet, rest: &str) {
     tracing::info!(target: "pellucid::sidecar", "token pair updated via stdin");
 }
 
+#[cfg(feature = "telegram")]
 fn apply_telegram_session_updated(store: &IpcSessionStore, base64_payload: &str) {
     match store.apply_ipc_updated(base64_payload) {
         Ok(()) => {

@@ -18,10 +18,12 @@
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
 use std::io::Write;
+#[cfg(feature = "telegram")]
 use std::sync::Arc;
 
 use pellucid_sidecar::{process_stdin_loop, serve_on_random_port, TokenSet, STDOUT_PORT_PREFIX};
-use pellucid_streams::telegram::session::IpcSessionStore;
+#[cfg(feature = "telegram")]
+use pellucid_telegram::session::IpcSessionStore;
 use tokio::io::BufReader;
 use tracing_subscriber::EnvFilter;
 
@@ -40,10 +42,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     tracing::info!(target: "pellucid::sidecar", port = handle.port, "sidecar listening");
 
+    #[cfg(feature = "telegram")]
     let session_store = Arc::new(IpcSessionStore::new());
 
     let stdin = tokio::io::stdin();
-    process_stdin_loop(BufReader::new(stdin), &tokens, &session_store).await;
+    process_stdin_loop(
+        BufReader::new(stdin),
+        &tokens,
+        #[cfg(feature = "telegram")]
+        &session_store,
+    )
+    .await;
 
     handle.task.abort();
     Ok(())

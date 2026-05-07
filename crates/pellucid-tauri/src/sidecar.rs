@@ -30,7 +30,7 @@ const PORT_DISCOVERY_TIMEOUT: Duration = Duration::from_secs(10);
 const PORT_LINE_PREFIX: &str = "PORT=";
 /// stdout prefix the sidecar writes when its run task generated fresh
 /// MTProto session bytes (T4.5.0). Mirrors
-/// `pellucid_streams::telegram::session::STDOUT_TELEGRAM_SESSION_PREFIX`.
+/// `pellucid_telegram::session::STDOUT_TELEGRAM_SESSION_PREFIX`.
 const TELEGRAM_SESSION_UPSTREAM_PREFIX: &str = "TELEGRAM_SESSION_UPSTREAM=";
 /// Sentinel sent on the previous-token slot when rotation has no
 /// previous token (first rotation only). Mirrors
@@ -296,7 +296,7 @@ impl SidecarSupervisor {
 
     /// Push new MTProto session bytes to the running sidecar via its
     /// stdin protocol. Mirrors
-    /// `pellucid_streams::telegram::session::IpcSessionStore::apply_ipc_updated`
+    /// `pellucid_telegram::session::IpcSessionStore::apply_ipc_updated`
     /// on the receiving side. Used by the Tauri auth IPC commands
     /// after a successful `telegram_login_*` call writes the new
     /// session to the OS keychain (T4.5.0).

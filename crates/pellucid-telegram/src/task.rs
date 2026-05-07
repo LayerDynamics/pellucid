@@ -126,8 +126,8 @@ pub async fn shutdown(handle: TelegramTaskHandle, grace: Duration) -> bool {
 #[allow(clippy::panic, clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::telegram::client::tests::MockClient;
-    use crate::telegram::session::IpcSessionStore;
+    use crate::client::tests::MockClient;
+    use crate::session::IpcSessionStore;
     use pellucid_core::vault::{InMemoryVault, SecretsBlob};
     use pellucid_db::open_in_memory;
     use std::io::Write as _;

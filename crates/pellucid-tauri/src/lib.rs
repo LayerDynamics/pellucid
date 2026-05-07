@@ -22,6 +22,7 @@
 
 pub mod ipc;
 pub mod sidecar;
+#[cfg(feature = "telegram")]
 pub mod telegram_login;
 pub mod token_rotation;
 pub mod vault;
@@ -31,6 +32,7 @@ pub use sidecar::{
     resolve_sidecar_binary_path, sidecar_binary_filename, SidecarHandle, SidecarLaunchError,
     SidecarSupervisor,
 };
+#[cfg(feature = "telegram")]
 pub use telegram_login::{LoginCtx, LoginError, RequestCodeResponse, SubmitCodeResponse};
 pub use token_rotation::{
     generate_token, spawn_rotation_loop, Clock, ManualClock, RotationOutcome, SystemClock,

@@ -63,7 +63,11 @@ pub struct BootedRelay {
     pub scheduler: Option<JoinHandle<()>>,
     /// Optional Telegram MTProto run-task handle (T4.5.0). `None`
     /// when the relay was booted without `TELEGRAM_API_ID` /
-    /// `TELEGRAM_API_HASH` (dev mode).
+    /// `TELEGRAM_API_HASH` (dev mode). Field present only with
+    /// the `telegram` feature; the dep links `grammers → libsql`
+    /// which collides with `sqlx → libsqlite3-sys` at link time
+    /// until the session backend is moved off libsql.
+    #[cfg(feature = "telegram")]
     pub telegram_handles: Option<crate::telegram_task::TelegramTaskHandle>,
 }
 
@@ -89,6 +93,7 @@ impl BootedRelay {
                 clean = false;
             }
         }
+        #[cfg(feature = "telegram")]
         if let Some(handle) = self.telegram_handles {
             if !crate::telegram_task::shutdown(handle, self.config.shutdown_grace).await {
                 clean = false;
@@ -175,6 +180,7 @@ pub async fn build_app(
     let maritime_state = MaritimeState::new();
     let ais_handles = ais_task::spawn(config.ais_api_key.clone(), maritime_state.clone());
 
+    #[cfg(feature = "telegram")]
     let telegram_handles = match crate::telegram_task::try_spawn(pool.clone(), &config).await {
         Ok(handles) => handles,
         Err(err) => {
@@ -204,6 +210,7 @@ pub async fn build_app(
         ais_handles,
         config,
         scheduler,
+        #[cfg(feature = "telegram")]
         telegram_handles,
     })
 }

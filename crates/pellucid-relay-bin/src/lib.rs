@@ -27,6 +27,7 @@ pub mod health;
 pub mod metrics;
 pub mod proxy;
 pub mod startup_check;
+#[cfg(feature = "telegram")]
 pub mod telegram_task;
 
 pub use app::{build_app, BootedRelay, RelayBootError};

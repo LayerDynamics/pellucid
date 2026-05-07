@@ -1,5 +1,10 @@
 //! Integration test for the sidecar's extended stdin protocol.
+//!
+//! Compiled only when the sidecar's `telegram` feature is on; with the
+//! feature off, `IpcSessionStore` and the `TELEGRAM_SESSION_*` lines
+//! don't exist (see `Cargo.toml`'s `[features]` section).
 
+#![cfg(feature = "telegram")]
 #![allow(clippy::panic, clippy::unwrap_used, clippy::expect_used)]
 
 use std::sync::Arc;
@@ -7,7 +12,7 @@ use std::sync::Arc;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine as _;
 use pellucid_sidecar::{process_stdin_loop, TokenSet};
-use pellucid_streams::telegram::session::{IpcSessionStore, SessionEvent, SessionStore};
+use pellucid_telegram::session::{IpcSessionStore, SessionEvent, SessionStore};
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn telegram_session_updated_line_mutates_store_and_emits_event() {

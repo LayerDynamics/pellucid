@@ -1,0 +1,34 @@
+[package]
+name = "pellucid-telegram"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Telegram MTProto client (grammers-client) + run task — extracted from pellucid-streams so its libsql/SQLite dep does not collide with sqlx's libsqlite3-sys when linking edge-bin"
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+parking_lot = { workspace = true }
+base64 = { workspace = true }
+metrics = { workspace = true }
+sqlx = { workspace = true }
+grammers-client = { workspace = true }
+grammers-session = { workspace = true }
+grammers-tl-types = { workspace = true }
+chrono = { workspace = true }
+pellucid-core = { path = "../pellucid-core" }
+pellucid-db = { path = "../pellucid-db" }
+pellucid-seeders = { path = "../pellucid-seeders" }
+
+[dev-dependencies]
+tokio = { workspace = true }
+tempfile = { workspace = true }

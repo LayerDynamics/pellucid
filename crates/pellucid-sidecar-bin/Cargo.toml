@@ -30,8 +30,19 @@ parking_lot = { workspace = true }
 thiserror = { workspace = true }
 base64 = { workspace = true }
 pellucid-core = { path = "../pellucid-core" }
-pellucid-streams = { path = "../pellucid-streams", features = ["telegram"] }
+pellucid-streams = { path = "../pellucid-streams" }
+pellucid-telegram = { path = "../pellucid-telegram", optional = true }
 pellucid-db = { path = "../pellucid-db" }
+
+[features]
+# `telegram` is **off by default**. `pellucid-telegram` pulls
+# `grammers → libsql → libsql-ffi` (vendored SQLite) which collides
+# with sqlx's `libsqlite3-sys` (also vendored) at link time. Turning
+# the feature on re-enables the MTProto session IPC handlers
+# (`TELEGRAM_SESSION_UPDATED` / `TELEGRAM_SESSION_CLEARED`) and the
+# in-memory `IpcSessionStore`.
+default = []
+telegram = ["dep:pellucid-telegram"]
 
 [dev-dependencies]
 reqwest = { workspace = true }

@@ -10,14 +10,16 @@
 //! pass it through. Errors are wrapped in [`StreamsError`] so the
 //! gateway's stage 11 can map them to consistent envelope shapes.
 //!
-//! Telegram is the exception to the "client-only" rule: it owns a
-//! long-running poller (`telegram::run`, T4.5.0) that holds a
-//! persistent MTProto session and writes a snapshot envelope to the
-//! shared cache key `telegram:recent-feed:v1` — same shape the
-//! `telegram-intel-min` web-preview seeder used to write before
-//! T4.5.0 graduated the integration. The handler at
-//! `pellucid_handlers::telegram::v1::feed` is unaffected by the
-//! source-of-writes swap.
+//! Telegram lives in its own crate (`pellucid-telegram`) because
+//! `grammers-client` pulls `libsql → libsql-ffi` (vendored SQLite),
+//! which collides with sqlx's `libsqlite3-sys` (also vendored) at
+//! link time. Splitting it out keeps `grammers/libsql` out of the
+//! `pellucid-edge-bin` link unit while `pellucid-relay-bin` /
+//! `pellucid-sidecar-bin` / `pellucid-tauri` add the
+//! `pellucid-telegram` dep explicitly. The handler at
+//! `pellucid_handlers::telegram::v1::feed` reads the same
+//! `telegram:recent-feed:v1` cache key the run task writes and is
+//! unaffected by the crate split.
 
 pub mod acled;
 pub mod ais;
@@ -50,8 +52,6 @@ pub mod oref;
 pub mod oss_insight;
 pub mod polymarket;
 pub mod rss;
-#[cfg(feature = "telegram")]
-pub mod telegram;
 pub mod types;
 pub mod ucdp;
 pub mod usgs_earthquakes;
@@ -91,14 +91,6 @@ pub use oref::{OrefAlert, OrefClient, OrefConfig, OrefHistory, HISTORY_CACHE_KEY
 pub use oss_insight::{OssInsightClient, OssInsightConfig, TrendingPeriod, TrendingRepo};
 pub use polymarket::{PolymarketClient, PolymarketConfig, PredictionMarket};
 pub use rss::{RssClient, RssEntry, RssFeed, NEGATIVE_TTL, POSITIVE_TTL};
-#[cfg(feature = "telegram")]
-pub use telegram::{
-    EnvSessionStore, FetchedMessage, GrammersClient, GrammersClientError, IpcSessionStore,
-    LoginCodeOutcome, MtprotoClient, SessionEvent, SessionStore, SessionStoreError,
-    TelegramIntelMinSnapshot, TelegramMessageRow, TelegramRunConfig, TelegramRunError,
-    TelegramTaskHandle, VaultSessionStore, CACHE_KEY as TELEGRAM_CACHE_KEY,
-    CASCADE_GROUP as TELEGRAM_CASCADE_GROUP, SOURCE_VERSION as TELEGRAM_SOURCE_VERSION,
-};
 pub use types::{AisEnvelope, AisMetadata, AisSubscribe};
 pub use ucdp::{UcdpClient, UcdpConfig, UcdpEvent, UcdpPage};
 pub use usgs_earthquakes::{EarthquakeEvent, FeedWindow, UsgsConfig, UsgsEarthquakesClient};

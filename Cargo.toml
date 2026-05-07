@@ -5,6 +5,7 @@ members = [
     "crates/pellucid-db",
     "crates/pellucid-cache",
     "crates/pellucid-streams",
+    "crates/pellucid-telegram",
     "crates/pellucid-seeders",
     "crates/pellucid-gateway",
     "crates/pellucid-handlers",

@@ -35,7 +35,17 @@ async-trait = { workspace = true }
 getrandom = { workspace = true }
 base64 = { workspace = true }
 pellucid-core = { path = "../pellucid-core" }
-pellucid-streams = { path = "../pellucid-streams", features = ["telegram"] }
+pellucid-streams = { path = "../pellucid-streams" }
+pellucid-telegram = { path = "../pellucid-telegram", optional = true }
+
+[features]
+# `telegram` is **off by default**; the dep brings `grammers → libsql`
+# (vendored SQLite) which collides with sqlx's `libsqlite3-sys` (also
+# vendored) at link time inside any binary that links both. Turning
+# the feature on re-enables the desktop host's MTProto login flow
+# (`telegram_login`) and the IPC commands that drive it.
+default = []
+telegram = ["dep:pellucid-telegram"]
 
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }

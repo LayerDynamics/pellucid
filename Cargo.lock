@@ -3601,6 +3601,7 @@ dependencies = [
  "pellucid-db",
  "pellucid-seeders",
  "pellucid-streams",
+ "pellucid-telegram",
  "reqwest 0.12.28",
  "rustls",
  "serde",
@@ -3648,6 +3649,7 @@ dependencies = [
  "pellucid-core",
  "pellucid-db",
  "pellucid-streams",
+ "pellucid-telegram",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
@@ -3669,9 +3671,6 @@ dependencies = [
  "dashmap 6.1.0",
  "feed-rs",
  "futures",
- "grammers-client",
- "grammers-session",
- "grammers-tl-types",
  "md-5",
  "metrics",
  "mini-moka",
@@ -3706,6 +3705,7 @@ dependencies = [
  "pellucid-core",
  "pellucid-sidecar-bin",
  "pellucid-streams",
+ "pellucid-telegram",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
@@ -3716,6 +3716,30 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "pellucid-telegram"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "base64 0.22.1",
+ "chrono",
+ "grammers-client",
+ "grammers-session",
+ "grammers-tl-types",
+ "metrics",
+ "parking_lot",
+ "pellucid-core",
+ "pellucid-db",
+ "pellucid-seeders",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

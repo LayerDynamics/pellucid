@@ -27,23 +27,39 @@ struct TokenRotatedPayload {
 /// Build the production [`Builder`] used by [`run`]. Re-exported so tests can
 /// re-construct the exact same configuration against the mock runtime.
 pub(crate) fn builder() -> Builder<Wry> {
-    tauri::Builder::default()
-        .manage(default_local_api_state())
-        .invoke_handler(tauri::generate_handler![
-            ipc::get_local_api_port,
-            ipc::get_local_api_token,
-            ipc::refresh_secrets,
-            ipc::get_variant,
-            ipc::set_variant,
-            ipc::request_updater_check,
-            ipc::open_external,
-            ipc::telegram_login_request_code,
-            ipc::telegram_login_submit_code,
-            ipc::telegram_login_submit_password,
-            ipc::telegram_logout,
-            ipc::telegram_session_present,
-        ])
-        .setup(setup_main_window)
+    // The two `invoke_handler` arms differ only in whether the
+    // telegram commands are registered. With the `telegram` feature
+    // off (default), `pellucid-telegram` is not in the link unit
+    // (avoids `grammers → libsql` colliding with sqlx's
+    // `libsqlite3-sys` at link time) and the webview cannot reach
+    // the MTProto auth flow.
+    let b = tauri::Builder::default().manage(default_local_api_state());
+    #[cfg(not(feature = "telegram"))]
+    let b = b.invoke_handler(tauri::generate_handler![
+        ipc::get_local_api_port,
+        ipc::get_local_api_token,
+        ipc::refresh_secrets,
+        ipc::get_variant,
+        ipc::set_variant,
+        ipc::request_updater_check,
+        ipc::open_external,
+    ]);
+    #[cfg(feature = "telegram")]
+    let b = b.invoke_handler(tauri::generate_handler![
+        ipc::get_local_api_port,
+        ipc::get_local_api_token,
+        ipc::refresh_secrets,
+        ipc::get_variant,
+        ipc::set_variant,
+        ipc::request_updater_check,
+        ipc::open_external,
+        ipc::telegram_login_request_code,
+        ipc::telegram_login_submit_code,
+        ipc::telegram_login_submit_password,
+        ipc::telegram_logout,
+        ipc::telegram_session_present,
+    ]);
+    b.setup(setup_main_window)
 }
 
 /// Pre-discovery placeholder port. Replaced with the real bound
@@ -194,9 +210,13 @@ async fn launch_sidecar(
     // Take the telegram-session receiver BEFORE wrapping the supervisor
     // in an Arc — `take_telegram_session_rx` requires `&self` access
     // and is single-shot. The harvest loop persists every received
-    // blob into the OS keychain (T4.5.0).
+    // blob into the OS keychain (T4.5.0). Only when the `telegram`
+    // feature is on; otherwise the sidecar is built without
+    // `pellucid-telegram` and the harvest loop has nothing to drain.
+    #[cfg(feature = "telegram")]
     let telegram_rx = supervisor.take_telegram_session_rx().await;
     state.attach_sidecar_supervisor(Arc::new(supervisor));
+    #[cfg(feature = "telegram")]
     if let Some(rx) = telegram_rx {
         // The harvest loop is fire-and-forget; the join handle is
         // intentionally discarded. The task ends only when the mpsc

@@ -38,8 +38,20 @@ rustls = { workspace = true }
 pellucid-core = { path = "../pellucid-core" }
 pellucid-db = { path = "../pellucid-db" }
 pellucid-cache = { path = "../pellucid-cache" }
-pellucid-streams = { path = "../pellucid-streams", features = ["telegram"] }
+pellucid-streams = { path = "../pellucid-streams" }
+pellucid-telegram = { path = "../pellucid-telegram", optional = true }
 pellucid-seeders = { path = "../pellucid-seeders" }
+
+[features]
+# `telegram` is **off by default**. The MTProto client links
+# `grammers-client → libsql → libsql-ffi (vendored SQLite)` while the
+# relay also links `sqlx → libsqlite3-sys (vendored SQLite)`; both
+# vendor `sqlite3.c` and collide at link time with `multiple
+# definition of sqlite3_*`. Until the session backend is moved off
+# libsql, telegram is opt-in. Off → relay deploys cleanly with no
+# duplicate-symbol error.
+default = []
+telegram = ["dep:pellucid-telegram"]
 
 [dev-dependencies]
 tokio = { workspace = true }

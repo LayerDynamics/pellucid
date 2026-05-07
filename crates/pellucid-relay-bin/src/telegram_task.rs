@@ -1,8 +1,8 @@
-//! Wires `pellucid_streams::telegram::run` into the relay binary.
+//! Wires `pellucid_telegram::run` into the relay binary.
 //!
 //! Builds an [`EnvVault`] populated from the relay's [`Config`]
 //! (Railway secrets), then delegates to
-//! `pellucid_streams::telegram::task::try_spawn`. Returns `None` when
+//! `pellucid_telegram::task::try_spawn`. Returns `None` when
 //! the env-derived `SecretsBlob` has no `telegram_api_id` /
 //! `telegram_api_hash` — that's the dev-mode path; the panel falls back
 //! to the M4 outage state until the operator wires the secrets.
@@ -11,10 +11,10 @@ use std::sync::Arc;
 
 use pellucid_core::vault::{EnvVault, SecretsBlob, Vault};
 use pellucid_db::Pool;
-use pellucid_streams::telegram::task as telegram_task;
+use pellucid_telegram::task as telegram_task;
 
-pub use pellucid_streams::telegram::task::{shutdown, TelegramTaskHandle};
-pub use pellucid_streams::telegram::TelegramRunError;
+pub use pellucid_telegram::task::{shutdown, TelegramTaskHandle};
+pub use pellucid_telegram::TelegramRunError;
 
 use crate::config::Config;
 

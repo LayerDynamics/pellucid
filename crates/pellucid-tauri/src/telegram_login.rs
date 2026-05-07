@@ -1,6 +1,6 @@
 //! Tauri-host MTProto auth flow.
 //!
-//! Wraps `pellucid_streams::telegram::GrammersClient` (the same client
+//! Wraps `pellucid_telegram::GrammersClient` (the same client
 //! the run task uses) with the three-step login state machine the
 //! webview drives via IPC commands. The host owns the [`LoginCtx`]
 //! between calls — it is parked under
@@ -18,9 +18,9 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use pellucid_streams::telegram::client::{GrammersClient, GrammersClientError, LoginCodeOutcome};
-use pellucid_streams::telegram::session::SessionStoreError;
-use pellucid_streams::telegram::MtprotoClient;
+use pellucid_telegram::client::{GrammersClient, GrammersClientError, LoginCodeOutcome};
+use pellucid_telegram::session::SessionStoreError;
+use pellucid_telegram::MtprotoClient;
 use serde::Serialize;
 use thiserror::Error;
 

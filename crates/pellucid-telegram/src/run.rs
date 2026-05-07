@@ -320,8 +320,8 @@ async fn persist_session_if_changed(
 #[allow(clippy::panic, clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::telegram::client::tests::MockClient;
-    use crate::telegram::session::IpcSessionStore;
+    use crate::client::tests::MockClient;
+    use crate::session::IpcSessionStore;
     use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
     use base64::Engine as _;
     use pellucid_db::open_in_memory;

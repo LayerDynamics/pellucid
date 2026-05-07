@@ -11,7 +11,14 @@
 //! The "real connect path with valid creds" lives behind
 //! `TELEGRAM_E2E=1` in `crates/pellucid-relay-bin/src/telegram_task.rs`
 //! tests, not here.
+//!
+//! Compiled only with the relay's `telegram` feature on; with the
+//! feature off, `BootedRelay::telegram_handles` does not exist (the
+//! field is `#[cfg(feature = "telegram")]`-gated to keep `grammers →
+//! libsql` out of the relay link unit, where it would collide with
+//! sqlx's `libsqlite3-sys` at link time).
 
+#![cfg(feature = "telegram")]
 #![allow(clippy::panic, clippy::unwrap_used, clippy::expect_used)]
 
 use std::time::Duration;
