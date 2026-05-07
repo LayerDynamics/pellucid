@@ -5,9 +5,23 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "ort/candle wrapper: embeddings, sentiment, summarization, NER"
+description = "ML engine — HuggingFace embeddings + Groq chat (no local ONNX runtime)"
 
 [lints]
 workspace = true
 
 [dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+reqwest = { workspace = true }
+url = { workspace = true }
+metrics = { workspace = true }
+pellucid-core = { path = "../pellucid-core" }
+
+[dev-dependencies]
+tokio = { workspace = true }
+wiremock = { workspace = true }
