@@ -24,7 +24,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev
-      - run: cargo llvm-cov --workspace --lcov --output-path lcov.info
+      # Excluding pellucid-telegram: it links `grammers-client → libsql →
+      # libsql-ffi (vendored sqlite3.c)` while the rest of the workspace
+      # links `sqlx → libsqlite3-sys (also vendored sqlite3.c)`. Both
+      # vendor the same symbols so unifying them in one test binary
+      # produces `duplicate symbol: sqlite3_*` link errors. The
+      # workaround is documented in `crates/pellucid-relay-bin/Cargo.toml`
+      # — telegram is opt-in there for the same reason. Exclusion can
+      # be lifted once the session backend moves off libsql.
+      - run: cargo llvm-cov --workspace --exclude pellucid-telegram --lcov --output-path lcov.info
       - uses: actions/upload-artifact@v4
         with:
           name: rust-coverage
@@ -33,7 +41,7 @@ jobs:
       - name: enforce 90% line coverage on shipping crates (post-T1.x)
         run: |
           if grep -q "^\[\[bin\]\]" crates/pellucid-core/Cargo.toml; then
-            cargo llvm-cov --workspace --fail-under-lines 90
+            cargo llvm-cov --workspace --exclude pellucid-telegram --fail-under-lines 90
           else
             echo "shipping crates not yet implemented (T1.x); coverage gate seeded but not enforced"
           fi

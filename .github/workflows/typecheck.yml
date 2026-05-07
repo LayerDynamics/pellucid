@@ -21,6 +21,17 @@ jobs:
         with:
           components: rustfmt,clippy
       - uses: Swatinem/rust-cache@v2
+      - name: install Tauri Linux deps
+        # pellucid-tauri's transitive glib-sys / webkit2gtk-sys deps need
+        # these system pkgs even for `cargo check` (build scripts run).
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libsoup-3.0-dev
       - run: cargo check --workspace --all-targets --locked
 
   ts:

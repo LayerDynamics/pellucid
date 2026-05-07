@@ -31,6 +31,17 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
+      - name: install Tauri Linux deps
+        # pellucid-tauri pulls in glib-sys / webkit2gtk-sys; clippy
+        # checks them too, so the system pkgs must be present.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libsoup-3.0-dev
       - run: cargo clippy --workspace --all-targets -- -D warnings
 
   tools:

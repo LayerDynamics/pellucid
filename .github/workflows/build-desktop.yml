@@ -34,7 +34,11 @@ jobs:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
       - name: install Linux Tauri deps
-        if: matrix.os == 'ubuntu-latest'
+        # Both ubuntu-latest (x86_64) and ubuntu-24.04-arm (aarch64)
+        # need the same system pkgs. The previous `== 'ubuntu-latest'`
+        # check skipped the arm runner and the build failed on
+        # glib-sys.
+        if: startsWith(matrix.os, 'ubuntu')
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev

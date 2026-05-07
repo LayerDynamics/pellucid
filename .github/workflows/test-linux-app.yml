@@ -22,7 +22,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev
-      - run: cargo nextest run --workspace --all-targets
+      # Excluding pellucid-telegram: it links `grammers-client → libsql →
+      # libsql-ffi (vendored sqlite3.c)` while the rest of the workspace
+      # links `sqlx → libsqlite3-sys (also vendored sqlite3.c)`. Both
+      # vendor the same symbols so unifying them in one test binary
+      # produces `duplicate symbol: sqlite3_*` link errors. The
+      # workaround is documented in `crates/pellucid-relay-bin/Cargo.toml`
+      # — telegram is opt-in there for the same reason. Exclusion can
+      # be lifted once the session backend moves off libsql.
+      - run: cargo nextest run --workspace --exclude pellucid-telegram --all-targets
 
   bun-tests:
     name: bun test (webview + convex + tools)

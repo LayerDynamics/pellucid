@@ -20,7 +20,15 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-audit
-      - run: cargo audit --deny warnings
+      # Ignored advisories — review on every Tauri / dependency bump.
+      #
+      # RUSTSEC-2026-0097 — `rand` 0.7.3 unsoundness via
+      # `tauri-utils → kuchikiki → selectors → phf_codegen → phf_generator → rand 0.7.3`.
+      # Build-time-only path (kuchikiki is part of tauri-utils' codegen
+      # for HTML rewriting) so the unsound `rand::rng()` pattern can't
+      # be triggered at runtime by user input. Stays ignored until
+      # tauri-utils ships a kuchikiki bump.
+      - run: cargo audit --deny warnings --ignore RUSTSEC-2026-0097
 
   cargo-deny:
     name: cargo deny

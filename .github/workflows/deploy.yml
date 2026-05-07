@@ -79,7 +79,15 @@ jobs:
             libsoup-3.0-dev
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
-      - run: cargo nextest run --workspace --all-targets
+      # Excluding pellucid-telegram from the test build because its
+      # `grammers-client → libsql → libsql-ffi` link path collides with
+      # the workspace's `sqlx → libsqlite3-sys` (both vendor sqlite3.c
+      # and define the same exported symbols). Same workaround used in
+      # `test-linux-app.yml` and `coverage.yml`. The telegram crate's
+      # own unit tests still run via that crate's own `cargo test -p`
+      # invocation; they just can't be linked into the workspace test
+      # binary. Lifted when the session backend moves off libsql.
+      - run: cargo nextest run --workspace --exclude pellucid-telegram --all-targets
 
   build-images:
     name: build ${{ matrix.image }} image (dry-run)
