@@ -37,6 +37,7 @@
 //!   [`clustering::cluster_items`] which mirrors the simpler
 //!   `_clustering.mjs` digest path.
 
+pub mod adapters;
 pub mod analysis_constants;
 pub mod clustering;
 pub mod engine;
@@ -57,6 +58,10 @@ pub use clustering::{
 pub use news_clustering::{
     aggregate_threats, cluster_news_core, ClusterVelocity, ClusteredEvent, NewsItemCore,
     TierResolver, TopSource,
+};
+pub use adapters::{
+    DisasterAdapter, EconomicAdapter, EscalationAdapter, MilitaryAdapter, COMMODITY_SYMBOLS,
+    SIGNIFICANT_CHANGE_PCT, STRIKE_TYPES, SUPPORT_TYPES,
 };
 pub use engine::{
     CardLocation, ClusterMode, ClusterState, ConvergenceCard, Correlator, CorrelationDomain,
