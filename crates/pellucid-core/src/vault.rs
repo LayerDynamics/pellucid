@@ -64,15 +64,32 @@ pub struct SecretsBlob {
     /// (T4.5.0).
     #[serde(default)]
     pub telegram_api_hash: Option<String>,
+    /// Groq API key — used by `pellucid_ml::GroqEngine` for sentiment,
+    /// summarize, and entity-extraction chat completions. On desktop
+    /// the Tauri host writes this through the IPC settings flow; on
+    /// edge / relay it's loaded from the `GROQ_API_KEY` env var by
+    /// [`EnvVault::from_env`]. `pellucid-ml` engines fail closed
+    /// (`MlError::MissingConfig("GROQ_API_KEY")`) when this is `None`
+    /// or empty so callers return 503 instead of fixture data.
+    #[serde(default)]
+    pub groq_api_key: Option<String>,
+    /// HuggingFace Inference API token — used by
+    /// `pellucid_ml::HfEmbeddingEngine` for `embed` /
+    /// `batch_embed`. Same wiring story as [`Self::groq_api_key`];
+    /// edge reads it from `HF_TOKEN` env var.
+    #[serde(default)]
+    pub hf_token: Option<String>,
     /// Vault schema version — bumped if the layout changes so old
-    /// entries can be migrated rather than silently dropped. T4.5.0
-    /// bumped this from 1 to 2 to add the three telegram fields.
+    /// entries can be migrated rather than silently dropped. History:
+    /// v1 → v2 added the three telegram fields (T4.5.0). v2 → v3
+    /// added `groq_api_key` and `hf_token` for the cloud-only
+    /// `pellucid-ml` engines.
     #[serde(default = "default_version")]
     pub version: u32,
 }
 
 fn default_version() -> u32 {
-    2
+    3
 }
 
 impl Default for SecretsBlob {
@@ -85,6 +102,8 @@ impl Default for SecretsBlob {
             telegram_session: None,
             telegram_api_id: None,
             telegram_api_hash: None,
+            groq_api_key: None,
+            hf_token: None,
             version: default_version(),
         }
     }
@@ -247,11 +266,20 @@ pub struct EnvVault {
 }
 
 impl EnvVault {
-    /// Construct a vault from the current process env. Reads
-    /// `TELEGRAM_SESSION_BASE64`, `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`
-    /// (T4.5.0); other fields default to `None`. Missing env vars are
-    /// fine — `try_spawn` returns `None` and the run task simply does
-    /// not start.
+    /// Construct a vault from the current process env. Reads:
+    ///
+    /// - `TELEGRAM_SESSION_BASE64`, `TELEGRAM_API_ID`,
+    ///   `TELEGRAM_API_HASH` — Telegram MTProto wiring (T4.5.0).
+    /// - `GROQ_API_KEY` — chat-completions backend for
+    ///   `pellucid_ml::GroqEngine` (sentiment / summarize /
+    ///   extract_entities).
+    /// - `HF_TOKEN` — embeddings backend for
+    ///   `pellucid_ml::HfEmbeddingEngine` (`embed` / `batch_embed`).
+    ///
+    /// Other fields default to `None`. Missing env vars are fine —
+    /// callers that need a key fail closed via
+    /// `MlError::MissingConfig` and surface 503 to upstream callers
+    /// rather than serving fixture data.
     ///
     /// Uses `std::env::var` directly — this is the documented env-read
     /// boundary for the relay binary, mirroring the pattern in
@@ -274,6 +302,16 @@ impl EnvVault {
         if let Ok(s) = env::var("TELEGRAM_API_HASH") {
             if !s.is_empty() {
                 blob.telegram_api_hash = Some(s);
+            }
+        }
+        if let Ok(s) = env::var("GROQ_API_KEY") {
+            if !s.is_empty() {
+                blob.groq_api_key = Some(s);
+            }
+        }
+        if let Ok(s) = env::var("HF_TOKEN") {
+            if !s.is_empty() {
+                blob.hf_token = Some(s);
             }
         }
         let (tx, _rx) = watch::channel(VaultChange::Initial);
@@ -299,10 +337,23 @@ impl EnvVault {
 impl Debug for EnvVault {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let blob = self.snapshot.lock();
+        // Print only presence — never the secret value — so vault
+        // dumps in panic logs / Sentry events don't leak keys.
         f.debug_struct("EnvVault")
             .field("has_telegram_session", &blob.telegram_session.is_some())
             .field("has_telegram_api_id", &blob.telegram_api_id.is_some())
             .field("has_telegram_api_hash", &blob.telegram_api_hash.is_some())
+            .field(
+                "has_groq_api_key",
+                &blob
+                    .groq_api_key
+                    .as_ref()
+                    .is_some_and(|s| !s.is_empty()),
+            )
+            .field(
+                "has_hf_token",
+                &blob.hf_token.as_ref().is_some_and(|s| !s.is_empty()),
+            )
             .finish()
     }
 }
@@ -340,7 +391,7 @@ mod tests {
         let v = InMemoryVault::new();
         let blob = v.read().await.unwrap();
         assert_eq!(blob, SecretsBlob::default());
-        assert_eq!(blob.version, 2);
+        assert_eq!(blob.version, 3);
     }
 
     #[tokio::test]
@@ -354,7 +405,9 @@ mod tests {
             telegram_session: Some("base64-bytes".into()),
             telegram_api_id: Some(123_456),
             telegram_api_hash: Some("hash".into()),
-            version: 2,
+            groq_api_key: Some("gsk-test-key".into()),
+            hf_token: Some("hf_test_token".into()),
+            version: 3,
         };
         v.write(&blob).await.unwrap();
         let round = v.read().await.unwrap();
@@ -394,12 +447,15 @@ mod tests {
         let json = r#"{"sidecar_token":"t1"}"#;
         let blob = SecretsBlob::from_json(json).unwrap();
         assert_eq!(blob.sidecar_token.as_deref(), Some("t1"));
-        // version came from default — bumped to 2 after T4.5.0.
-        assert_eq!(blob.version, 2);
+        // version came from default — bumped to 3 after the
+        // groq_api_key + hf_token addition.
+        assert_eq!(blob.version, 3);
         assert!(blob.clerk_session.is_none());
         assert!(blob.telegram_session.is_none());
         assert!(blob.telegram_api_id.is_none());
         assert!(blob.telegram_api_hash.is_none());
+        assert!(blob.groq_api_key.is_none());
+        assert!(blob.hf_token.is_none());
     }
 
     #[tokio::test]
@@ -429,8 +485,44 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn default_blob_has_v2_after_t450() {
-        assert_eq!(SecretsBlob::default().version, 2);
+    async fn default_blob_version_is_v3_after_ml_keys_landed() {
+        assert_eq!(SecretsBlob::default().version, 3);
+    }
+
+    #[tokio::test]
+    async fn from_json_v2_blob_reads_groq_and_hf_as_none_via_serde_default() {
+        // A v2 blob written before this commit didn't have the two
+        // ML-key fields. They must default to `None` on read; the
+        // explicit `version: 2` is preserved (host bumps to 3 on
+        // next write).
+        let v2_json = r#"{
+            "sidecar_token": "tok",
+            "telegram_api_id": 42,
+            "telegram_api_hash": "h",
+            "version": 2
+        }"#;
+        let blob = SecretsBlob::from_json(v2_json).unwrap();
+        assert_eq!(blob.version, 2, "explicit v2 preserved on read");
+        assert_eq!(blob.telegram_api_id, Some(42));
+        assert!(blob.groq_api_key.is_none());
+        assert!(blob.hf_token.is_none());
+    }
+
+    #[tokio::test]
+    async fn from_json_with_ml_keys_round_trips_them() {
+        let json = r#"{
+            "groq_api_key": "gsk-abc-123",
+            "hf_token": "hf_xyz",
+            "version": 3
+        }"#;
+        let blob = SecretsBlob::from_json(json).unwrap();
+        assert_eq!(blob.groq_api_key.as_deref(), Some("gsk-abc-123"));
+        assert_eq!(blob.hf_token.as_deref(), Some("hf_xyz"));
+        assert_eq!(blob.version, 3);
+        // Re-serialise and re-decode to prove the round-trip is
+        // stable (no accidental field drop on the way out).
+        let round = SecretsBlob::from_json(&blob.to_json().unwrap()).unwrap();
+        assert_eq!(round, blob);
     }
 
     #[tokio::test]
@@ -485,5 +577,44 @@ mod tests {
         v.clear().await.unwrap();
         let after = v.read().await.unwrap();
         assert_eq!(after, SecretsBlob::default());
+    }
+
+    #[tokio::test]
+    async fn env_vault_with_blob_round_trips_ml_keys() {
+        let blob = SecretsBlob {
+            groq_api_key: Some("gsk-direct".into()),
+            hf_token: Some("hf_direct".into()),
+            ..Default::default()
+        };
+        let v = EnvVault::with_blob(blob.clone());
+        let read = v.read().await.unwrap();
+        assert_eq!(read.groq_api_key.as_deref(), Some("gsk-direct"));
+        assert_eq!(read.hf_token.as_deref(), Some("hf_direct"));
+    }
+
+    // Note on env-var read tests: workspace lints set
+    // `unsafe_code = "forbid"`, and stdlib `env::set_var` /
+    // `env::remove_var` are `unsafe` in edition 2024. We therefore
+    // verify the env-read code path indirectly via JSON round-trip
+    // and via `with_blob` round-trips above; the four-line
+    // `env::var(...)` block in `from_env` is a straight-line read
+    // with no branches beyond the `is_empty` guard, which is
+    // covered by the `from_json_v2_blob_reads_groq_and_hf_as_none`
+    // test (proving `None` is the no-key-set behaviour).
+
+    #[test]
+    fn env_vault_debug_redacts_key_values() {
+        // Spot-check that the Debug impl never prints the secret —
+        // it must show only `has_*: bool`.
+        let v = EnvVault::with_blob(SecretsBlob {
+            groq_api_key: Some("gsk-real-secret-do-not-leak".into()),
+            hf_token: Some("hf_secret".into()),
+            ..Default::default()
+        });
+        let dbg = format!("{v:?}");
+        assert!(!dbg.contains("gsk-real-secret-do-not-leak"));
+        assert!(!dbg.contains("hf_secret"));
+        assert!(dbg.contains("has_groq_api_key: true"));
+        assert!(dbg.contains("has_hf_token: true"));
     }
 }

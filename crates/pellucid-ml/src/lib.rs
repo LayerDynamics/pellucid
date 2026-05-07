@@ -60,12 +60,14 @@
 
 pub mod composite;
 pub mod engine;
+pub mod from_vault;
 pub mod groq;
 pub mod huggingface;
 pub mod types;
 
 pub use composite::CompositeEngine;
 pub use engine::MlEngine;
+pub use from_vault::{build_from_vault, FromVaultError, VaultEngineConfig};
 pub use groq::{GroqEngine, GroqEngineBuilder, DEFAULT_MODEL as GROQ_DEFAULT_MODEL};
 pub use huggingface::{
     HfEmbeddingEngine, HfEmbeddingEngineBuilder, DEFAULT_MODEL as HF_DEFAULT_EMBEDDING_MODEL,
