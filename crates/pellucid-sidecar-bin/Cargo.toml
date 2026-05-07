@@ -30,7 +30,7 @@ parking_lot = { workspace = true }
 thiserror = { workspace = true }
 base64 = { workspace = true }
 pellucid-core = { path = "../pellucid-core" }
-pellucid-streams = { path = "../pellucid-streams" }
+pellucid-streams = { path = "../pellucid-streams", features = ["telegram"] }
 pellucid-db = { path = "../pellucid-db" }
 
 [dev-dependencies]

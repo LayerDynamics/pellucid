@@ -38,7 +38,7 @@ rustls = { workspace = true }
 pellucid-core = { path = "../pellucid-core" }
 pellucid-db = { path = "../pellucid-db" }
 pellucid-cache = { path = "../pellucid-cache" }
-pellucid-streams = { path = "../pellucid-streams" }
+pellucid-streams = { path = "../pellucid-streams", features = ["telegram"] }
 pellucid-seeders = { path = "../pellucid-seeders" }
 
 [dev-dependencies]

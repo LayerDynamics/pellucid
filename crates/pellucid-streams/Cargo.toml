@@ -44,13 +44,14 @@ pellucid-handlers = { path = "../pellucid-handlers" }
 pellucid-seeders = { path = "../pellucid-seeders" }
 
 [features]
-# Default ships the full surface — desktop sidecar + relay both
-# enable telegram. The hosted edge-bin disables this feature
-# (see `crates/pellucid-edge-bin/Cargo.toml`) so the gateway +
-# RPC handlers don't drag in `grammers-client → libsql →
-# bundled SQLite`, which collides at link time with sqlx's
-# `libsqlite3-sys` (also bundled).
-default = ["telegram"]
+# Default ships **without** the telegram client. The reason is
+# that `grammers-client` pulls `libsql → bundled SQLite`, which
+# collides at link time with sqlx's `libsqlite3-sys` (also
+# bundled). Cargo's feature-unification semantics mean a single
+# default-on dependent forces the feature for the whole
+# workspace — to avoid that ambient pull, telegram is opt-in
+# and only relay-bin / sidecar-bin / seeders enable it.
+default = []
 # Enables the MTProto Telegram client (`pellucid_streams::telegram`)
 # and its dependency closure (grammers-client/session/tl-types).
 telegram = [

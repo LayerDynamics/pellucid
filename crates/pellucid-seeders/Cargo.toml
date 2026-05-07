@@ -33,4 +33,4 @@ reqwest = { workspace = true }
 # regular-deps `pellucid-seeders` (T4.5.0 added that for atomic_publish);
 # Cargo allows the inverse dev-dep because dev-deps are not part of the
 # lib build graph.
-pellucid-streams = { path = "../pellucid-streams" }
+pellucid-streams = { path = "../pellucid-streams", features = ["telegram"] }

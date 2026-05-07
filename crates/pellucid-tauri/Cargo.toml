@@ -35,7 +35,7 @@ async-trait = { workspace = true }
 getrandom = { workspace = true }
 base64 = { workspace = true }
 pellucid-core = { path = "../pellucid-core" }
-pellucid-streams = { path = "../pellucid-streams" }
+pellucid-streams = { path = "../pellucid-streams", features = ["telegram"] }
 
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }
