@@ -77,11 +77,35 @@ pub const ENDPOINT_ENTITLEMENTS: &[(&str, u8)] = &[
     ("/api/wildfire/v1/get-active-perimeters", 1),
 ];
 
+/// Cloud-ML-backed endpoints (Vertical-1 onward). Kept as a
+/// separate table from [`ENDPOINT_ENTITLEMENTS`] so the H4
+/// migration count (37) stays pinned to the reference data — the
+/// ML endpoints didn't exist in the legacy WorldMonitor source.
+///
+/// All ML endpoints are tier-3 (`Tier2` rank) — they sit on the
+/// same plan tier as the existing market-analysis endpoints
+/// because they share the same per-call upstream cost profile
+/// (Groq / HF inference fees). Tier mapping mirrors
+/// `convex/config/productCatalog.ts:api_starter` features.
+pub const ML_ENDPOINT_ENTITLEMENTS: &[(&str, u8)] = &[
+    ("/api/correlation/v1/run", 3),
+    ("/api/intelligence/v1/classify-event", 3),
+    ("/api/intelligence/v1/extract-entities", 3),
+    ("/api/intelligence/v1/summarize-article", 3),
+    ("/api/news/v1/search-semantic", 3),
+];
+
 /// Required tier for `path`. Defaults to [`Tier::Anonymous`] for any
-/// path not present in [`ENDPOINT_ENTITLEMENTS`].
+/// path not present in [`ENDPOINT_ENTITLEMENTS`] or
+/// [`ML_ENDPOINT_ENTITLEMENTS`].
 #[must_use]
 pub fn tier_for_path(path: &str) -> Tier {
     for (p, rank) in ENDPOINT_ENTITLEMENTS {
+        if *p == path {
+            return Tier::from_rank(*rank);
+        }
+    }
+    for (p, rank) in ML_ENDPOINT_ENTITLEMENTS {
         if *p == path {
             return Tier::from_rank(*rank);
         }
@@ -219,6 +243,46 @@ mod tests {
             sorted, original,
             "ENDPOINT_ENTITLEMENTS must be lexically sorted; \
              regenerate via bun run tools/migrate-premium-paths.ts --regenerate"
+        );
+    }
+
+    #[test]
+    fn ml_endpoints_are_tier2() {
+        // Vertical-1+ ML endpoints sit at tier 3 (Tier2 enum rank).
+        for (path, _) in ML_ENDPOINT_ENTITLEMENTS {
+            assert_eq!(
+                tier_for_path(path),
+                Tier::Tier2,
+                "{path} must require Tier2"
+            );
+        }
+    }
+
+    #[test]
+    fn ml_endpoints_table_has_no_duplicates_or_overlap_with_legacy() {
+        let mut all: Vec<&str> = ENDPOINT_ENTITLEMENTS
+            .iter()
+            .map(|(p, _)| *p)
+            .chain(ML_ENDPOINT_ENTITLEMENTS.iter().map(|(p, _)| *p))
+            .collect();
+        let len_before = all.len();
+        all.sort_unstable();
+        all.dedup();
+        assert_eq!(
+            len_before,
+            all.len(),
+            "ML and legacy entitlement tables must not contain duplicate paths"
+        );
+    }
+
+    #[test]
+    fn ml_endpoints_table_is_sorted() {
+        let mut sorted: Vec<&str> = ML_ENDPOINT_ENTITLEMENTS.iter().map(|(p, _)| *p).collect();
+        let original = sorted.clone();
+        sorted.sort_unstable();
+        assert_eq!(
+            sorted, original,
+            "ML_ENDPOINT_ENTITLEMENTS must be lexically sorted"
         );
     }
 

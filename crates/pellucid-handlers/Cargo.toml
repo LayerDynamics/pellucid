@@ -26,6 +26,7 @@ pellucid-cache = { path = "../pellucid-cache" }
 pellucid-db = { path = "../pellucid-db" }
 pellucid-gateway = { path = "../pellucid-gateway" }
 pellucid-codegen = { path = "../pellucid-codegen" }
+pellucid-ml = { path = "../pellucid-ml" }
 
 [dev-dependencies]
 tokio = { workspace = true }

@@ -15,6 +15,7 @@ use thiserror::Error;
 
 use pellucid_cache::CoalesceRegistry;
 use pellucid_db::Pool;
+use pellucid_ml::MlEngine;
 
 use crate::generated::aviation::v1::FlightStatus;
 
@@ -46,7 +47,7 @@ pub trait FlightStatusUpstream: Send + Sync + std::fmt::Debug {
 }
 
 /// Shared handler state. Cheap to clone — every Arc is shallow.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct AppState {
     /// SQLite pool used for the KV cache + entitlements + handler
     /// queries.
@@ -55,6 +56,23 @@ pub struct AppState {
     pub cache_registry: Arc<CoalesceRegistry>,
     /// Aviation upstream client.
     pub aviation: Arc<dyn FlightStatusUpstream>,
+    /// Cloud ML engine — `None` when the binary booted without
+    /// `GROQ_API_KEY` / `HF_TOKEN` configured. Handlers that need
+    /// ML must check `state.ml.is_some()` and return 503 with
+    /// `Retry-After: 30` when absent (matches the H2 fix's
+    /// upstream-down semantics from spec §14.1).
+    pub ml: Option<Arc<dyn MlEngine>>,
+}
+
+impl std::fmt::Debug for AppState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AppState")
+            .field("pool", &"sqlx::Pool")
+            .field("cache_registry", &self.cache_registry)
+            .field("aviation", &self.aviation)
+            .field("ml_present", &self.ml.is_some())
+            .finish()
+    }
 }
 
 impl AppState {
@@ -69,12 +87,14 @@ impl AppState {
             pool,
             cache_registry,
             aviation,
+            ml: None,
         }
     }
 
     /// In-memory state for unit tests. Aviation upstream returns
-    /// `Ok(None)` for every input — the dedicated handler tests
-    /// install a real fake on top via [`Self::with_aviation`].
+    /// `Ok(None)` for every input; ML engine is absent (handlers
+    /// should return 503 in that path). Tests that exercise ML
+    /// install a real engine via [`Self::with_ml`].
     #[must_use]
     pub fn for_tests() -> Self {
         // `connect_lazy_with` takes pre-parsed options so it is
@@ -89,6 +109,7 @@ impl AppState {
             pool,
             cache_registry: Arc::new(CoalesceRegistry::default()),
             aviation: Arc::new(NullAviation),
+            ml: None,
         }
     }
 
@@ -105,6 +126,7 @@ impl AppState {
             pool,
             cache_registry: Arc::new(CoalesceRegistry::default()),
             aviation: Arc::new(NullAviation),
+            ml: None,
         })
     }
 
@@ -113,6 +135,15 @@ impl AppState {
     #[must_use]
     pub fn with_aviation(mut self, upstream: Arc<dyn FlightStatusUpstream>) -> Self {
         self.aviation = upstream;
+        self
+    }
+
+    /// Install a cloud ML engine. Production binaries call this
+    /// after `pellucid_ml::build_from_vault(&vault, &cfg)` returns
+    /// successfully; tests can install a stub `MlEngine` impl.
+    #[must_use]
+    pub fn with_ml(mut self, engine: Arc<dyn MlEngine>) -> Self {
+        self.ml = Some(engine);
         self
     }
 }

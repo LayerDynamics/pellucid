@@ -33,6 +33,7 @@ pellucid-db = { path = "../pellucid-db" }
 pellucid-cache = { path = "../pellucid-cache" }
 pellucid-gateway = { path = "../pellucid-gateway" }
 pellucid-handlers = { path = "../pellucid-handlers" }
+pellucid-ml = { path = "../pellucid-ml" }
 # Edge only uses aviationstack from streams; the telegram client
 # is opt-in via the `telegram` feature (relay-bin enables it).
 # This keeps grammers-client → libsql → bundled SQLite out of

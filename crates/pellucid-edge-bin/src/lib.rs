@@ -14,9 +14,11 @@ use axum::Router;
 use thiserror::Error;
 
 use pellucid_cache::CoalesceRegistry;
+use pellucid_core::vault::EnvVault;
 use pellucid_db::{open, DbError, Pool, SqliteOpenOptions};
 use pellucid_gateway::{build_router, GatewayConfig};
 use pellucid_handlers::{build_handlers, AppState, AppStateError, FlightStatusUpstream};
+use pellucid_ml::{build_from_vault, FromVaultError, VaultEngineConfig};
 use pellucid_streams::aviationstack::{AviationstackClient, AviationstackConfig};
 
 pub use config::{Config, ConfigError, ConfigSource};
@@ -34,6 +36,41 @@ pub enum EdgeBootError {
     /// AppState boot failure (sqlx + migration wrapped).
     #[error("app state: {0}")]
     AppState(#[from] AppStateError),
+}
+
+/// Build a cloud `MlEngine` from `EnvVault::from_env()`. Returns
+/// `Ok(None)` and emits a `tracing::warn!` when keys aren't set so
+/// the binary still boots (existing aviation / health paths keep
+/// serving). Returns `Ok(Some)` when both `GROQ_API_KEY` and
+/// `HF_TOKEN` are set; downstream handlers read `state.ml.is_some()`
+/// to decide between 200 (call ML) and 503 (return Retry-After).
+async fn build_ml_engine_from_env() -> Option<std::sync::Arc<dyn pellucid_ml::MlEngine>> {
+    let vault = EnvVault::from_env();
+    match build_from_vault(&vault, &VaultEngineConfig::default()).await {
+        Ok(engine) => {
+            tracing::info!(
+                target: "pellucid::edge::ml",
+                "MlEngine constructed from EnvVault — intelligence handlers active"
+            );
+            Some(engine)
+        }
+        Err(FromVaultError::MissingKey(name)) => {
+            tracing::warn!(
+                target: "pellucid::edge::ml",
+                missing = name,
+                "MlEngine not constructed — intelligence handlers will return 503 until {name} is set"
+            );
+            None
+        }
+        Err(other) => {
+            tracing::warn!(
+                target: "pellucid::edge::ml",
+                error = %other,
+                "MlEngine construction failed — intelligence handlers will return 503"
+            );
+            None
+        }
+    }
 }
 
 /// Adapter wrapping the production `pellucid-streams`
@@ -89,11 +126,14 @@ pub async fn build_app(cfg: &Config) -> Result<(Router, Pool), EdgeBootError> {
         },
         http,
     )));
-    let state = AppState::new(
+    let mut state = AppState::new(
         pool.clone(),
         Arc::new(CoalesceRegistry::default()),
         aviation,
     );
+    if let Some(ml) = build_ml_engine_from_env().await {
+        state = state.with_ml(ml);
+    }
 
     let handlers = build_handlers(state);
     let gateway = build_router(handlers, GatewayConfig::permissive_for_tests());
