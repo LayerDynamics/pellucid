@@ -7,10 +7,12 @@
 target/
 **/target/
 
-# Node + webview artefacts — irrelevant to the server images.
+# Node + webview artefacts — node_modules / cache excluded; the
+# built `webview/dist/` IS shipped in the edge image (copied into
+# `/srv/webview` and served by `pellucid-edge-bin` via
+# `tower-http::ServeDir`), so it must NOT be excluded.
 node_modules/
 **/node_modules/
-webview/dist/
 webview/.cache/
 
 # Tauri host + sidecar — neither ships in a server container.

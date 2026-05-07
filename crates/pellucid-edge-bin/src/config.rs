@@ -31,6 +31,13 @@ pub mod env_names {
     /// Aviationstack base URL — overridden by tests to point at
     /// wiremock. Default is the production URL.
     pub const AVIATIONSTACK_BASE_URL: &str = "AVIATIONSTACK_BASE_URL";
+    /// Filesystem path to the webview's `dist/` directory — what
+    /// edge-bin serves at `/` for browser-facing requests. The
+    /// Docker image copies the build to `/srv/webview` so the
+    /// runtime default lives there. Empty / missing → SPA serving
+    /// is disabled (`/` returns 404), useful for the API-only
+    /// integration tests.
+    pub const PELLUCID_WEBVIEW_DIST: &str = "PELLUCID_WEBVIEW_DIST";
 }
 
 /// Default listen address. Bound to `0.0.0.0:8080` per spec.
@@ -42,6 +49,11 @@ pub const DEFAULT_DB_URL: &str = "sqlite::memory:";
 
 /// Default aviationstack base URL — production endpoint.
 pub const DEFAULT_AVIATIONSTACK_BASE_URL: &str = "https://api.aviationstack.com/v1";
+
+/// Default filesystem path the runtime image copies the SPA
+/// bundle into. Used when `PELLUCID_WEBVIEW_DIST` is unset and
+/// the path on disk exists.
+pub const DEFAULT_WEBVIEW_DIST: &str = "/srv/webview";
 
 /// Why parsing failed.
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -68,6 +80,9 @@ pub struct ConfigSource {
     pub aviationstack_api_key: Option<String>,
     /// Aviationstack base URL.
     pub aviationstack_base_url: Option<String>,
+    /// Filesystem path to the webview's `dist/` directory. `None`
+    /// → resolved from default + filesystem probe at parse time.
+    pub webview_dist: Option<String>,
 }
 
 /// Resolve the listen-address source from the two env layers
@@ -114,6 +129,7 @@ impl ConfigSource {
             db_url: std::env::var(env_names::PELLUCID_DB_URL).ok(),
             aviationstack_api_key: std::env::var(env_names::AVIATIONSTACK_API_KEY).ok(),
             aviationstack_base_url: std::env::var(env_names::AVIATIONSTACK_BASE_URL).ok(),
+            webview_dist: std::env::var(env_names::PELLUCID_WEBVIEW_DIST).ok(),
         }
     }
 }
@@ -129,6 +145,10 @@ pub struct Config {
     pub aviationstack_api_key: String,
     /// Aviationstack base URL.
     pub aviationstack_base_url: String,
+    /// Filesystem path to the SPA bundle. `None` → SPA serving is
+    /// off (the binary doesn't probe the filesystem; tests and the
+    /// API-only edge build leave this unset).
+    pub webview_dist: Option<String>,
 }
 
 impl Config {
@@ -157,6 +177,22 @@ impl Config {
                 .aviationstack_base_url
                 .clone()
                 .unwrap_or_else(|| DEFAULT_AVIATIONSTACK_BASE_URL.to_string()),
+            // Resolve the SPA path: explicit env wins, otherwise fall
+            // back to `/srv/webview` if the directory exists. The
+            // filesystem probe makes the API-only test path work
+            // without any env wiring (no /srv/webview in CI).
+            webview_dist: src
+                .webview_dist
+                .clone()
+                .filter(|s| !s.trim().is_empty())
+                .or_else(|| {
+                    let default = std::path::Path::new(DEFAULT_WEBVIEW_DIST);
+                    if default.is_dir() {
+                        Some(DEFAULT_WEBVIEW_DIST.to_string())
+                    } else {
+                        None
+                    }
+                }),
         })
     }
 }

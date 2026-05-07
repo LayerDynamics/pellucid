@@ -138,7 +138,32 @@ pub async fn build_app(cfg: &Config) -> Result<(Router, Pool), EdgeBootError> {
     let handlers = build_handlers(state);
     let gateway = build_router(handlers, GatewayConfig::permissive_for_tests());
 
-    let app = Router::new().merge(gateway).merge(healthcheck_router());
+    let mut app = Router::new().merge(gateway).merge(healthcheck_router());
+
+    // SPA fallback — when `cfg.webview_dist` is set (resolved from
+    // `PELLUCID_WEBVIEW_DIST` env or the `/srv/webview` filesystem
+    // default), mount `tower-http::ServeDir` as the fallback service
+    // so any request that didn't match a gateway route or `/healthz`
+    // serves the SPA bundle. `not_found_service` falls back to
+    // `index.html` so client-side routing works (every route the
+    // React Router knows resolves to the SPA shell).
+    if let Some(dir) = cfg.webview_dist.as_deref() {
+        let index_html = std::path::Path::new(dir).join("index.html");
+        let serve = tower_http::services::ServeDir::new(dir).not_found_service(
+            tower_http::services::ServeFile::new(index_html),
+        );
+        app = app.fallback_service(serve);
+        tracing::info!(
+            target: "pellucid::edge::spa",
+            path = dir,
+            "serving SPA bundle from {dir}"
+        );
+    } else {
+        tracing::info!(
+            target: "pellucid::edge::spa",
+            "PELLUCID_WEBVIEW_DIST unset and /srv/webview missing — SPA fallback off"
+        );
+    }
 
     Ok((app, pool))
 }
