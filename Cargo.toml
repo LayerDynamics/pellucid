@@ -99,6 +99,14 @@ rust-version = "1.82"
 license = "MIT"
 repository = "https://github.com/layerdynamics/pellucid"
 authors = ["Pellucid contributors"]
+# Every crate in this workspace is internal — `pellucid-edge-bin` and
+# `pellucid-relay-bin` ship as Docker images, `pellucid-tauri` ships
+# as a desktop bundle, and the rest are private library splits used by
+# the binaries. None are intended for crates.io. Setting publish = false
+# here also signals to cargo-deny that internal `path = "../foo"`
+# wildcards are acceptable (allow-wildcard-paths only applies to
+# unpublished crates).
+publish = false
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

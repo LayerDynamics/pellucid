@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
+publish.workspace = true
 description = "Telegram MTProto client (grammers-client) + run task — extracted from pellucid-streams so its libsql/SQLite dep does not collide with sqlx's libsqlite3-sys when linking edge-bin"
 
 [lints]

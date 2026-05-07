@@ -1,0 +1,154 @@
+# cargo-deny configuration — pellucid workspace.
+#
+# Read by EmbarkStudios/cargo-deny-action@v2 in `.github/workflows/audit.yml`.
+# The action runs `cargo deny check`, which evaluates four sections:
+# advisories, bans, licenses, sources. Without this file the action falls
+# back to defaults that reject every license (including MIT/Apache-2.0)
+# and treat every unmaintained advisory as a hard error.
+#
+# Review checklist on every dependency bump:
+#   1. New license tags in deps → add to `[licenses].allow` if they pass
+#      our compliance review.
+#   2. New `RUSTSEC-*` advisories → audit each before adding to
+#      `[advisories].ignore`. Document why each is acceptable. Real
+#      vulnerabilities (`unsound`, `vulnerability`) require an explicit
+#      blast-radius justification (build-time only? unreachable from
+#      user input? mitigations present?).
+
+[graph]
+# Restrict the graph to platforms we actually ship to. Skips the
+# Windows/iOS-only crates pulled in by tauri's transitive deps so
+# we don't have to allow their license bundles too.
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+]
+
+[advisories]
+# `version = 2` enables the modern advisory schema where `vulnerability`,
+# `unmaintained`, `unsound`, and `notice` are first-class fields rather
+# than implicit defaults.
+version = 2
+# Real vulnerabilities + unmaintained warnings we can't directly resolve
+# because the dep is transitive through Tauri or sqlx. Each entry must
+# stay justified — re-audit on every Tauri / sqlx bump.
+ignore = [
+    # rsa 0.9.x Marvin Attack timing sidechannel. Pulled in via
+    # sqlx-mysql (which we never use — workspace only enables
+    # `sqlx/sqlite-runtime-tokio-rustls`). MySQL backend code is
+    # compiled but never executed at runtime; rsa's keyholding
+    # primitives are unreachable.
+    "RUSTSEC-2023-0071",
+    # gtk-rs GTK3 bindings (atk, gdk, gdkx11, gdk-pixbuf, gtk, gtk-sys,
+    # cairo-rs, gdk-pixbuf-sys, gtk3-macros, gio + atk-sys, glib,
+    # glib-sys, etc.) — all marked unmaintained when the gtk-rs project
+    # focused on GTK4. Tauri 2.x still uses GTK3 on Linux; ignore until
+    # tauri ships a GTK4 backend.
+    "RUSTSEC-2024-0411",
+    "RUSTSEC-2024-0412",
+    "RUSTSEC-2024-0413",
+    "RUSTSEC-2024-0414",
+    "RUSTSEC-2024-0415",
+    "RUSTSEC-2024-0416",
+    "RUSTSEC-2024-0417",
+    "RUSTSEC-2024-0418",
+    "RUSTSEC-2024-0419",
+    "RUSTSEC-2024-0420",
+    # proc-macro-error unmaintained — used at compile time by upstream
+    # derive macros. Compile-time-only blast radius; no runtime impact.
+    "RUSTSEC-2024-0370",
+    # glib::VariantStrIter unsoundness in `Iterator` / `DoubleEndedIterator`.
+    # Tauri-transitive (gtk → glib). The unsound iterator is not
+    # touched by any pellucid handler; only the WebKit/GTK boot path
+    # uses glib variants.
+    "RUSTSEC-2024-0429",
+    # fxhash unmaintained — pulled in by selectors (kuchikiki, in
+    # tauri-utils' HTML rewriter). Build-time-only path.
+    "RUSTSEC-2025-0057",
+    # unic-* family unmaintained (unic-char-property, unic-char-range,
+    # unic-common, unic-ucd-ident, unic-ucd-version). Transitive via
+    # tauri-utils → urlpattern → unic-ucd-ident.
+    "RUSTSEC-2025-0075",
+    "RUSTSEC-2025-0080",
+    "RUSTSEC-2025-0081",
+    "RUSTSEC-2025-0098",
+    "RUSTSEC-2025-0100",
+    # rand 0.7.3 unsoundness via tauri-utils → kuchikiki → selectors →
+    # phf_codegen → phf_generator. Build-time-only path; the unsound
+    # `rand::rng()` pattern is unreachable from user input.
+    "RUSTSEC-2026-0097",
+]
+
+[licenses]
+# Allow-list — every workspace transitive dep must declare one of these.
+# Reviewed against the SPEC-001 license-compliance bullet (no copyleft
+# stricter than MPL-2.0; OSI/FSF-approved permissive licenses only).
+version = 2
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception", # llvm-bitcode crates
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "0BSD",
+    "Unlicense",
+    "Zlib",
+    "MPL-2.0",  # weak copyleft; file-scoped — acceptable per SPEC-001.
+    "CC0-1.0",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "OpenSSL",  # ring uses a custom OpenSSL-style notice.
+    "BSL-1.0",  # Boost.
+    # webpki-roots ships under CDLA-Permissive-2.0 (Mozilla's CA bundle
+    # under a community data license). Permissive — allows
+    # commercial redistribution. Reviewed against SPEC-001 license rules
+    # and matches the same usage pattern as our other CA-bundle deps.
+    "CDLA-Permissive-2.0",
+]
+# Confidence threshold — cargo-deny rejects licenses whose detected
+# expression matches the SPDX text below this confidence. 0.8 is the
+# documented sweet spot.
+confidence-threshold = 0.8
+# Crates that don't ship a parseable LICENSE file but whose upstream
+# project is well-known. Flag here rather than blanket-allowing so a
+# new no-license dep still trips the gate.
+exceptions = [
+    # ring's license is a custom mix of OpenSSL + ISC + MIT terms.
+    # ring's project page documents the combined terms; we accept the
+    # bundle as a single exception.
+    { allow = ["OpenSSL"], crate = "ring" },
+]
+# Some transitive deps publish their license-file inline; cargo-deny
+# can't always parse it. Map common cases here.
+[[licenses.clarify]]
+crate = "ring"
+expression = "OpenSSL"
+license-files = [
+    { path = "LICENSE", hash = 0xbd0e_ed23 },
+]
+
+[bans]
+# Not enforcing version-ban policy yet — workspace is too young for
+# duplicate-dep rules to be useful. `multiple-versions = "warn"` keeps
+# the report visible without gating CI; revisit once dep churn slows.
+multiple-versions = "warn"
+# Reject wildcard versions on registry deps (`crate = "*"`) but allow
+# the implicit wildcard cargo creates for path-only workspace
+# members like `pellucid-core = { path = "../pellucid-core" }`.
+# Without `allow-wildcard-paths`, every internal cross-crate path dep
+# trips the gate even though there is no registry resolution involved.
+wildcards = "deny"
+allow-wildcard-paths = true
+highlight = "all"
+
+[sources]
+# Only crates.io + git deps from these orgs. Keeps a rogue git URL
+# from quietly entering the lockfile.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

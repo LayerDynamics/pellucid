@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
+publish.workspace = true
 description = "stream relay binary — AIS / OpenSky / RSS / OREF, seed scheduler, /health"
 
 [lints]

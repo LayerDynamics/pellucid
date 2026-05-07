@@ -20,15 +20,32 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-audit
-      # Ignored advisories — review on every Tauri / dependency bump.
-      #
-      # RUSTSEC-2026-0097 — `rand` 0.7.3 unsoundness via
-      # `tauri-utils → kuchikiki → selectors → phf_codegen → phf_generator → rand 0.7.3`.
-      # Build-time-only path (kuchikiki is part of tauri-utils' codegen
-      # for HTML rewriting) so the unsound `rand::rng()` pattern can't
-      # be triggered at runtime by user input. Stays ignored until
-      # tauri-utils ships a kuchikiki bump.
-      - run: cargo audit --deny warnings --ignore RUSTSEC-2026-0097
+      # Ignored advisories. The full list with rationale lives in
+      # `deny.toml` under `[advisories].ignore` — audit when bumping
+      # tauri / sqlx. We keep the cargo-audit invocation in lockstep
+      # so both tools report the same surface.
+      - run: |
+          cargo audit --deny warnings \
+            --ignore RUSTSEC-2023-0071 \
+            --ignore RUSTSEC-2024-0370 \
+            --ignore RUSTSEC-2024-0411 \
+            --ignore RUSTSEC-2024-0412 \
+            --ignore RUSTSEC-2024-0413 \
+            --ignore RUSTSEC-2024-0414 \
+            --ignore RUSTSEC-2024-0415 \
+            --ignore RUSTSEC-2024-0416 \
+            --ignore RUSTSEC-2024-0417 \
+            --ignore RUSTSEC-2024-0418 \
+            --ignore RUSTSEC-2024-0419 \
+            --ignore RUSTSEC-2024-0420 \
+            --ignore RUSTSEC-2024-0429 \
+            --ignore RUSTSEC-2025-0057 \
+            --ignore RUSTSEC-2025-0075 \
+            --ignore RUSTSEC-2025-0080 \
+            --ignore RUSTSEC-2025-0081 \
+            --ignore RUSTSEC-2025-0098 \
+            --ignore RUSTSEC-2025-0100 \
+            --ignore RUSTSEC-2026-0097
 
   cargo-deny:
     name: cargo deny
