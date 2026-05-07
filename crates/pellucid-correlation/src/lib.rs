@@ -39,6 +39,8 @@
 
 pub mod analysis_constants;
 pub mod clustering;
+pub mod news_clustering;
+pub mod signals;
 
 pub use analysis_constants::{
     contains_topic_keyword, find_related_topics, generate_dedupe_key, generate_signal_id,
@@ -50,6 +52,18 @@ pub use analysis_constants::{
 pub use clustering::{
     cluster_items, score_importance, select_top_stories, ClusteredNews, NewsItem,
     ThreatClassification, TopStory,
+};
+pub use news_clustering::{
+    aggregate_threats, cluster_news_core, ClusterVelocity, ClusteredEvent, NewsItemCore,
+    TierResolver, TopSource,
+};
+pub use signals::{
+    analyze_correlations_core, detect_convergence, detect_flow_price_divergence,
+    detect_market_moves, detect_pipeline_flow_drops, detect_prediction_shifts,
+    detect_triangulation, detect_velocity_spikes, AnalyzeResult, Clock, CorrelationSignal,
+    EntityIndex, FixedClock, InMemoryDeduper, MarketData, NewsEntityContexts, NoEntityIndex,
+    PredictionMarket, SignalData, SignalDeduper, SignalType, SourceType, SourceTyper,
+    StreamSnapshot, SystemClock, TopicVelocityPoint,
 };
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.
