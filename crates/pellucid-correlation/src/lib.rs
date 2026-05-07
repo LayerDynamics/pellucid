@@ -39,6 +39,7 @@
 
 pub mod analysis_constants;
 pub mod clustering;
+pub mod engine;
 pub mod news_clustering;
 pub mod signals;
 
@@ -56,6 +57,10 @@ pub use clustering::{
 pub use news_clustering::{
     aggregate_threats, cluster_news_core, ClusterVelocity, ClusteredEvent, NewsItemCore,
     TierResolver, TopSource,
+};
+pub use engine::{
+    CardLocation, ClusterMode, ClusterState, ConvergenceCard, Correlator, CorrelationDomain,
+    CorrelationEngine, SignalEvidence, TrendDirection,
 };
 pub use signals::{
     analyze_correlations_core, detect_convergence, detect_flow_price_divergence,

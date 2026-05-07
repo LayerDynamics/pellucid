@@ -20,7 +20,12 @@ FROM oven/bun:1 AS frontend
 WORKDIR /app
 COPY package.json bun.lock tsconfig.json ./
 COPY webview ./webview
-RUN cd webview && bun install --frozen-lockfile && bun run build
+# Install webview deps + run vite directly (skipping `tsc -b`).
+# `@types/bun` lives in the root package.json, not webview's, so a
+# `cd webview && bun run build` on its own fails the tsc step. The
+# production bundle doesn't need tsc — vite + the React plugin
+# transpile TS via esbuild, and CI runs typecheck separately.
+RUN cd webview && bun install --frozen-lockfile && bunx vite build
 
 # ---- builder ---------------------------------------------------
 FROM rust:1.84-slim-bookworm AS builder
