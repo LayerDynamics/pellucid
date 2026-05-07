@@ -10,8 +10,8 @@ use tauri::{App, Builder, Emitter, Manager, Wry};
 
 use pellucid_tauri::{
     generate_token, ipc, resolve_sidecar_binary_path, spawn_rotation_loop, InMemoryVault,
-    KeychainVault, LocalApiState, SidecarHandle, SidecarSupervisor, SystemClock, TokenRotator,
-    Variant, Vault,
+    KeychainVault, LocalApiState, MlEngineState, SidecarHandle, SidecarSupervisor, SystemClock,
+    TokenRotator, Variant, Vault,
 };
 
 /// Tauri event emitted to the webview after every successful rotation.
@@ -33,7 +33,12 @@ pub(crate) fn builder() -> Builder<Wry> {
     // (avoids `grammers → libsql` colliding with sqlx's
     // `libsqlite3-sys` at link time) and the webview cannot reach
     // the MTProto auth flow.
-    let b = tauri::Builder::default().manage(default_local_api_state());
+    let b = tauri::Builder::default()
+        .manage(default_local_api_state())
+        // ML engine state — lazily builds an `Arc<dyn MlEngine>` from
+        // the vault on first call and caches it. Cheap to manage as
+        // long as no webview ever invokes `ml_*`.
+        .manage(MlEngineState::new());
     #[cfg(not(feature = "telegram"))]
     let b = b.invoke_handler(tauri::generate_handler![
         ipc::get_local_api_port,
@@ -43,6 +48,11 @@ pub(crate) fn builder() -> Builder<Wry> {
         ipc::set_variant,
         ipc::request_updater_check,
         ipc::open_external,
+        ipc::ml_embed,
+        ipc::ml_batch_embed,
+        ipc::ml_sentiment,
+        ipc::ml_summarize,
+        ipc::ml_extract_entities,
     ]);
     #[cfg(feature = "telegram")]
     let b = b.invoke_handler(tauri::generate_handler![
@@ -53,6 +63,11 @@ pub(crate) fn builder() -> Builder<Wry> {
         ipc::set_variant,
         ipc::request_updater_check,
         ipc::open_external,
+        ipc::ml_embed,
+        ipc::ml_batch_embed,
+        ipc::ml_sentiment,
+        ipc::ml_summarize,
+        ipc::ml_extract_entities,
         ipc::telegram_login_request_code,
         ipc::telegram_login_submit_code,
         ipc::telegram_login_submit_password,

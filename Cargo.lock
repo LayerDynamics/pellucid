@@ -3729,6 +3729,7 @@ dependencies = [
  "keyring",
  "parking_lot",
  "pellucid-core",
+ "pellucid-ml",
  "pellucid-sidecar-bin",
  "pellucid-streams",
  "pellucid-telegram",

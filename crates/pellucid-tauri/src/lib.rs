@@ -21,6 +21,7 @@
 //!   `set_variant`, `request_updater_check`, `open_external`).
 
 pub mod ipc;
+pub mod ml;
 pub mod sidecar;
 #[cfg(feature = "telegram")]
 pub mod telegram_login;
@@ -28,6 +29,12 @@ pub mod token_rotation;
 pub mod vault;
 
 pub use ipc::{LocalApiState, SecretBundle, Variant, VariantParseError};
+pub use ml::{
+    handle_batch_embed, handle_embed, handle_extract_entities, handle_sentiment,
+    handle_summarize, BatchEmbedArgs, BatchEmbedResponse, EmbedArgs, EmbedResponse,
+    ExtractEntitiesArgs, ExtractEntitiesResponse, MlEngineState, MlIpcError, SentimentArgs,
+    SentimentResponse, SummarizeArgs, SummarizeResponse,
+};
 pub use sidecar::{
     resolve_sidecar_binary_path, sidecar_binary_filename, SidecarHandle, SidecarLaunchError,
     SidecarSupervisor,

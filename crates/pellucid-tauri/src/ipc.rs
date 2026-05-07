@@ -696,6 +696,67 @@ pub async fn telegram_session_present(
     state.telegram_session_present().await
 }
 
+// ============================================================================
+// ML IPC commands (mirror of `/api/intelligence/v1/*` for desktop).
+//
+// Each delegates to the matching `crate::ml::handle_*` body; the
+// state object pulls the `Arc<dyn MlEngine>` from the vault on
+// first call and caches it. With the keychain unlocked but missing
+// keys (`groq_api_key` / `hf_token` unset), every call returns
+// `MlIpcError::MissingKey(...)` so the webview can surface an
+// explicit "configure ML provider" prompt.
+// ============================================================================
+
+/// `ml_embed` — single-text embedding via HuggingFace Inference API.
+#[tauri::command]
+pub async fn ml_embed(
+    state: tauri::State<'_, LocalApiState>,
+    ml: tauri::State<'_, crate::ml::MlEngineState>,
+    args: crate::ml::EmbedArgs,
+) -> Result<crate::ml::EmbedResponse, crate::ml::MlIpcError> {
+    crate::ml::handle_embed(&ml, state.vault().as_ref(), args).await
+}
+
+/// `ml_batch_embed` — batched embeddings (single HF call).
+#[tauri::command]
+pub async fn ml_batch_embed(
+    state: tauri::State<'_, LocalApiState>,
+    ml: tauri::State<'_, crate::ml::MlEngineState>,
+    args: crate::ml::BatchEmbedArgs,
+) -> Result<crate::ml::BatchEmbedResponse, crate::ml::MlIpcError> {
+    crate::ml::handle_batch_embed(&ml, state.vault().as_ref(), args).await
+}
+
+/// `ml_sentiment` — Groq-backed sentiment classification.
+#[tauri::command]
+pub async fn ml_sentiment(
+    state: tauri::State<'_, LocalApiState>,
+    ml: tauri::State<'_, crate::ml::MlEngineState>,
+    args: crate::ml::SentimentArgs,
+) -> Result<crate::ml::SentimentResponse, crate::ml::MlIpcError> {
+    crate::ml::handle_sentiment(&ml, state.vault().as_ref(), args).await
+}
+
+/// `ml_summarize` — Groq-backed article summarization.
+#[tauri::command]
+pub async fn ml_summarize(
+    state: tauri::State<'_, LocalApiState>,
+    ml: tauri::State<'_, crate::ml::MlEngineState>,
+    args: crate::ml::SummarizeArgs,
+) -> Result<crate::ml::SummarizeResponse, crate::ml::MlIpcError> {
+    crate::ml::handle_summarize(&ml, state.vault().as_ref(), args).await
+}
+
+/// `ml_extract_entities` — Groq-backed named-entity extraction.
+#[tauri::command]
+pub async fn ml_extract_entities(
+    state: tauri::State<'_, LocalApiState>,
+    ml: tauri::State<'_, crate::ml::MlEngineState>,
+    args: crate::ml::ExtractEntitiesArgs,
+) -> Result<crate::ml::ExtractEntitiesResponse, crate::ml::MlIpcError> {
+    crate::ml::handle_extract_entities(&ml, state.vault().as_ref(), args).await
+}
+
 #[cfg(test)]
 #[allow(clippy::panic, clippy::unwrap_used, clippy::expect_used)]
 mod tests {
