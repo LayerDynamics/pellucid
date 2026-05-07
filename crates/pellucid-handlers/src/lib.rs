@@ -22,6 +22,7 @@ pub mod bootstrap;
 pub mod climate;
 pub mod conflict;
 pub mod consumer_prices;
+pub mod correlation;
 pub mod economic;
 pub mod energy;
 pub mod forecast;
@@ -51,6 +52,7 @@ pub fn build_handlers(state: AppState) -> Router {
         .merge(climate::router(state.clone()))
         .merge(conflict::router(state.clone()))
         .merge(consumer_prices::router(state.clone()))
+        .merge(correlation::router(state.clone()))
         .merge(economic::router(state.clone()))
         .merge(energy::router(state.clone()))
         .merge(forecast::router(state.clone()))

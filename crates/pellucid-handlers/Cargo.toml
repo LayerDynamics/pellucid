@@ -19,6 +19,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 async-trait = { workspace = true }
 async-stream = { workspace = true }
+chrono = { workspace = true }
 futures = { workspace = true }
 sqlx = { workspace = true }
 pellucid-core = { path = "../pellucid-core" }
@@ -26,6 +27,7 @@ pellucid-cache = { path = "../pellucid-cache" }
 pellucid-db = { path = "../pellucid-db" }
 pellucid-gateway = { path = "../pellucid-gateway" }
 pellucid-codegen = { path = "../pellucid-codegen" }
+pellucid-correlation = { path = "../pellucid-correlation" }
 pellucid-ml = { path = "../pellucid-ml" }
 
 [dev-dependencies]
