@@ -63,15 +63,11 @@ impl RedisClient {
         let url = std::env::var("UPSTASH_REDIS_REST_URL")
             .ok()
             .filter(|v| !v.is_empty())
-            .ok_or(WorkerError::MissingCredentials(
-                "UPSTASH_REDIS_REST_URL",
-            ))?;
+            .ok_or(WorkerError::MissingCredentials("UPSTASH_REDIS_REST_URL"))?;
         let token = std::env::var("UPSTASH_REDIS_REST_TOKEN")
             .ok()
             .filter(|v| !v.is_empty())
-            .ok_or(WorkerError::MissingCredentials(
-                "UPSTASH_REDIS_REST_TOKEN",
-            ))?;
+            .ok_or(WorkerError::MissingCredentials("UPSTASH_REDIS_REST_TOKEN"))?;
         Self::new(url, token)
     }
 
@@ -144,11 +140,7 @@ impl RedisClient {
     /// Transport / HTTP failures only — JSON-decode failures map to
     /// `Ok(None)` so a partially-corrupted cache row doesn't kill the worker.
     pub async fn get_json(&self, key: &str) -> Result<Option<Value>, WorkerError> {
-        let url = format!(
-            "{}/get/{}",
-            self.base_url,
-            urlencoding::encode(key)
-        );
+        let url = format!("{}/get/{}", self.base_url, urlencoding::encode(key));
         let resp = self
             .http
             .get(&url)
@@ -185,11 +177,8 @@ impl RedisClient {
     pub async fn setex(&self, key: &str, ttl_secs: u64, value: &Value) -> Result<(), WorkerError> {
         let payload = serde_json::to_string(value)
             .map_err(|e| WorkerError::Decode(format!("setex serialise: {e}")))?;
-        self.cmd(
-            "setex",
-            vec![json!(key), json!(ttl_secs), json!(payload)],
-        )
-        .await?;
+        self.cmd("setex", vec![json!(key), json!(ttl_secs), json!(payload)])
+            .await?;
         Ok(())
     }
 
@@ -219,7 +208,12 @@ impl RedisClient {
         let result = self
             .cmd(
                 "lmove",
-                vec![json!(src), json!(dst), json!(from.as_str()), json!(to.as_str())],
+                vec![
+                    json!(src),
+                    json!(dst),
+                    json!(from.as_str()),
+                    json!(to.as_str()),
+                ],
             )
             .await?;
         Ok(match result {
@@ -270,10 +264,7 @@ impl RedisClient {
         if keys.is_empty() {
             return Ok(Vec::new());
         }
-        let body: Vec<Vec<Value>> = keys
-            .iter()
-            .map(|k| vec![json!("GET"), json!(k)])
-            .collect();
+        let body: Vec<Vec<Value>> = keys.iter().map(|k| vec![json!("GET"), json!(k)]).collect();
         let url = format!("{}/pipeline", self.base_url);
         let resp = self
             .http
@@ -356,7 +347,10 @@ mod tests {
 
     #[test]
     fn urlencode_handles_unicode_and_specials() {
-        assert_eq!(urlencoding::encode("scenario-result:abc"), "scenario-result%3Aabc");
+        assert_eq!(
+            urlencoding::encode("scenario-result:abc"),
+            "scenario-result%3Aabc"
+        );
         assert_eq!(urlencoding::encode("a/b"), "a%2Fb");
         assert_eq!(urlencoding::encode("hello"), "hello");
     }

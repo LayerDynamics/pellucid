@@ -506,12 +506,10 @@ impl LocalApiState {
                     needs_password: false,
                 })
             }
-            pellucid_telegram::client::LoginCodeOutcome::NeedsPassword => {
-                Ok(SubmitCodeResponse {
-                    ok: false,
-                    needs_password: true,
-                })
-            }
+            pellucid_telegram::client::LoginCodeOutcome::NeedsPassword => Ok(SubmitCodeResponse {
+                ok: false,
+                needs_password: true,
+            }),
         }
     }
 

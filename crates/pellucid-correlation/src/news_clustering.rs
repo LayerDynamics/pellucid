@@ -48,7 +48,11 @@ pub struct NewsItemCore {
     pub pub_date: DateTime<Utc>,
     #[serde(rename = "isAlert")]
     pub is_alert: bool,
-    #[serde(default, rename = "monitorColor", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "monitorColor",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub monitor_color: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tier: Option<u32>,
@@ -58,7 +62,11 @@ pub struct NewsItemCore {
     pub lat: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lon: Option<f64>,
-    #[serde(default, rename = "locationName", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "locationName",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub location_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lang: Option<String>,
@@ -77,7 +85,11 @@ pub struct TopSource {
 /// `sources_per_hour` to render the "rising" indicator on a panel.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub struct ClusterVelocity {
-    #[serde(default, rename = "sourcesPerHour", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "sourcesPerHour",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub sources_per_hour: Option<f64>,
 }
 
@@ -104,7 +116,11 @@ pub struct ClusteredEvent {
     pub last_updated: DateTime<Utc>,
     #[serde(rename = "isAlert")]
     pub is_alert: bool,
-    #[serde(default, rename = "monitorColor", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "monitorColor",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub monitor_color: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub velocity: Option<ClusterVelocity>,
@@ -136,7 +152,9 @@ pub struct ClusteredEvent {
 /// - **Source**: always `"keyword"` because aggregation discards the
 ///   per-item provenance.
 #[must_use]
-pub fn aggregate_threats(items: &[(Option<&ThreatClassification>, Option<u32>)]) -> ThreatClassification {
+pub fn aggregate_threats(
+    items: &[(Option<&ThreatClassification>, Option<u32>)],
+) -> ThreatClassification {
     let with_threat: Vec<(&ThreatClassification, Option<u32>)> = items
         .iter()
         .filter_map(|(threat, tier)| threat.map(|t| (t, *tier)))
@@ -307,11 +325,7 @@ pub fn cluster_news_core<R: TierResolver>(
     out
 }
 
-fn build_cluster(
-    group_idx: Vec<usize>,
-    items: &[NewsItemCore],
-    tiers: &[u32],
-) -> ClusteredEvent {
+fn build_cluster(group_idx: Vec<usize>, items: &[NewsItemCore], tiers: &[u32]) -> ClusteredEvent {
     // Sort by (tier asc, pub_date desc)
     let mut sorted: Vec<usize> = group_idx.clone();
     sorted.sort_by(|&a, &b| {
@@ -432,12 +446,7 @@ mod tests {
         Utc.with_ymd_and_hms(year, month, day, hour, 0, 0).unwrap()
     }
 
-    fn item(
-        title: &str,
-        source: &str,
-        tier: Option<u32>,
-        when: DateTime<Utc>,
-    ) -> NewsItemCore {
+    fn item(title: &str, source: &str, tier: Option<u32>, when: DateTime<Utc>) -> NewsItemCore {
         NewsItemCore {
             source: source.into(),
             title: title.into(),
@@ -746,8 +755,14 @@ mod tests {
         // then filter, mirroring `slice(0,20).replace(/\W/g,'')`).
         // JS: "Iran's missile-strikes hit, in Syria!".slice(0,20) →
         //     "Iran's missile-strik". replace(/\W/g, '') → "Iransmissilestrik"
-        let prefix_20: String = "Iran's missile-strikes hit, in Syria!".chars().take(20).collect();
-        let slug: String = prefix_20.chars().filter(|c| c.is_ascii_alphanumeric()).collect();
+        let prefix_20: String = "Iran's missile-strikes hit, in Syria!"
+            .chars()
+            .take(20)
+            .collect();
+        let slug: String = prefix_20
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric())
+            .collect();
         assert_eq!(out[0].id, format!("{earliest_ms}-{slug}"));
     }
 

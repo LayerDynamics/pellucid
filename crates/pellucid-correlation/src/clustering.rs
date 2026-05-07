@@ -475,7 +475,11 @@ pub fn select_top_stories(clusters: &[ClusteredNews], max_count: usize) -> Vec<T
         .iter()
         .map(|c| (c.clone(), score_importance(c)))
         .filter(|(c, score)| {
-            let count = if c.source_count == 0 { 1 } else { c.source_count };
+            let count = if c.source_count == 0 {
+                1
+            } else {
+                c.source_count
+            };
             count >= 2 || c.is_alert || *score > 100.0
         })
         .collect();
@@ -483,10 +487,7 @@ pub fn select_top_stories(clusters: &[ClusteredNews], max_count: usize) -> Vec<T
     // Sort by score descending. JS sorts with `b.score - a.score`
     // which is a stable sort in V8 (Timsort). Rust's `sort_by`
     // is also stable, so identical-score entries keep input order.
-    scored.sort_by(|a, b| {
-        b.1.partial_cmp(&a.1)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
+    scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
     let mut selected: Vec<TopStory> = Vec::new();
     let mut source_count: std::collections::HashMap<String, usize> =
@@ -639,7 +640,8 @@ mod tests {
     #[test]
     fn score_importance_combo_bonus_for_flashpoint_plus_violence() {
         // clustering.test.mjs:48-52
-        let flashpoint_violence = cluster_with("Iran crackdown killed dozens in Tehran protests", 1);
+        let flashpoint_violence =
+            cluster_with("Iran crackdown killed dozens in Tehran protests", 1);
         let violence_only = cluster_with("Crackdown killed dozens in protests", 1);
         assert!(score_importance(&flashpoint_violence) > score_importance(&violence_only));
     }

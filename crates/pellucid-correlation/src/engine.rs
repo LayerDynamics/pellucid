@@ -221,10 +221,8 @@ impl CorrelationEngine {
         let with_trend = self.apply_trends(adapter, filtered);
 
         // Save cluster state for next cycle.
-        let next_state: Vec<ClusterState> =
-            with_trend.iter().map(|c| c.state.clone()).collect();
-        self.previous_clusters
-            .insert(adapter.domain(), next_state);
+        let next_state: Vec<ClusterState> = with_trend.iter().map(|c| c.state.clone()).collect();
+        self.previous_clusters.insert(adapter.domain(), next_state);
 
         let mut cards: Vec<ConvergenceCard> = with_trend
             .into_iter()
@@ -251,9 +249,7 @@ impl CorrelationEngine {
         match adapter.cluster_mode() {
             ClusterMode::Country => cluster_by_country(signals),
             ClusterMode::Entity => cluster_by_entity(signals),
-            ClusterMode::Geographic => {
-                cluster_by_proximity(signals, adapter.spatial_radius_km())
-            }
+            ClusterMode::Geographic => cluster_by_proximity(signals, adapter.spatial_radius_km()),
         }
     }
 
@@ -489,8 +485,7 @@ fn cluster_by_proximity(signals: Vec<SignalEvidence>, radius_km: f64) -> Vec<Sig
     }
 
     // 3×3 neighbourhood union for each cell.
-    let cells: Vec<((i64, i64), Vec<usize>)> =
-        grid.iter().map(|(k, v)| (*k, v.clone())).collect();
+    let cells: Vec<((i64, i64), Vec<usize>)> = grid.iter().map(|(k, v)| (*k, v.clone())).collect();
     for ((row, col), indices) in &cells {
         for dr in -1_i64..=1 {
             for dc in -1_i64..=1 {
@@ -521,10 +516,7 @@ fn cluster_by_proximity(signals: Vec<SignalEvidence>, radius_km: f64) -> Vec<Sig
     let mut groups: HashMap<usize, Vec<SignalEvidence>> = HashMap::new();
     for i in valid {
         let root = find(&mut parent, i);
-        groups
-            .entry(root)
-            .or_default()
-            .push(signals[i].clone());
+        groups.entry(root).or_default().push(signals[i].clone());
     }
     // Deterministic ordering by smallest index in the group.
     let mut sorted_roots: Vec<usize> = groups.keys().copied().collect();
@@ -682,8 +674,7 @@ fn haversine_km(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
     let phi2 = lat2 * to_rad;
     let dphi = (lat2 - lat1) * to_rad;
     let dlambda = (lon2 - lon1) * to_rad;
-    let a =
-        (dphi / 2.0).sin().powi(2) + phi1.cos() * phi2.cos() * (dlambda / 2.0).sin().powi(2);
+    let a = (dphi / 2.0).sin().powi(2) + phi1.cos() * phi2.cos() * (dlambda / 2.0).sin().powi(2);
     let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
     EARTH_RADIUS_KM * c
 }
@@ -1044,36 +1035,15 @@ mod tests {
     fn diversity_bonus_kicks_in_above_two_unique_types() {
         // Two-type cluster: bonus = 0.
         let two_type = vec![
-            signal(
-                "military_flight",
-                80,
-                None,
-                Some(35.7),
-                Some(51.4),
-                "a",
-            ),
-            signal(
-                "military_vessel",
-                80,
-                None,
-                Some(35.71),
-                Some(51.41),
-                "b",
-            ),
+            signal("military_flight", 80, None, Some(35.7), Some(51.4), "a"),
+            signal("military_vessel", 80, None, Some(35.71), Some(51.41), "b"),
         ];
         // Three-type cluster: bonus = 12.
         let mut adapter = MilTestAdapter::new();
         adapter.weights.insert("ais_gap".into(), 0.5);
         let three_type = vec![
             signal("military_flight", 80, None, Some(35.7), Some(51.4), "a"),
-            signal(
-                "military_vessel",
-                80,
-                None,
-                Some(35.71),
-                Some(51.41),
-                "b",
-            ),
+            signal("military_vessel", 80, None, Some(35.71), Some(51.41), "b"),
             signal("ais_gap", 80, None, Some(35.72), Some(51.42), "c"),
         ];
         let mut e1 = CorrelationEngine::new();

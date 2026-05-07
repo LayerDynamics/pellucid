@@ -147,9 +147,18 @@ mod tests {
 
     #[test]
     fn sentiment_label_parses_canonical_forms() {
-        assert_eq!(SentimentLabel::parse("positive"), Some(SentimentLabel::Positive));
-        assert_eq!(SentimentLabel::parse("Negative"), Some(SentimentLabel::Negative));
-        assert_eq!(SentimentLabel::parse("  NEUTRAL  "), Some(SentimentLabel::Neutral));
+        assert_eq!(
+            SentimentLabel::parse("positive"),
+            Some(SentimentLabel::Positive)
+        );
+        assert_eq!(
+            SentimentLabel::parse("Negative"),
+            Some(SentimentLabel::Negative)
+        );
+        assert_eq!(
+            SentimentLabel::parse("  NEUTRAL  "),
+            Some(SentimentLabel::Neutral)
+        );
     }
 
     #[test]
@@ -159,7 +168,10 @@ mod tests {
         assert_eq!(SentimentLabel::parse("+"), Some(SentimentLabel::Positive));
         assert_eq!(SentimentLabel::parse("-"), Some(SentimentLabel::Negative));
         assert_eq!(SentimentLabel::parse("none"), Some(SentimentLabel::Neutral));
-        assert_eq!(SentimentLabel::parse("mixed"), Some(SentimentLabel::Neutral));
+        assert_eq!(
+            SentimentLabel::parse("mixed"),
+            Some(SentimentLabel::Neutral)
+        );
     }
 
     #[test]

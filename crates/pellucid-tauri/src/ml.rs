@@ -95,10 +95,7 @@ impl MlEngineState {
     /// instance if one exists, else builds via
     /// `pellucid_ml::build_from_vault(vault, &self.config)` and
     /// stores it.
-    pub async fn engine(
-        &self,
-        vault: &dyn Vault,
-    ) -> Result<Arc<dyn MlEngine>, MlIpcError> {
+    pub async fn engine(&self, vault: &dyn Vault) -> Result<Arc<dyn MlEngine>, MlIpcError> {
         let mut guard = self.cached.lock().await;
         if let Some(engine) = guard.as_ref() {
             return Ok(Arc::clone(engine));
@@ -165,12 +162,10 @@ impl From<MlError> for MlIpcError {
     fn from(e: MlError) -> Self {
         match e {
             MlError::MissingConfig(name) => Self::MissingKey(name.to_string()),
-            MlError::EmptyInput(op) => {
-                Self::InvalidInput(format!("empty input for `{op}`"))
-            }
-            MlError::Unsupported(op) => {
-                Self::InvalidInput(format!("operation `{op}` not supported by configured backend"))
-            }
+            MlError::EmptyInput(op) => Self::InvalidInput(format!("empty input for `{op}`")),
+            MlError::Unsupported(op) => Self::InvalidInput(format!(
+                "operation `{op}` not supported by configured backend"
+            )),
             MlError::Upstream {
                 endpoint: _,
                 status,
@@ -317,9 +312,7 @@ pub async fn handle_batch_embed(
     }
     for (i, t) in args.texts.iter().enumerate() {
         if t.trim().is_empty() {
-            return Err(MlIpcError::InvalidInput(format!(
-                "texts[{i}] is empty"
-            )));
+            return Err(MlIpcError::InvalidInput(format!("texts[{i}] is empty")));
         }
         if t.len() > MAX_INPUT_BYTES {
             return Err(MlIpcError::InvalidInput(format!(
@@ -578,10 +571,7 @@ mod tests {
         // guard before returning so the borrow doesn't outlive
         // the `state` move.
         {
-            let mut guard = state
-                .cached
-                .try_lock()
-                .expect("test single-threaded");
+            let mut guard = state.cached.try_lock().expect("test single-threaded");
             *guard = Some(Arc::new(StubEngine) as Arc<dyn MlEngine>);
         }
         state

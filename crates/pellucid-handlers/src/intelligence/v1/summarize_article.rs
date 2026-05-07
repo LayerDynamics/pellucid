@@ -83,10 +83,7 @@ fn err_response(status: StatusCode, body: &str, retry_after: Option<u32>) -> Res
     resp
 }
 
-pub async fn handler(
-    State(state): State<AppState>,
-    Json(req): Json<Request>,
-) -> Response {
+pub async fn handler(State(state): State<AppState>, Json(req): Json<Request>) -> Response {
     let trimmed = req.text.trim();
     if trimmed.is_empty() {
         return err_response(StatusCode::BAD_REQUEST, "text is empty", None);
@@ -228,10 +225,12 @@ mod tests {
                         status: *status,
                         body: body.clone(),
                     }),
-                    MlError::InvalidResponse { endpoint, message } => Err(MlError::InvalidResponse {
-                        endpoint,
-                        message: message.clone(),
-                    }),
+                    MlError::InvalidResponse { endpoint, message } => {
+                        Err(MlError::InvalidResponse {
+                            endpoint,
+                            message: message.clone(),
+                        })
+                    }
                     MlError::Decode {
                         endpoint,
                         message,
@@ -298,8 +297,7 @@ mod tests {
 
     #[tokio::test]
     async fn returns_200_with_summary_on_happy_path() {
-        let state =
-            AppState::for_tests().with_ml(FakeMl::ok("Iran tested a missile from Tehran."));
+        let state = AppState::for_tests().with_ml(FakeMl::ok("Iran tested a missile from Tehran."));
         let app = router(state);
         let resp = app
             .oneshot(post_json(serde_json::json!({

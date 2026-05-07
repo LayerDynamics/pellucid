@@ -100,10 +100,7 @@ fn err_response(status: StatusCode, body: &str, retry_after: Option<u32>) -> Res
 }
 
 fn validate(req: &Request) -> Result<(), Box<Response>> {
-    let total = req.military.len()
-        + req.escalation.len()
-        + req.economic.len()
-        + req.disaster.len();
+    let total = req.military.len() + req.escalation.len() + req.economic.len() + req.disaster.len();
     if total == 0 {
         return Err(Box::new(err_response(
             StatusCode::BAD_REQUEST,
@@ -120,9 +117,7 @@ fn validate(req: &Request) -> Result<(), Box<Response>> {
         if len > MAX_SIGNALS_PER_DOMAIN {
             return Err(Box::new(err_response(
                 StatusCode::PAYLOAD_TOO_LARGE,
-                &format!(
-                    "{name} signals ({len}) exceed per-domain cap {MAX_SIGNALS_PER_DOMAIN}"
-                ),
+                &format!("{name} signals ({len}) exceed per-domain cap {MAX_SIGNALS_PER_DOMAIN}"),
                 None,
             )));
         }
@@ -130,10 +125,7 @@ fn validate(req: &Request) -> Result<(), Box<Response>> {
     Ok(())
 }
 
-pub async fn handler(
-    State(_state): State<AppState>,
-    Json(req): Json<Request>,
-) -> Response {
+pub async fn handler(State(_state): State<AppState>, Json(req): Json<Request>) -> Response {
     if let Err(r) = validate(&req) {
         return *r;
     }

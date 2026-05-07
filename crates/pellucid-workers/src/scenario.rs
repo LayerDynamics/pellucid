@@ -238,10 +238,7 @@ pub enum IterationOutcome {
 /// Only catastrophic / unrecoverable conditions surface here. Per-job
 /// failures (validation, compute) are written to the result key with
 /// `status: failed` and the loop continues.
-pub async fn run_worker(
-    redis: &RedisClient,
-    options: WorkerOptions,
-) -> Result<(), WorkerError> {
+pub async fn run_worker(redis: &RedisClient, options: WorkerOptions) -> Result<(), WorkerError> {
     requeue_orphaned_jobs(redis).await?;
 
     loop {
@@ -490,7 +487,9 @@ pub async fn compute_scenario(
                 continue;
             };
             for entry in exposures {
-                let Some(Value::Object(e)) = Some(entry) else { continue; };
+                let Some(Value::Object(e)) = Some(entry) else {
+                    continue;
+                };
                 let Some(Value::String(cp_id)) = e.get("chokepointId") else {
                     continue;
                 };
@@ -521,9 +520,7 @@ pub async fn compute_scenario(
     }
 
     let mut sorted: Vec<(String, f64)> = by_country.into_iter().collect();
-    sorted.sort_by(|a, b| {
-        b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)
-    });
+    sorted.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     sorted.truncate(20);
     let max_impact = sorted.first().map(|(_, v)| *v).unwrap_or(0.0).max(1.0);
     let top_impact_countries: Vec<CountryImpact> = sorted
@@ -550,7 +547,12 @@ pub async fn compute_scenario(
     let current = template
         .affected_chokepoint_ids
         .iter()
-        .map(|id| ((*id).to_string(), current_scores.get(*id).copied().flatten()))
+        .map(|id| {
+            (
+                (*id).to_string(),
+                current_scores.get(*id).copied().flatten(),
+            )
+        })
         .collect();
 
     Ok(ScenarioResult {

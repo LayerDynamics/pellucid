@@ -185,9 +185,7 @@ impl EntityIndex {
         let Some(ids) = self.by_keyword.get(&keyword.to_lowercase()) else {
             return Vec::new();
         };
-        ids.iter()
-            .filter_map(|id| self.by_id.get(id))
-            .collect()
+        ids.iter().filter_map(|id| self.by_id.get(id)).collect()
     }
 
     /// All entries in `sector` (case-insensitive). Mirrors
@@ -197,9 +195,7 @@ impl EntityIndex {
         let Some(ids) = self.by_sector.get(&sector.to_lowercase()) else {
             return Vec::new();
         };
-        ids.iter()
-            .filter_map(|id| self.by_id.get(id))
-            .collect()
+        ids.iter().filter_map(|id| self.by_id.get(id)).collect()
     }
 
     /// Entries explicitly listed under `entry.related`. Mirrors
@@ -247,8 +243,7 @@ impl EntityIndex {
         // the alias keys for a deterministic test order even though
         // the JS source iterates in insertion order — both produce
         // the same final set because of the `seen` dedup.
-        let mut aliases: Vec<(&String, &String)> =
-            self.by_alias.iter().collect();
+        let mut aliases: Vec<(&String, &String)> = self.by_alias.iter().collect();
         aliases.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
 
         for (alias_lower, entity_id) in aliases {
@@ -280,8 +275,7 @@ impl EntityIndex {
         }
 
         // Keywords next.
-        let mut keywords: Vec<(&String, &HashSet<String>)> =
-            self.by_keyword.iter().collect();
+        let mut keywords: Vec<(&String, &HashSet<String>)> = self.by_keyword.iter().collect();
         keywords.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
 
         for (keyword, entity_ids) in keywords {
@@ -330,9 +324,7 @@ impl EntityIndex {
     /// Count of entries in `entity_type`.
     #[must_use]
     pub fn count_by_type(&self, entity_type: EntityType) -> usize {
-        self.by_type
-            .get(&entity_type)
-            .map_or(0, HashSet::len)
+        self.by_type.get(&entity_type).map_or(0, HashSet::len)
     }
 }
 
@@ -427,9 +419,17 @@ pub struct NewsEntityContext {
     pub cluster_id: String,
     pub title: String,
     pub entities: Vec<ExtractedEntity>,
-    #[serde(default, rename = "primaryEntity", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "primaryEntity",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub primary_entity: Option<String>,
-    #[serde(default, rename = "relatedEntityIds", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        default,
+        rename = "relatedEntityIds",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub related_entity_ids: Vec<String>,
 }
 
@@ -438,10 +438,7 @@ pub struct NewsEntityContext {
 /// with the registry-resolved display name. Mirrors
 /// `extractEntitiesFromTitle`.
 #[must_use]
-pub fn extract_entities_from_title(
-    index: &EntityIndex,
-    title: &str,
-) -> Vec<ExtractedEntity> {
+pub fn extract_entities_from_title(index: &EntityIndex, title: &str) -> Vec<ExtractedEntity> {
     index
         .find_entities_in_text(title)
         .into_iter()
@@ -486,8 +483,10 @@ pub fn extract_entities_from_cluster(
         }
     }
 
-    let mut entities: Vec<ExtractedEntity> =
-        order.iter().filter_map(|id| entity_map.remove(id)).collect();
+    let mut entities: Vec<ExtractedEntity> = order
+        .iter()
+        .filter_map(|id| entity_map.remove(id))
+        .collect();
     entities.sort_by(|a, b| {
         b.confidence
             .partial_cmp(&a.confidence)
@@ -626,11 +625,7 @@ pub fn get_top_entities_from_news(
         .into_iter()
         .map(|(entity_id, (count, total))| {
             let name = index.display_name(&entity_id);
-            let avg = if count > 0 {
-                total / count as f64
-            } else {
-                0.0
-            };
+            let avg = if count > 0 { total / count as f64 } else { 0.0 };
             TopEntity {
                 entity_id,
                 name,

@@ -84,10 +84,7 @@ fn err_response(status: StatusCode, body: &str, retry_after: Option<u32>) -> Res
     resp
 }
 
-pub async fn handler(
-    State(state): State<AppState>,
-    Json(req): Json<Request>,
-) -> Response {
+pub async fn handler(State(state): State<AppState>, Json(req): Json<Request>) -> Response {
     let trimmed = req.query.trim();
     if trimmed.is_empty() {
         return err_response(StatusCode::BAD_REQUEST, "query is empty", None);
@@ -99,7 +96,10 @@ pub async fn handler(
             None,
         );
     }
-    let limit = req.limit.unwrap_or(DEFAULT_LIMIT).clamp(MIN_LIMIT, MAX_LIMIT);
+    let limit = req
+        .limit
+        .unwrap_or(DEFAULT_LIMIT)
+        .clamp(MIN_LIMIT, MAX_LIMIT);
 
     let Some(engine) = state.ml.as_ref() else {
         tracing::warn!(

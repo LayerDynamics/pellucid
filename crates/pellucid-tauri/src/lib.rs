@@ -30,10 +30,10 @@ pub mod vault;
 
 pub use ipc::{LocalApiState, SecretBundle, Variant, VariantParseError};
 pub use ml::{
-    handle_batch_embed, handle_embed, handle_extract_entities, handle_sentiment,
-    handle_summarize, BatchEmbedArgs, BatchEmbedResponse, EmbedArgs, EmbedResponse,
-    ExtractEntitiesArgs, ExtractEntitiesResponse, MlEngineState, MlIpcError, SentimentArgs,
-    SentimentResponse, SummarizeArgs, SummarizeResponse,
+    handle_batch_embed, handle_embed, handle_extract_entities, handle_sentiment, handle_summarize,
+    BatchEmbedArgs, BatchEmbedResponse, EmbedArgs, EmbedResponse, ExtractEntitiesArgs,
+    ExtractEntitiesResponse, MlEngineState, MlIpcError, SentimentArgs, SentimentResponse,
+    SummarizeArgs, SummarizeResponse,
 };
 pub use sidecar::{
     resolve_sidecar_binary_path, sidecar_binary_filename, SidecarHandle, SidecarLaunchError,

@@ -45,6 +45,10 @@ pub mod entity;
 pub mod news_clustering;
 pub mod signals;
 
+pub use adapters::{
+    DisasterAdapter, EconomicAdapter, EscalationAdapter, MilitaryAdapter, COMMODITY_SYMBOLS,
+    SIGNIFICANT_CHANGE_PCT, STRIKE_TYPES, SUPPORT_TYPES,
+};
 pub use analysis_constants::{
     contains_topic_keyword, find_related_topics, generate_dedupe_key, generate_signal_id,
     includes_keyword, jaccard_similarity, tokenize, ENERGY_COMMODITY_SYMBOLS, FLOW_DROP_KEYWORDS,
@@ -56,23 +60,19 @@ pub use clustering::{
     cluster_items, score_importance, select_top_stories, ClusteredNews, NewsItem,
     ThreatClassification, TopStory,
 };
-pub use news_clustering::{
-    aggregate_threats, cluster_news_core, ClusterVelocity, ClusteredEvent, NewsItemCore,
-    TierResolver, TopSource,
-};
-pub use adapters::{
-    DisasterAdapter, EconomicAdapter, EscalationAdapter, MilitaryAdapter, COMMODITY_SYMBOLS,
-    SIGNIFICANT_CHANGE_PCT, STRIKE_TYPES, SUPPORT_TYPES,
-};
 pub use engine::{
-    CardLocation, ClusterMode, ClusterState, ConvergenceCard, Correlator, CorrelationDomain,
-    CorrelationEngine, SignalEvidence, TrendDirection,
+    CardLocation, ClusterMode, ClusterState, ConvergenceCard, CorrelationDomain, CorrelationEngine,
+    Correlator, SignalEvidence, TrendDirection,
 };
 pub use entity::{
     extract_entities_from_cluster, extract_entities_from_clusters, extract_entities_from_title,
     find_news_for_entity, find_news_for_market_symbol, get_top_entities_from_news, EntityEntry,
-    EntityIndex as RegistryEntityIndex, EntityMatch, EntityNewsMatch, EntityType,
-    ExtractedEntity, MatchType, NewsEntityContext, TopEntity,
+    EntityIndex as RegistryEntityIndex, EntityMatch, EntityNewsMatch, EntityType, ExtractedEntity,
+    MatchType, NewsEntityContext, TopEntity,
+};
+pub use news_clustering::{
+    aggregate_threats, cluster_news_core, ClusterVelocity, ClusteredEvent, NewsItemCore,
+    TierResolver, TopSource,
 };
 pub use signals::{
     analyze_correlations_core, detect_convergence, detect_flow_price_divergence,

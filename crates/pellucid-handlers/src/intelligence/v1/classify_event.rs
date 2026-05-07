@@ -57,10 +57,7 @@ fn err_response(status: StatusCode, body: &str, retry_after: Option<u32>) -> Res
     resp
 }
 
-pub async fn handler(
-    State(state): State<AppState>,
-    Json(req): Json<Request>,
-) -> Response {
+pub async fn handler(State(state): State<AppState>, Json(req): Json<Request>) -> Response {
     let trimmed = req.text.trim();
     if trimmed.is_empty() {
         return err_response(StatusCode::BAD_REQUEST, "text is empty", None);
@@ -82,8 +79,7 @@ pub async fn handler(
         );
     };
 
-    let call =
-        tokio::time::timeout(Duration::from_secs(20), engine.sentiment(trimmed)).await;
+    let call = tokio::time::timeout(Duration::from_secs(20), engine.sentiment(trimmed)).await;
 
     match call {
         Ok(Ok(s)) => (
@@ -183,10 +179,12 @@ mod tests {
                         status: *status,
                         body: body.clone(),
                     }),
-                    MlError::InvalidResponse { endpoint, message } => Err(MlError::InvalidResponse {
-                        endpoint,
-                        message: message.clone(),
-                    }),
+                    MlError::InvalidResponse { endpoint, message } => {
+                        Err(MlError::InvalidResponse {
+                            endpoint,
+                            message: message.clone(),
+                        })
+                    }
                     MlError::Decode {
                         endpoint,
                         message,
@@ -236,8 +234,7 @@ mod tests {
 
     #[tokio::test]
     async fn returns_200_with_label_on_happy_path() {
-        let state =
-            AppState::for_tests().with_ml(FakeMl::ok(SentimentLabel::Positive, 0.91));
+        let state = AppState::for_tests().with_ml(FakeMl::ok(SentimentLabel::Positive, 0.91));
         let app = router(state);
         let resp = app
             .oneshot(post_json(serde_json::json!({"text": "Iran de-escalates"})))
@@ -252,8 +249,7 @@ mod tests {
 
     #[tokio::test]
     async fn returns_400_for_empty_text() {
-        let state =
-            AppState::for_tests().with_ml(FakeMl::ok(SentimentLabel::Neutral, 0.5));
+        let state = AppState::for_tests().with_ml(FakeMl::ok(SentimentLabel::Neutral, 0.5));
         let app = router(state);
         let resp = app
             .oneshot(post_json(serde_json::json!({"text": "  "})))

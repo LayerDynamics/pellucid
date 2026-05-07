@@ -132,11 +132,7 @@ impl GroqEngine {
     /// request envelope (model, messages, optional response_format,
     /// max_tokens, temperature). Returns the raw `content` of the
     /// first choice's message.
-    async fn chat(
-        &self,
-        endpoint: &'static str,
-        body: Value,
-    ) -> Result<String, MlError> {
+    async fn chat(&self, endpoint: &'static str, body: Value) -> Result<String, MlError> {
         let resp = self
             .client
             .post(self.chat_url())
@@ -159,10 +155,14 @@ impl GroqEngine {
             message: e.to_string(),
             body: truncate(&raw, 512),
         })?;
-        let first = env.choices.into_iter().next().ok_or(MlError::InvalidResponse {
-            endpoint,
-            message: "choices array is empty".into(),
-        })?;
+        let first = env
+            .choices
+            .into_iter()
+            .next()
+            .ok_or(MlError::InvalidResponse {
+                endpoint,
+                message: "choices array is empty".into(),
+            })?;
         Ok(first.message.content)
     }
 }
@@ -320,10 +320,7 @@ fn parse_sentiment_response(content: &str) -> Result<Sentiment, MlError> {
         endpoint: "groq.chat.sentiment",
         message: format!("unknown label: {}", body.label),
     })?;
-    let confidence = body
-        .confidence
-        .map(|c| c.clamp(0.0, 1.0))
-        .unwrap_or(0.5);
+    let confidence = body.confidence.map(|c| c.clamp(0.0, 1.0)).unwrap_or(0.5);
     Ok(Sentiment { label, confidence })
 }
 
@@ -411,7 +408,10 @@ mod tests {
 
     #[test]
     fn builder_rejects_empty_base_url() {
-        let err = GroqEngineBuilder::new("k").base_url("").build().unwrap_err();
+        let err = GroqEngineBuilder::new("k")
+            .base_url("")
+            .build()
+            .unwrap_err();
         assert!(matches!(err, MlError::MissingConfig("groq_base_url")));
     }
 
@@ -431,20 +431,16 @@ mod tests {
 
     #[test]
     fn parse_sentiment_happy_path() {
-        let s = parse_sentiment_response(
-            r#"{"label":"positive","confidence":0.9}"#,
-        )
-        .unwrap();
+        let s = parse_sentiment_response(r#"{"label":"positive","confidence":0.9}"#).unwrap();
         assert_eq!(s.label, SentimentLabel::Positive);
         assert!((s.confidence - 0.9).abs() < 1e-6);
     }
 
     #[test]
     fn parse_sentiment_strips_code_fence() {
-        let s = parse_sentiment_response(
-            "```json\n{\"label\":\"negative\",\"confidence\":0.7}\n```",
-        )
-        .unwrap();
+        let s =
+            parse_sentiment_response("```json\n{\"label\":\"negative\",\"confidence\":0.7}\n```")
+                .unwrap();
         assert_eq!(s.label, SentimentLabel::Negative);
     }
 
@@ -523,9 +519,8 @@ mod tests {
             .and(path("/chat/completions"))
             .and(header("authorization", "Bearer key"))
             .respond_with(
-                ResponseTemplate::new(200).set_body_json(chat_response(
-                    r#"{"label":"positive","confidence":0.85}"#,
-                )),
+                ResponseTemplate::new(200)
+                    .set_body_json(chat_response(r#"{"label":"positive","confidence":0.85}"#)),
             )
             .mount(&server)
             .await;
@@ -560,9 +555,7 @@ mod tests {
     async fn summarize_empty_response_is_invalid_response() {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(chat_response("   ")),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(chat_response("   ")))
             .mount(&server)
             .await;
         let engine = GroqEngineBuilder::new("key")
@@ -577,18 +570,19 @@ mod tests {
     async fn extract_entities_round_trip() {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(chat_response(
-                    r#"{"entities":[{"text":"Tehran","kind":"GPE","confidence":0.9}]}"#,
-                )),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(chat_response(
+                r#"{"entities":[{"text":"Tehran","kind":"GPE","confidence":0.9}]}"#,
+            )))
             .mount(&server)
             .await;
         let engine = GroqEngineBuilder::new("key")
             .base_url(server.uri())
             .build()
             .unwrap();
-        let entities = engine.extract_entities("missile fired at Tehran").await.unwrap();
+        let entities = engine
+            .extract_entities("missile fired at Tehran")
+            .await
+            .unwrap();
         assert_eq!(entities.len(), 1);
         assert_eq!(entities[0].text, "Tehran");
         assert_eq!(entities[0].kind, "GPE");
@@ -599,9 +593,7 @@ mod tests {
     async fn upstream_5xx_propagates_status_and_body() {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
-            .respond_with(
-                ResponseTemplate::new(500).set_body_string("internal"),
-            )
+            .respond_with(ResponseTemplate::new(500).set_body_string("internal"))
             .mount(&server)
             .await;
         let engine = GroqEngineBuilder::new("key")
@@ -623,8 +615,7 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_json(serde_json::json!({"choices": []})),
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({"choices": []})),
             )
             .mount(&server)
             .await;

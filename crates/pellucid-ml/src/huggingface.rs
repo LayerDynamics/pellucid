@@ -497,10 +497,7 @@ mod tests {
             ))
             .and(header("authorization", "Bearer secret-token"))
             .and(header("content-type", "application/json"))
-            .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_string("[0.11, 0.22, 0.33, 0.44]"),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_string("[0.11, 0.22, 0.33, 0.44]"))
             .mount(&server)
             .await;
 
@@ -526,9 +523,7 @@ mod tests {
     async fn embed_maps_5xx_to_upstream_error_with_body() {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
-            .respond_with(
-                ResponseTemplate::new(503).set_body_string("model is loading"),
-            )
+            .respond_with(ResponseTemplate::new(503).set_body_string("model is loading"))
             .mount(&server)
             .await;
         let engine = HfEmbeddingEngineBuilder::new("token")
@@ -550,8 +545,7 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_string("[[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]]"),
+                ResponseTemplate::new(200).set_body_string("[[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]]"),
             )
             .mount(&server)
             .await;
@@ -568,9 +562,7 @@ mod tests {
     async fn batch_embed_size_mismatch_is_invalid_response() {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_string("[[0.1, 0.2]]"),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_string("[[0.1, 0.2]]"))
             .mount(&server)
             .await;
         let engine = HfEmbeddingEngineBuilder::new("token")

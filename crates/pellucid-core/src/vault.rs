@@ -345,10 +345,7 @@ impl Debug for EnvVault {
             .field("has_telegram_api_hash", &blob.telegram_api_hash.is_some())
             .field(
                 "has_groq_api_key",
-                &blob
-                    .groq_api_key
-                    .as_ref()
-                    .is_some_and(|s| !s.is_empty()),
+                &blob.groq_api_key.as_ref().is_some_and(|s| !s.is_empty()),
             )
             .field(
                 "has_hf_token",

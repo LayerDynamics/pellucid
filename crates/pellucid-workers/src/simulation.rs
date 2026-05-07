@@ -206,7 +206,8 @@ pub async fn poll_once<D: SimulationDriver>(
         return Ok(IterationOutcome::AlreadyProcessed { job_id: job.job_id });
     }
 
-    let processing_state = json!({ "status": "processing", "startedAt": crate::scenario::now_ms() });
+    let processing_state =
+        json!({ "status": "processing", "startedAt": crate::scenario::now_ms() });
     redis
         .setex(&result_key, options.result_ttl_secs, &processing_state)
         .await

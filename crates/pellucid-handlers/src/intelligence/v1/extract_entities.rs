@@ -93,10 +93,7 @@ fn err_response(status: StatusCode, body: &str, retry_after: Option<u32>) -> Res
 }
 
 /// `POST /api/intelligence/v1/extract-entities` handler.
-pub async fn handler(
-    State(state): State<AppState>,
-    Json(req): Json<Request>,
-) -> Response {
+pub async fn handler(State(state): State<AppState>, Json(req): Json<Request>) -> Response {
     // Empty input is a 400 — don't burn an upstream call on it.
     let trimmed = req.text.trim();
     if trimmed.is_empty() {
@@ -128,11 +125,8 @@ pub async fn handler(
     // 30s upstream cap: Groq's free tier averages <2s for an 8B
     // call but tail latency on a cold model can spike. We don't
     // want one slow call to wedge a request thread.
-    let call = tokio::time::timeout(
-        Duration::from_secs(30),
-        engine.extract_entities(trimmed),
-    )
-    .await;
+    let call =
+        tokio::time::timeout(Duration::from_secs(30), engine.extract_entities(trimmed)).await;
 
     match call {
         Ok(Ok(entities)) => {
@@ -199,7 +193,11 @@ pub async fn handler(
                 error = %other,
                 "ml engine internal error"
             );
-            err_response(StatusCode::BAD_GATEWAY, "ml engine error", Some(DEFAULT_RETRY_AFTER_SECS))
+            err_response(
+                StatusCode::BAD_GATEWAY,
+                "ml engine error",
+                Some(DEFAULT_RETRY_AFTER_SECS),
+            )
         }
         Err(_elapsed) => {
             tracing::warn!(
@@ -221,7 +219,7 @@ pub async fn handler(
 mod tests {
     use super::*;
     use async_trait::async_trait;
-    use axum::body::{Body, to_bytes};
+    use axum::body::{to_bytes, Body};
     use axum::http::Request as HttpRequest;
     use std::sync::Arc;
     use tower::ServiceExt;
@@ -280,10 +278,12 @@ mod tests {
                         status: *status,
                         body: body.clone(),
                     }),
-                    MlError::InvalidResponse { endpoint, message } => Err(MlError::InvalidResponse {
-                        endpoint,
-                        message: message.clone(),
-                    }),
+                    MlError::InvalidResponse { endpoint, message } => {
+                        Err(MlError::InvalidResponse {
+                            endpoint,
+                            message: message.clone(),
+                        })
+                    }
                     MlError::Decode {
                         endpoint,
                         message,
@@ -317,14 +317,13 @@ mod tests {
         let state = AppState::for_tests(); // ml = None
         let app = router(state);
         let resp = app
-            .oneshot(post_json(serde_json::json!({"text": "Iran tested a missile."})))
+            .oneshot(post_json(
+                serde_json::json!({"text": "Iran tested a missile."}),
+            ))
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
-        assert_eq!(
-            resp.headers().get("retry-after").unwrap(),
-            "30"
-        );
+        assert_eq!(resp.headers().get("retry-after").unwrap(), "30");
     }
 
     #[tokio::test]

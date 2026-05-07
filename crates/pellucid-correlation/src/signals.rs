@@ -153,17 +153,41 @@ pub struct CorrelationSignal {
 /// shape stays the union of every detector's payload.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct SignalData {
-    #[serde(default, rename = "newsVelocity", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "newsVelocity",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub news_velocity: Option<f64>,
-    #[serde(default, rename = "marketChange", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "marketChange",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub market_change: Option<f64>,
-    #[serde(default, rename = "predictionShift", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "predictionShift",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub prediction_shift: Option<f64>,
-    #[serde(default, rename = "relatedTopics", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        default,
+        rename = "relatedTopics",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub related_topics: Vec<String>,
-    #[serde(default, rename = "correlatedEntities", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        default,
+        rename = "correlatedEntities",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub correlated_entities: Vec<String>,
-    #[serde(default, rename = "correlatedNews", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        default,
+        rename = "correlatedNews",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub correlated_news: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub explanation: Option<String>,
@@ -173,7 +197,11 @@ pub struct SignalData {
     pub baseline: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub multiplier: Option<f64>,
-    #[serde(default, rename = "sourceCount", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "sourceCount",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub source_count: Option<usize>,
 }
 
@@ -355,17 +383,13 @@ fn extract_topics(events: &[ClusteredEvent]) -> HashMap<String, f64> {
                 .velocity
                 .and_then(|v| v.sources_per_hour)
                 .unwrap_or(0.0);
-            *topics.entry(kw.to_string()).or_insert(0.0) +=
-                velocity + (event.source_count as f64);
+            *topics.entry(kw.to_string()).or_insert(0.0) += velocity + (event.source_count as f64);
         }
     }
     topics
 }
 
-fn prune_velocity_history(
-    history: &[TopicVelocityPoint],
-    now_ms: i64,
-) -> Vec<TopicVelocityPoint> {
+fn prune_velocity_history(history: &[TopicVelocityPoint], now_ms: i64) -> Vec<TopicVelocityPoint> {
     history
         .iter()
         .copied()
@@ -648,19 +672,14 @@ where
             .map(|t| news_topics.get(t).copied().unwrap_or(0.0))
             .sum();
 
-        let dedupe =
-            generate_dedupe_key(SignalType::PredictionLeadsNews.as_str(), &key, shift);
+        let dedupe = generate_dedupe_key(SignalType::PredictionLeadsNews.as_str(), &key, shift);
         if news_activity >= NEWS_VELOCITY_THRESHOLD || deduper.is_recent_duplicate(&dedupe) {
             continue;
         }
         deduper.mark_signal_seen(&dedupe);
 
         let conf = min_f(0.9, 0.5 + shift / 20.0);
-        let direction = if pred.yes_price - prev > 0.0 {
-            "+"
-        } else {
-            ""
-        };
+        let direction = if pred.yes_price - prev > 0.0 { "+" } else { "" };
         let signed = pred.yes_price - prev;
         signals.push(CorrelationSignal {
             id: generate_signal_id(),
@@ -716,7 +735,11 @@ where
             continue;
         }
 
-        let multiplier = if baseline > 0.0 { velocity / baseline } else { 0.0 };
+        let multiplier = if baseline > 0.0 {
+            velocity / baseline
+        } else {
+            0.0
+        };
         let dedupe = generate_dedupe_key(SignalType::VelocitySpike.as_str(), topic, velocity);
         if deduper.is_recent_duplicate(&dedupe) {
             continue;
@@ -755,7 +778,11 @@ where
                 news_velocity: Some(velocity),
                 related_topics: vec![topic.clone()],
                 baseline: Some(baseline),
-                multiplier: if baseline > 0.0 { Some(multiplier) } else { None },
+                multiplier: if baseline > 0.0 {
+                    Some(multiplier)
+                } else {
+                    None
+                },
                 explanation: Some(explanation),
                 ..SignalData::default()
             },
@@ -801,11 +828,8 @@ where
             .collect();
 
         if !related_news.is_empty() {
-            let dedupe = generate_dedupe_key(
-                SignalType::ExplainedMarketMove.as_str(),
-                &m.symbol,
-                change,
-            );
+            let dedupe =
+                generate_dedupe_key(SignalType::ExplainedMarketMove.as_str(), &m.symbol, change);
             if deduper.is_recent_duplicate(&dedupe) {
                 continue;
             }
@@ -813,10 +837,7 @@ where
 
             let signed = m.change.unwrap_or(0.0);
             let direction = if signed > 0.0 { "+" } else { "" };
-            let conf = min_f(
-                0.9,
-                0.5 + (related_news.len() as f64) * 0.1 + change / 20.0,
-            );
+            let conf = min_f(0.9, 0.5 + (related_news.len() as f64) * 0.1 + change / 20.0);
             let explanation = format!(
                 "{} related news item{} found",
                 related_news.len(),
@@ -848,11 +869,8 @@ where
             });
         } else {
             let old_related = count_related_topic_mentions(news_topics, &m.name, &m.symbol);
-            let dedupe = generate_dedupe_key(
-                SignalType::SilentDivergence.as_str(),
-                &m.symbol,
-                change,
-            );
+            let dedupe =
+                generate_dedupe_key(SignalType::SilentDivergence.as_str(), &m.symbol, change);
             if old_related >= 2.0 || deduper.is_recent_duplicate(&dedupe) {
                 continue;
             }
@@ -865,8 +883,7 @@ where
             // symbol alone (matches the JS ternary).
             let searched_terms = match entity_index.keywords_for(&m.symbol) {
                 Some(kws) if !kws.is_empty() => {
-                    let mut parts: Vec<String> =
-                        vec![m.symbol.clone(), m.name.clone()];
+                    let mut parts: Vec<String> = vec![m.symbol.clone(), m.name.clone()];
                     parts.extend(kws.into_iter().take(2));
                     parts.join(", ")
                 }
@@ -917,11 +934,8 @@ where
             continue;
         }
         let related = count_related_topic_mentions(news_topics, &m.name, &m.symbol);
-        let dedupe = generate_dedupe_key(
-            SignalType::FlowPriceDivergence.as_str(),
-            &m.symbol,
-            change,
-        );
+        let dedupe =
+            generate_dedupe_key(SignalType::FlowPriceDivergence.as_str(), &m.symbol, change);
         if related >= 2.0 || pipeline_flow_mentions != 0 || deduper.is_recent_duplicate(&dedupe) {
             continue;
         }
@@ -994,8 +1008,7 @@ where
     let previous_history = previous_snapshot
         .map(|s| s.topic_velocity_history.clone())
         .unwrap_or_default();
-    let mut topic_universe: std::collections::BTreeSet<String> =
-        std::collections::BTreeSet::new();
+    let mut topic_universe: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
     for k in previous_history.keys() {
         topic_universe.insert(k.clone());
     }
@@ -1120,7 +1133,8 @@ mod tests {
     use chrono::TimeZone;
 
     fn ts(year: i32, month: u32, day: u32, hour: u32, minute: u32) -> DateTime<Utc> {
-        Utc.with_ymd_and_hms(year, month, day, hour, minute, 0).unwrap()
+        Utc.with_ymd_and_hms(year, month, day, hour, minute, 0)
+            .unwrap()
     }
 
     fn news_item(title: &str, source: &str, when: DateTime<Utc>) -> NewsItemCore {
@@ -1140,11 +1154,7 @@ mod tests {
         }
     }
 
-    fn cluster(
-        id: &str,
-        primary_title: &str,
-        items: Vec<NewsItemCore>,
-    ) -> ClusteredEvent {
+    fn cluster(id: &str, primary_title: &str, items: Vec<NewsItemCore>) -> ClusteredEvent {
         let last = items.iter().map(|i| i.pub_date).max().unwrap();
         let first = items.iter().map(|i| i.pub_date).min().unwrap();
         ClusteredEvent {
@@ -1249,8 +1259,16 @@ mod tests {
         // the last hour.
         let items = vec![
             news_item("Iran missile strike Tehran", "Reuters", now),
-            news_item("Iran missile strike Tehran", "GovWire", ts(2026, 5, 4, 12, 0)),
-            news_item("Iran missile strike Tehran", "Intel-X", ts(2026, 5, 4, 12, 15)),
+            news_item(
+                "Iran missile strike Tehran",
+                "GovWire",
+                ts(2026, 5, 4, 12, 0),
+            ),
+            news_item(
+                "Iran missile strike Tehran",
+                "Intel-X",
+                ts(2026, 5, 4, 12, 15),
+            ),
         ];
         let event = cluster("c1", "Iran missile strike Tehran", items);
         let map: &[(&'static str, SourceType)] = &[
@@ -1354,8 +1372,7 @@ mod tests {
         let news_topics: HashMap<String, f64> = HashMap::new();
         let mut deduper = InMemoryDeduper::default();
         let clock = FixedClock(ts(2026, 5, 4, 12, 0));
-        let signals =
-            detect_prediction_shifts(&[pred], &prev, &news_topics, &mut deduper, &clock);
+        let signals = detect_prediction_shifts(&[pred], &prev, &news_topics, &mut deduper, &clock);
         assert_eq!(signals.len(), 1);
         assert_eq!(signals[0].signal_type, SignalType::PredictionLeadsNews);
         let shift = signals[0].data.prediction_shift.unwrap();
@@ -1382,8 +1399,7 @@ mod tests {
         news_topics.insert("iran".to_string(), 5.0);
         let mut deduper = InMemoryDeduper::default();
         let clock = FixedClock(ts(2026, 5, 4, 12, 0));
-        let signals =
-            detect_prediction_shifts(&[pred], &prev, &news_topics, &mut deduper, &clock);
+        let signals = detect_prediction_shifts(&[pred], &prev, &news_topics, &mut deduper, &clock);
         assert!(signals.is_empty());
     }
 

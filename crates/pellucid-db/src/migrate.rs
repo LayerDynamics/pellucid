@@ -67,10 +67,7 @@ mod tests {
     #[test]
     fn manifest_contains_initial() {
         let m = manifest();
-        assert_eq!(
-            m,
-            vec![(1, "0001_initial"), (2, "0002_news_embeddings")]
-        );
+        assert_eq!(m, vec![(1, "0001_initial"), (2, "0002_news_embeddings")]);
     }
 
     #[test]

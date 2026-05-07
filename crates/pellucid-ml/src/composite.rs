@@ -41,10 +41,7 @@ impl CompositeEngine {
     /// Build with one shared embedder and one shared chat engine —
     /// the common case.
     #[must_use]
-    pub fn from_embedder_and_chat(
-        embedder: Arc<dyn MlEngine>,
-        chat: Arc<dyn MlEngine>,
-    ) -> Self {
+    pub fn from_embedder_and_chat(embedder: Arc<dyn MlEngine>, chat: Arc<dyn MlEngine>) -> Self {
         Self {
             embedder,
             sentiment_classifier: Arc::clone(&chat),
@@ -235,10 +232,8 @@ mod tests {
             }
         }
         let failing: Arc<dyn MlEngine> = Arc::new(Failing);
-        let composite = CompositeEngine::from_embedder_and_chat(
-            Arc::clone(&failing),
-            Arc::clone(&failing),
-        );
+        let composite =
+            CompositeEngine::from_embedder_and_chat(Arc::clone(&failing), Arc::clone(&failing));
         assert!(matches!(
             composite.embed("x").await,
             Err(MlError::Unsupported("embed"))

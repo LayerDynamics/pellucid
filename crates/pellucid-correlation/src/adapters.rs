@@ -24,7 +24,7 @@ use std::collections::HashSet;
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-use crate::engine::{ClusterMode, Correlator, CorrelationDomain, SignalEvidence};
+use crate::engine::{ClusterMode, CorrelationDomain, Correlator, SignalEvidence};
 
 // ============================================================================
 // Military adapter — port of `military.ts`
@@ -36,8 +36,7 @@ use crate::engine::{ClusterMode, Correlator, CorrelationDomain, SignalEvidence};
 pub const STRIKE_TYPES: &[&str] = &["fighter", "bomber", "attack"];
 
 /// Support-aircraft type tags. Matches `military.ts:14`.
-pub const SUPPORT_TYPES: &[&str] =
-    &["tanker", "awacs", "surveillance", "electronic_warfare"];
+pub const SUPPORT_TYPES: &[&str] = &["tanker", "awacs", "surveillance", "electronic_warfare"];
 
 /// Military adapter — geographic clustering with a 500 km radius
 /// over 24 h. Threshold 20.
@@ -117,7 +116,10 @@ impl Correlator for MilitaryAdapter {
         // populates this; if it's missing we just don't trigger the
         // strike-package title.
         let mut flight_types: HashSet<String> = HashSet::new();
-        for s in signals.iter().filter(|s| s.signal_type == "military_flight") {
+        for s in signals
+            .iter()
+            .filter(|s| s.signal_type == "military_flight")
+        {
             if let Some(at) = s
                 .raw_data
                 .as_ref()
@@ -127,12 +129,8 @@ impl Correlator for MilitaryAdapter {
                 flight_types.insert(at.to_string());
             }
         }
-        let has_strike = STRIKE_TYPES
-            .iter()
-            .any(|t| flight_types.contains(*t));
-        let has_support = SUPPORT_TYPES
-            .iter()
-            .any(|t| flight_types.contains(*t));
+        let has_strike = STRIKE_TYPES.iter().any(|t| flight_types.contains(*t));
+        let has_support = SUPPORT_TYPES.iter().any(|t| flight_types.contains(*t));
         let has_strike_package = has_strike && has_support;
 
         if has_strike_package {
@@ -686,11 +684,7 @@ mod tests {
     #[test]
     fn military_country_label_uses_first_two_unique() {
         let signals = vec![
-            sig_raw(
-                "military_flight",
-                "a",
-                json!({"aircraftType": "fighter"}),
-            ),
+            sig_raw("military_flight", "a", json!({"aircraftType": "fighter"})),
             SignalEvidence {
                 country: Some("US".into()),
                 ..sig("military_flight", Some("US"), "b")
@@ -777,8 +771,7 @@ mod tests {
             sig("sanctions_news", None, "US announces new sanctions on Iran"),
             sig("market_move", None, "Brent +3.2%"),
         ];
-        let title =
-            EconomicAdapter::new().generate_title(&signals, None, Some("oil"));
+        let title = EconomicAdapter::new().generate_title(&signals, None, Some("oil"));
         assert!(
             title.starts_with("Sanctions tightening:")
                 && (title.contains("Iran")
@@ -802,16 +795,14 @@ mod tests {
                 json!({"display": "WTI", "symbol": "CL=F"}),
             ),
         ];
-        let title =
-            EconomicAdapter::new().generate_title(&signals, None, Some("oil"));
+        let title = EconomicAdapter::new().generate_title(&signals, None, Some("oil"));
         assert_eq!(title, "Market disruption: Brent/WTI");
     }
 
     #[test]
     fn economic_fallback_when_only_generic_entity_key() {
         let signals = vec![sig("other", None, "some headline")];
-        let title =
-            EconomicAdapter::new().generate_title(&signals, None, Some("sanctions"));
+        let title = EconomicAdapter::new().generate_title(&signals, None, Some("sanctions"));
         // GENERIC key → display_entity returns empty → fallback.
         assert_eq!(title, "Economic convergence detected");
     }

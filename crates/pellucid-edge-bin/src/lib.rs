@@ -149,9 +149,8 @@ pub async fn build_app(cfg: &Config) -> Result<(Router, Pool), EdgeBootError> {
     // React Router knows resolves to the SPA shell).
     if let Some(dir) = cfg.webview_dist.as_deref() {
         let index_html = std::path::Path::new(dir).join("index.html");
-        let serve = tower_http::services::ServeDir::new(dir).not_found_service(
-            tower_http::services::ServeFile::new(index_html),
-        );
+        let serve = tower_http::services::ServeDir::new(dir)
+            .not_found_service(tower_http::services::ServeFile::new(index_html));
         app = app.fallback_service(serve);
         tracing::info!(
             target: "pellucid::edge::spa",

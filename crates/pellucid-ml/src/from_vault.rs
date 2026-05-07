@@ -107,9 +107,7 @@ pub async fn build_from_vault(
             .build()?,
     ) as Arc<dyn MlEngine>;
 
-    Ok(Arc::new(CompositeEngine::from_embedder_and_chat(
-        embedder, chat,
-    )) as Arc<dyn MlEngine>)
+    Ok(Arc::new(CompositeEngine::from_embedder_and_chat(embedder, chat)) as Arc<dyn MlEngine>)
 }
 
 #[cfg(test)]
@@ -151,7 +149,9 @@ mod tests {
         .await
         .unwrap();
         let res = build_from_vault(&v, &VaultEngineConfig::default()).await;
-        let Err(err) = res else { panic!("expected MissingKey error, got Ok") };
+        let Err(err) = res else {
+            panic!("expected MissingKey error, got Ok")
+        };
         match err {
             FromVaultError::MissingKey(name) => assert_eq!(name, "GROQ_API_KEY"),
             other => panic!("wrong error: {other:?}"),
@@ -169,7 +169,9 @@ mod tests {
         .await
         .unwrap();
         let res = build_from_vault(&v, &VaultEngineConfig::default()).await;
-        let Err(err) = res else { panic!("expected MissingKey error, got Ok") };
+        let Err(err) = res else {
+            panic!("expected MissingKey error, got Ok")
+        };
         match err {
             FromVaultError::MissingKey(name) => assert_eq!(name, "HF_TOKEN"),
             other => panic!("wrong error: {other:?}"),
@@ -190,7 +192,9 @@ mod tests {
         // whitespace-only value must trigger MissingKey for HF
         // before we even look at groq.
         let res = build_from_vault(&v, &VaultEngineConfig::default()).await;
-        let Err(err) = res else { panic!("expected MissingKey error, got Ok") };
+        let Err(err) = res else {
+            panic!("expected MissingKey error, got Ok")
+        };
         assert!(matches!(err, FromVaultError::MissingKey("HF_TOKEN")));
     }
 
@@ -226,7 +230,9 @@ mod tests {
         // fail-closed behaviour.
         let v = InMemoryVault::new();
         let res = build_from_vault(&v, &VaultEngineConfig::default()).await;
-        let Err(err) = res else { panic!("expected MissingKey error, got Ok") };
+        let Err(err) = res else {
+            panic!("expected MissingKey error, got Ok")
+        };
         // Default blob has no keys → MissingKey, not VaultError.
         assert!(matches!(err, FromVaultError::MissingKey(_)));
     }
