@@ -41,6 +41,7 @@ pub mod adapters;
 pub mod analysis_constants;
 pub mod clustering;
 pub mod engine;
+pub mod entity;
 pub mod news_clustering;
 pub mod signals;
 
@@ -66,6 +67,12 @@ pub use adapters::{
 pub use engine::{
     CardLocation, ClusterMode, ClusterState, ConvergenceCard, Correlator, CorrelationDomain,
     CorrelationEngine, SignalEvidence, TrendDirection,
+};
+pub use entity::{
+    extract_entities_from_cluster, extract_entities_from_clusters, extract_entities_from_title,
+    find_news_for_entity, find_news_for_market_symbol, get_top_entities_from_news, EntityEntry,
+    EntityIndex as RegistryEntityIndex, EntityMatch, EntityNewsMatch, EntityType,
+    ExtractedEntity, MatchType, NewsEntityContext, TopEntity,
 };
 pub use signals::{
     analyze_correlations_core, detect_convergence, detect_flow_price_divergence,
