@@ -3497,6 +3497,16 @@ dependencies = [
 [[package]]
 name = "pellucid-correlation"
 version = "0.1.0"
+dependencies = [
+ "chrono",
+ "once_cell",
+ "pellucid-core",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "uuid",
+]
 
 [[package]]
 name = "pellucid-db"

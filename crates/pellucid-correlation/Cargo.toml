@@ -5,9 +5,20 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "military, escalation, economic, disaster correlators"
+description = "military, escalation, economic, disaster correlators + Jaccard clustering"
 
 [lints]
 workspace = true
 
 [dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+once_cell = { workspace = true }
+regex = { workspace = true }
+pellucid-core = { path = "../pellucid-core" }
+
+[dev-dependencies]
+serde_json = { workspace = true }
