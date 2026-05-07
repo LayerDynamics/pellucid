@@ -17,10 +17,10 @@ jobs:
       matrix:
         include:
           - image: pellucid-edge
-            dockerfile: docker/Dockerfile.edge
+            dockerfile: deploy/railway/edge/Dockerfile
             crate: pellucid-edge-bin
           - image: pellucid-relay
-            dockerfile: docker/Dockerfile.relay
+            dockerfile: deploy/railway/relay/Dockerfile
             crate: pellucid-relay-bin
     runs-on: ubuntu-latest
     permissions:
