@@ -21,7 +21,10 @@ use std::io::Write;
 #[cfg(feature = "telegram")]
 use std::sync::Arc;
 
-use pellucid_sidecar::{process_stdin_loop, serve_on_random_port, TokenSet, STDOUT_PORT_PREFIX};
+use pellucid_sidecar::{
+    build_handler_state_from_env, process_stdin_loop, serve_on_random_port, TokenSet,
+    STDOUT_PORT_PREFIX,
+};
 #[cfg(feature = "telegram")]
 use pellucid_telegram::session::IpcSessionStore;
 use tokio::io::BufReader;
@@ -34,7 +37,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let initial = read_initial_token_from_env();
     let tokens = TokenSet::new(initial);
 
-    let handle = serve_on_random_port(tokens.clone()).await?;
+    // Build the full handler-state (in-memory SQLite pool + ML
+    // engine from env). When `GROQ_API_KEY` / `HF_TOKEN` aren't
+    // set the engine is `None` and the intelligence endpoints
+    // return 503 — same fail-closed shape as edge-bin.
+    let handler_state = match build_handler_state_from_env().await {
+        Ok(s) => Some(s),
+        Err(err) => {
+            tracing::warn!(
+                target: "pellucid::sidecar",
+                error = %err,
+                "handler state build failed; sidecar serves /api/echo only"
+            );
+            None
+        }
+    };
+    let handle = serve_on_random_port(tokens.clone(), handler_state).await?;
     {
         let mut out = std::io::stdout().lock();
         writeln!(out, "{STDOUT_PORT_PREFIX}{}", handle.port)?;

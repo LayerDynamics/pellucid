@@ -3672,11 +3672,16 @@ dependencies = [
 name = "pellucid-sidecar-bin"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "axum",
  "base64 0.22.1",
  "parking_lot",
+ "pellucid-cache",
  "pellucid-core",
  "pellucid-db",
+ "pellucid-gateway",
+ "pellucid-handlers",
+ "pellucid-ml",
  "pellucid-streams",
  "pellucid-telegram",
  "reqwest 0.12.28",

@@ -20,6 +20,7 @@ pub mod stdin_protocol;
 pub use auth::{TokenSet, AUTH_HEADER, BEARER_PREFIX};
 pub use echo::EchoResponse;
 pub use server::{
-    build_router, serve_on_random_port, ServerHandle, ServerLaunchError, STDOUT_PORT_PREFIX,
+    build_handler_state_from_env, build_router, build_router_echo_only, serve_on_random_port,
+    ServerHandle, ServerLaunchError, STDOUT_PORT_PREFIX,
 };
 pub use stdin_protocol::process_stdin_loop;
