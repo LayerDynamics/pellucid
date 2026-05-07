@@ -20,6 +20,7 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde::{Deserialize, Serialize};
 
+use pellucid_gateway::error_mapper::GATEWAY_ERROR_CODE_HEADER;
 use pellucid_ml::{Entity, MlError};
 
 use crate::state::AppState;
@@ -64,12 +65,29 @@ pub struct ExtractEntitiesResponse {
 
 /// Hand-rolled error → response conversion so the handler returns
 /// the same shape for every failure mode.
+///
+/// 5xx responses set `x-pellucid-error: upstream_error` so the
+/// gateway's `handler_boundary` middleware does NOT overlay them
+/// with a generic `code = handler_error` (`pellucid-gateway/src/
+/// stages/handler_boundary.rs:23-29`). Without that header the
+/// gateway treats every 5xx as a panicked handler and rewrites
+/// the body, dropping our 503 / 504 / 502 distinctions.
 fn err_response(status: StatusCode, body: &str, retry_after: Option<u32>) -> Response {
-    let mut resp = (status, body.to_string()).into_response();
+    let body_json = serde_json::json!({
+        "code": "upstream_error",
+        "message": body,
+    });
+    let mut resp = (status, Json(body_json)).into_response();
     if let Some(sec) = retry_after {
         if let Ok(value) = HeaderValue::from_str(&sec.to_string()) {
             resp.headers_mut().insert("retry-after", value);
         }
+    }
+    if status.is_server_error() || status == StatusCode::TOO_MANY_REQUESTS {
+        resp.headers_mut().insert(
+            GATEWAY_ERROR_CODE_HEADER,
+            HeaderValue::from_static("upstream_error"),
+        );
     }
     resp
 }

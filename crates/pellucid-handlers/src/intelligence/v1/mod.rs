@@ -1,10 +1,12 @@
 //! `intelligence/v1/*` route module.
 
+pub mod classify_event;
 pub mod country_brief;
 pub mod country_deep_dive;
 pub mod extract_entities;
 pub mod gdelt_feed;
 pub mod regional;
+pub mod summarize_article;
 
 use axum::Router;
 
@@ -26,9 +28,11 @@ pub const COUNTRY_DEEP_DIVE_PATH: &str = "/api/intelligence/v1/country-deep-dive
 /// `webview/src/data/loaders/intel/country-brief.ts` (T4.1.8).
 pub const COUNTRY_BRIEF_PATH: &str = "/api/intelligence/v1/country-brief";
 
-/// Path for the ML-backed entity-extraction endpoint. Tier-2
-/// (`api_starter`); see `crates/pellucid-auth/src/endpoint_tiers.rs`.
+/// Tier-2 ML endpoints — paths are mirrored in
+/// `pellucid-auth::ML_ENDPOINT_ENTITLEMENTS`.
+pub use classify_event::PATH as CLASSIFY_EVENT_PATH;
 pub use extract_entities::PATH as EXTRACT_ENTITIES_PATH;
+pub use summarize_article::PATH as SUMMARIZE_ARTICLE_PATH;
 
 /// Build the v1 router.
 pub fn router(state: AppState) -> Router {
@@ -51,6 +55,14 @@ pub fn router(state: AppState) -> Router {
         )
         .route(
             EXTRACT_ENTITIES_PATH,
-            axum::routing::post(extract_entities::handler).with_state(state),
+            axum::routing::post(extract_entities::handler).with_state(state.clone()),
+        )
+        .route(
+            SUMMARIZE_ARTICLE_PATH,
+            axum::routing::post(summarize_article::handler).with_state(state.clone()),
+        )
+        .route(
+            CLASSIFY_EVENT_PATH,
+            axum::routing::post(classify_event::handler).with_state(state),
         )
 }
