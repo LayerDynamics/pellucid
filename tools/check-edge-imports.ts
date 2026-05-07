@@ -33,6 +33,12 @@ export interface EdgeImportFinding {
 
 const USE_RE = /^\s*(?:pub(?:\(.*?\))?\s+)?use\s+([A-Za-z_][A-Za-z0-9_]*)(?:::|\s|;)/;
 
+/// Matches `mod X;` / `pub mod X;` / `pub(crate) mod X;` declarations.
+/// Captures the module name. Skips inline `mod X { ... }` bodies (those
+/// don't end with a semicolon on the same line — uncommon in this crate).
+const MOD_DECL_RE =
+  /^\s*(?:pub(?:\(.*?\))?\s+)?mod\s+([A-Za-z_][A-Za-z0-9_]*)\s*;/;
+
 export function listDeclaredDeps(crateRoot: string): Set<string> {
   const cargoToml = readFileSync(join(crateRoot, "Cargo.toml"), "utf8");
   const deps = new Set<string>();
@@ -79,6 +85,19 @@ export function lintFile(
 ): EdgeImportFinding[] {
   const findings: EdgeImportFinding[] = [];
   const lines = source.split(/\r?\n/);
+
+  // First pass — collect every sibling module declared in this file
+  // (`mod X;` / `pub mod X;`). A `use X::…` referencing a sibling
+  // module is an internal re-export, not an external crate import,
+  // and must not be flagged.
+  const localModules = new Set<string>();
+  for (const line of lines) {
+    const m = MOD_DECL_RE.exec(line);
+    if (m) localModules.add(m[1]!);
+  }
+
+  // Second pass — flag `use X::…` where `X` is neither std/core/etc.,
+  // a declared dependency, nor a sibling module of this file.
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
     const m = USE_RE.exec(line);
@@ -86,6 +105,7 @@ export function lintFile(
     const crate = m[1]!;
     if (ALLOWED_STD_PREFIXES.includes(crate)) continue;
     if (declared.has(crate)) continue;
+    if (localModules.has(crate)) continue;
     findings.push({
       file: path,
       line: i + 1,

@@ -50,6 +50,27 @@ function buildParser(): Parser {
   return p;
 }
 
+/// tree-sitter 0.21.1's `parser.parse(string)` overload throws
+/// `Invalid argument` on inputs over ~32 KiB (V8 string limit on the
+/// native binding). The chunk-callback form has no such cap. Use it
+/// only for over-budget files so smaller files keep the simpler call
+/// path (the chunk-callback path produces a slightly different node
+/// graph for some grammars on small inputs).
+const TREE_SITTER_STRING_LIMIT = 32 * 1024;
+
+function parseSource(parser: Parser, source: string): Parser.Tree {
+  if (Buffer.byteLength(source, "utf8") < TREE_SITTER_STRING_LIMIT) {
+    return parser.parse(source);
+  }
+  const buf = Buffer.from(source, "utf8");
+  return parser.parse((index) => {
+    if (index >= buf.length) return null;
+    // 16 KiB chunks — well below the 32 KiB string limit.
+    const end = Math.min(index + 16 * 1024, buf.length);
+    return buf.subarray(index, end).toString("utf8");
+  });
+}
+
 function* walkRustFiles(root: string): Generator<string> {
   let entries: string[];
   try {
@@ -196,7 +217,7 @@ function findCachedFetchCalls(
 }
 
 export function lintFile(parser: Parser, path: string, source: string): CacheKeyFinding[] {
-  const tree = parser.parse(source);
+  const tree = parseSource(parser, source);
   const calls = findCachedFetchCalls(tree.rootNode);
   const findings: CacheKeyFinding[] = [];
 
@@ -316,7 +337,7 @@ export function lintDirectory(root: string): LintReport {
   for (const path of walkRustFiles(root)) {
     filesScanned += 1;
     const source = readFileSync(path, "utf8");
-    const tree = parser.parse(source);
+    const tree = parseSource(parser, source);
     callsFound += findCachedFetchCalls(tree.rootNode).length;
     const fileFindings = lintFile(parser, path, source);
     findings.push(...fileFindings);

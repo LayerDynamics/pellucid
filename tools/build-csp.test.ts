@@ -13,7 +13,22 @@ const repoRoot = join(import.meta.dir, "..");
 
 describe("build-csp (unit)", () => {
   test("variantHosts handles missing variants directory cleanly", () => {
-    expect(variantHosts(repoRoot)).toEqual([]);
+    // Drive the ENOENT branch by pointing at a path that has no
+    // `webview/src/config/variants/` subtree. The repo root itself
+    // now ships variants, so the previous test invocation became a
+    // no-op once any variant landed.
+    expect(variantHosts(join(repoRoot, "this-path-does-not-exist"))).toEqual([]);
+  });
+
+  test("variantHosts returns sorted hosts when variants exist", () => {
+    const hosts = variantHosts(repoRoot);
+    expect(hosts.length).toBeGreaterThan(0);
+    for (const h of hosts) {
+      expect(h.startsWith("https://")).toBe(true);
+      expect(h.endsWith(".worldmonitor.app")).toBe(true);
+    }
+    // Stable order — sort() in source means lexical asc.
+    expect([...hosts].sort()).toEqual(hosts);
   });
 
   test("buildDirectives includes core hosts", () => {
