@@ -29,9 +29,9 @@ md-5 = { workspace = true }
 sqlx = { workspace = true }
 base64 = { workspace = true }
 metrics = { workspace = true }
-grammers-client = { workspace = true }
-grammers-session = { workspace = true }
-grammers-tl-types = { workspace = true }
+grammers-client = { workspace = true, optional = true }
+grammers-session = { workspace = true, optional = true }
+grammers-tl-types = { workspace = true, optional = true }
 chrono = { workspace = true }
 pellucid-core = { path = "../pellucid-core" }
 pellucid-cache = { path = "../pellucid-cache" }
@@ -42,6 +42,22 @@ pellucid-handlers = { path = "../pellucid-handlers" }
 # (seeders -> streams, only for tests) was removed when seed_telegram_intel_min
 # was deleted, so no Cargo cycle.
 pellucid-seeders = { path = "../pellucid-seeders" }
+
+[features]
+# Default ships the full surface — desktop sidecar + relay both
+# enable telegram. The hosted edge-bin disables this feature
+# (see `crates/pellucid-edge-bin/Cargo.toml`) so the gateway +
+# RPC handlers don't drag in `grammers-client → libsql →
+# bundled SQLite`, which collides at link time with sqlx's
+# `libsqlite3-sys` (also bundled).
+default = ["telegram"]
+# Enables the MTProto Telegram client (`pellucid_streams::telegram`)
+# and its dependency closure (grammers-client/session/tl-types).
+telegram = [
+    "dep:grammers-client",
+    "dep:grammers-session",
+    "dep:grammers-tl-types",
+]
 
 [dev-dependencies]
 wiremock = { workspace = true }

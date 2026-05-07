@@ -50,6 +50,7 @@ pub mod oref;
 pub mod oss_insight;
 pub mod polymarket;
 pub mod rss;
+#[cfg(feature = "telegram")]
 pub mod telegram;
 pub mod types;
 pub mod ucdp;
@@ -90,6 +91,7 @@ pub use oref::{OrefAlert, OrefClient, OrefConfig, OrefHistory, HISTORY_CACHE_KEY
 pub use oss_insight::{OssInsightClient, OssInsightConfig, TrendingPeriod, TrendingRepo};
 pub use polymarket::{PolymarketClient, PolymarketConfig, PredictionMarket};
 pub use rss::{RssClient, RssEntry, RssFeed, NEGATIVE_TTL, POSITIVE_TTL};
+#[cfg(feature = "telegram")]
 pub use telegram::{
     EnvSessionStore, FetchedMessage, GrammersClient, GrammersClientError, IpcSessionStore,
     LoginCodeOutcome, MtprotoClient, SessionEvent, SessionStore, SessionStoreError,

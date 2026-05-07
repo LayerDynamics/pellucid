@@ -33,7 +33,13 @@ pellucid-db = { path = "../pellucid-db" }
 pellucid-cache = { path = "../pellucid-cache" }
 pellucid-gateway = { path = "../pellucid-gateway" }
 pellucid-handlers = { path = "../pellucid-handlers" }
-pellucid-streams = { path = "../pellucid-streams" }
+# `default-features = false` drops the `telegram` feature, which
+# pulls grammers-client → libsql → bundled SQLite. sqlx already
+# bundles SQLite via libsqlite3-sys; linking both into the same
+# binary fails with "duplicate symbol: sqlite3_*" on rust-lld.
+# Edge only uses aviationstack from streams; the relay (which
+# actually owns the Telegram task) keeps the default features.
+pellucid-streams = { path = "../pellucid-streams", default-features = false }
 
 [dev-dependencies]
 tokio = { workspace = true }
