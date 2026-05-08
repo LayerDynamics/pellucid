@@ -41,12 +41,30 @@ pellucid-streams = { path = "../pellucid-streams" }
 pellucid-telegram = { path = "../pellucid-telegram", optional = true }
 
 [features]
+# `custom-protocol` is the Tauri 2 release-build switch. The
+# `tauri::generate_context!()` proc-macro reads its own crate's cfg
+# at expansion time: `dev: cfg!(not(feature = "custom-protocol"))`
+# (see tauri-macros 2.x src/context.rs). When `custom-protocol` is
+# NOT enabled, `dev = true` and `EmbeddedAssets` is built EMPTY
+# (assuming the binary will load from `build.devUrl`). With
+# `custom-protocol` enabled, `dev = false` and the real
+# `webview/dist` directory is embedded into the binary as
+# `tauri://localhost/`-served assets. Without this feature on a
+# release build, the runtime returns "asset not found: index.html"
+# from the AssetResolver — which is exactly what the e2e-desktop
+# wdio job hit in CI before this was added. Tauri's own scaffold
+# template enables it by default; we never propagated it through
+# the workspace template, so release builds shipped empty assets.
+# The matching `cargo tauri dev` workflow still works because that
+# CLI invokes the build with `--no-default-features` (or the
+# equivalent feature-disable path) so it can serve from `devUrl`.
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
 # `telegram` is **off by default**; the dep brings `grammers → libsql`
 # (vendored SQLite) which collides with sqlx's `libsqlite3-sys` (also
 # vendored) at link time inside any binary that links both. Turning
 # the feature on re-enables the desktop host's MTProto login flow
 # (`telegram_login`) and the IPC commands that drive it.
-default = []
 telegram = ["dep:pellucid-telegram"]
 
 [dev-dependencies]

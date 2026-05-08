@@ -116,23 +116,31 @@ jobs:
           du -h "$bin" || true
           echo "::endgroup::"
           # Tauri 2 embeds the dist via `tauri::generate_context!()`.
-          # The compiled binary should contain a literal `/index.html`
-          # — that's the AssetKey tauri-codegen registers for the entry
-          # document. We do NOT assert hashed asset filenames here:
-          # tauri-codegen 2.x SHA256-hashes EmbeddedAssets keys before
-          # storing them in the phf map, so `strings` won't find the
-          # literal `/assets/index-<hash>.js`. The presence of
-          # `/index.html` is the ground-truth signal that codegen ran
-          # against a real dist; runtime asset lookup is verified by
-          # the wdio spec navigating to `tauri://localhost/`.
+          # `tauri-utils::EmbeddedAssets` stores keys as plaintext
+          # `&'static str` in a phf map, so `strings` finds them
+          # verbatim if embedding worked. We require BOTH the
+          # `/index.html` entry AND at least one hashed asset path
+          # (Vite emits `/assets/<entry>-<hash>.{js,css}`). The
+          # `n_assets >= 1` check is the load-bearing one: when the
+          # `custom-protocol` cargo feature isn't enabled on the
+          # `tauri` crate, tauri-codegen flips to dev mode and
+          # builds an empty `EmbeddedAssets`, but `/index.html`
+          # still appears in the binary as unrelated rustls/HTML
+          # text. That fooled an earlier diagnostic into reporting
+          # success when the runtime actually returned
+          # "asset not found: index.html". Hashed asset keys are
+          # unique to the bundled webview and don't appear by
+          # accident.
           n_index=$(strings "$bin" | grep -c "/index.html" || true)
+          n_assets=$(strings "$bin" | grep -cE "/assets/(index|react)-[A-Za-z0-9_-]+\.(js|css)" || true)
           n_devurl=$(strings "$bin" | grep -c "localhost:5173" || true)
           n_frontenddist=$(strings "$bin" | grep -c "../../webview/dist" || true)
           echo "embedded /index.html refs: ${n_index:-0}"
+          echo "embedded /assets/<hashed> refs: ${n_assets:-0}"
           echo "devUrl (localhost:5173) refs: ${n_devurl:-0}"
           echo "frontendDist literal refs: ${n_frontenddist:-0}"
-          if [ "${n_index:-0}" -lt 1 ]; then
-            echo "::error::tauri build did not embed webview/dist into the binary (n_index=0)"
+          if [ "${n_index:-0}" -lt 1 ] || [ "${n_assets:-0}" -lt 1 ]; then
+            echo "::error::tauri build did not embed webview/dist into the binary (n_index=${n_index:-0} n_assets=${n_assets:-0}). Most likely cause: `custom-protocol` feature is missing from pellucid-tauri's default features, putting tauri-codegen in dev mode."
             exit 1
           fi
           echo "embed assert ok"
