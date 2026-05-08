@@ -102,8 +102,19 @@ jobs:
           echo "::endgroup::"
       - run: cargo build --release -p pellucid-tauri
       - name: assert frontend was embedded into the binary
+        # Run without `set -e` so 0-match `grep -c` exit 1's don't mask
+        # the actual count. The previous version exited silently before
+        # the echo lines ran, so we got "exit 1" with no `n_index`
+        # value — couldn't tell whether embedding partially worked.
+        shell: bash {0}
         run: |
+          set -u
           bin=${{ github.workspace }}/target/release/pellucid-tauri
+          echo "::group::binary metadata"
+          ls -la "$bin" || true
+          file "$bin" || true
+          du -h "$bin" || true
+          echo "::endgroup::"
           # Tauri 2 embeds the dist via `tauri::generate_context!()`.
           # The compiled binary should contain literal occurrences of
           # both the index.html marker AND a content-hashed asset path
@@ -111,17 +122,22 @@ jobs:
           # asset resolver returns "asset not found: index.html" at
           # runtime — the previous failure mode on every dd3cfd8-era
           # CI run despite a fresh dist on disk.
-          n_index=$(strings "$bin" | grep -c "/index.html")
-          n_assets=$(strings "$bin" | grep -cE "/assets/(index|react)-[A-Za-z0-9_-]+\.(js|css)")
-          echo "embedded /index.html refs: $n_index"
-          echo "embedded /assets/<hashed> refs: $n_assets"
-          if [ "$n_index" -lt 1 ] || [ "$n_assets" -lt 1 ]; then
-            echo "::error::tauri build did not embed webview/dist into the binary"
-            echo "::group::dist on disk at this point"
-            ls -la webview/dist/ webview/dist/assets/ || true
-            echo "::endgroup::"
+          n_index=$(strings "$bin" | grep -c "/index.html" || true)
+          n_assets=$(strings "$bin" | grep -cE "/assets/(index|react)-[A-Za-z0-9_-]+\.(js|css)" || true)
+          n_devurl=$(strings "$bin" | grep -c "localhost:5173" || true)
+          n_frontenddist=$(strings "$bin" | grep -c "../../webview/dist" || true)
+          echo "embedded /index.html refs: ${n_index:-0}"
+          echo "embedded /assets/<hashed> refs: ${n_assets:-0}"
+          echo "devUrl (localhost:5173) refs: ${n_devurl:-0}"
+          echo "frontendDist literal refs: ${n_frontenddist:-0}"
+          echo "::group::sample of embedded path-like strings"
+          strings "$bin" | grep -E "(index|react|assets).*\.(html|js|css|map)" | head -10 || true
+          echo "::endgroup::"
+          if [ "${n_index:-0}" -lt 1 ] || [ "${n_assets:-0}" -lt 1 ]; then
+            echo "::error::tauri build did not embed webview/dist into the binary (n_index=${n_index:-0} n_assets=${n_assets:-0})"
             exit 1
           fi
+          echo "embed assert ok"
       # Spawn tauri-driver in the background — the wdio.conf.ts expects
       # it already listening at 127.0.0.1:4444. Without this step every
       # spec fails with ECONNREFUSED. The `&` backgrounds the process;
