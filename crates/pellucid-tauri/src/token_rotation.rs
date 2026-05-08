@@ -29,8 +29,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use parking_lot::RwLock;
+use tauri::async_runtime::JoinHandle;
 use thiserror::Error;
-use tokio::task::JoinHandle;
 
 /// 5 minutes — SPEC-001 §10.3 default rotation cadence.
 pub const DEFAULT_ROTATION_INTERVAL_MS: u64 = 5 * 60 * 1_000;
@@ -298,12 +298,21 @@ impl TokenRotator {
 /// invoked synchronously after each rotation completes. The host wires
 /// it to (a) write the new token into the vault, (b) emit the
 /// `token_rotated` Tauri event so the webview re-attaches its bearer.
+///
+/// Uses `tauri::async_runtime::spawn` rather than bare `tokio::spawn`
+/// because Tauri's setup callback runs *outside* a tokio reactor on
+/// Linux WebKit2GTK builds — `tokio::spawn` panics there with
+/// "there is no reactor running, must be called from the context of a
+/// Tokio 1.x runtime". `tauri::async_runtime::spawn` always uses
+/// Tauri's managed runtime regardless of the host platform's
+/// initialization order, so the rotation loop starts correctly under
+/// `tauri-driver` + `xvfb-run` in CI as well as on macOS dev hosts.
 pub fn spawn_rotation_loop<F>(rotator: Arc<TokenRotator>, on_rotate: F) -> JoinHandle<()>
 where
     F: Fn(RotationOutcome) + Send + 'static,
 {
     let interval = Duration::from_millis(rotator.rotation_interval_ms);
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         loop {
             tokio::time::sleep(interval).await;
             match rotator.rotate_now() {
