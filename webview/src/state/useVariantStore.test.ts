@@ -1,6 +1,17 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
 import { ALL_VARIANTS, useVariantStore } from "./useVariantStore";
+
+// happy-dom shares a single Window across the test runner's processes
+// in CI mode, and `useVariantStore` is wrapped in `persist` — so any
+// other test file that calls `setVariant("tech")` first writes "tech"
+// into localStorage, and our default-state assertion then sees "tech"
+// because persist hydrated the leaked value at module load. Reset
+// before every test (including the first) to make these assertions
+// independent of file-scheduling order.
+beforeEach(() => {
+  useVariantStore.setState({ variant: "base", switching: false });
+});
 
 afterEach(() => {
   useVariantStore.setState({ variant: "base", switching: false });

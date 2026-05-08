@@ -29,8 +29,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - uses: bufbuild/buf-action@v1
+        # buf-action v1 rejects `version: latest` — requires an explicit
+        # tag. Bump on Buf releases:
+        # https://github.com/bufbuild/buf/releases
         with:
-          version: latest
+          version: 1.69.0
       - run: bun install --frozen-lockfile
       - name: regenerate stubs
         run: |

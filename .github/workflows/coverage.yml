@@ -55,5 +55,14 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
-      - run: bun test --coverage
-        working-directory: ./
+      # `bun test --coverage` from the repo root picks up `e2e/web/*.spec.ts`
+      # (Playwright) and `e2e/desktop/*.spec.ts` (WebdriverIO) which both
+      # call their respective runner's `test.describe()` outside of those
+      # runners and crash. Route through each subpackage's own `test`
+      # script so each runs only the tests it was authored against —
+      # webview's `bun test src integration test`, tools' `bun test`,
+      # convex's `vitest run` (vitest emits its own coverage). The
+      # cargo job above already produces the Rust lcov report.
+      - run: bun run --filter='@pellucid/webview' test -- --coverage
+      - run: bun run --filter='@pellucid/tools' test -- --coverage
+      - run: bun run --filter='@pellucid/convex' test
