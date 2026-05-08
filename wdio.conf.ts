@@ -29,9 +29,17 @@ export const config = {
   runner: "local",
   specs: ["./e2e/desktop/**/*.spec.ts"],
   maxInstances: 1,
+  // tauri-driver speaks classic WebDriver with the `wry` browserName
+  // (the webview engine Tauri embeds — `tauri` is not a recognised
+  // value and crashes the session-create handshake with
+  // "Failed to match capabilities"). We also disable BiDi
+  // (`webSocketUrl: false`) because tauri-driver implements only the
+  // HTTP-W3C subset; wdio v9 sets BiDi true by default which causes
+  // the same capability-match failure.
   capabilities: [
     {
-      browserName: "tauri",
+      browserName: "wry",
+      webSocketUrl: false,
       "tauri:options": {
         application: tauriBinary,
       },
