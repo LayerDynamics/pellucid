@@ -79,6 +79,39 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run --filter=@pellucid/webview build
       - run: cargo build --release -p pellucid-tauri
+      # Spawn tauri-driver in the background — the wdio.conf.ts expects
+      # it already listening at 127.0.0.1:4444. Without this step every
+      # spec fails with ECONNREFUSED. The `&` backgrounds the process;
+      # the runner kills it when the job ends.
+      - name: start tauri-driver
+        run: |
+          xvfb-run --auto-servernum tauri-driver --port 4444 \
+            > "${RUNNER_TEMP:-/tmp}/tauri-driver.log" 2>&1 &
+          echo "TAURI_DRIVER_PID=$!" >> "$GITHUB_ENV"
+          # Wait until the driver is accepting TCP connections (max 30s).
+          for i in $(seq 1 30); do
+            if curl -fsS -o /dev/null -m 1 http://127.0.0.1:4444/status; then
+              echo "tauri-driver is up after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::tauri-driver failed to start within 30s"
+          cat "${RUNNER_TEMP:-/tmp}/tauri-driver.log" || true
+          exit 1
       - run: xvfb-run --auto-servernum bun run e2e:desktop
         env:
           PELLUCID_TAURI_BIN: ${{ github.workspace }}/target/release/pellucid-tauri
+      - name: stop tauri-driver
+        if: always()
+        run: |
+          if [ -n "${TAURI_DRIVER_PID:-}" ]; then
+            kill "$TAURI_DRIVER_PID" 2>/dev/null || true
+          fi
+          # Surface driver logs even on success — tauri-driver is noisy
+          # but its log is the only window into mid-test browser crashes.
+          if [ -f "${RUNNER_TEMP:-/tmp}/tauri-driver.log" ]; then
+            echo "::group::tauri-driver log tail"
+            tail -n 200 "${RUNNER_TEMP:-/tmp}/tauri-driver.log"
+            echo "::endgroup::"
+          fi
