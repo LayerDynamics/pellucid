@@ -138,8 +138,26 @@ function registry(): CleanupRegistry {
   };
 }
 
+/// Module-level dedupe handle. React 18 StrictMode mounts every effect
+/// twice in dev — without this, the first mount's cleanup runs
+/// `handle.shutdown()` which resets the store back to `"idle"`,
+/// overwriting the second mount's already-completed `"ready"`
+/// transition (the two `runBoot()` calls run concurrently against the
+/// same module-level `useBootStore` singleton). With the dedupe, the
+/// second `runBoot` call returns the same in-flight handle and the
+/// shutdown reference-counts so `reset()` only runs when *every*
+/// caller has unwound.
+let inFlight: Promise<BootHandle> | null = null;
+let activeRefs = 0;
+
 /** Run the full 8-phase boot. Resolves with a [`BootHandle`] when ready. */
 export async function runBoot(options: BootOptions = {}): Promise<BootHandle> {
+  if (inFlight !== null) {
+    activeRefs += 1;
+    return inFlight;
+  }
+  activeRefs = 1;
+
   const cleanups = registry();
   const store = useBootStore.getState();
   const onPhase = options.onPhase ?? noop;
@@ -147,37 +165,54 @@ export async function runBoot(options: BootOptions = {}): Promise<BootHandle> {
   store.start();
   onPhase(useBootStore.getState().phase);
 
-  try {
-    await phase1(cleanups);
-    advance("p2-bootstrap-fast-slow", onPhase);
-    await phase2();
-    advance("p3-clerk-auth", onPhase);
-    await phase3();
-    advance("p4-panel-layout", onPhase);
-    await phase4();
-    advance("p5-search-intel-url-state", onPhase);
-    await phase5(options.urlSearch);
-    advance("p6-parallel-data-load", onPhase);
-    await phase6();
-    advance("p7-smart-poll-loop", onPhase);
-    await phase7(cleanups, options);
-    advance("p8-desktop-updater", onPhase);
-    await phase8();
-    advance("ready", onPhase);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    useBootStore.getState().fail(message);
-    cleanups.drain();
-    throw err;
-  }
-
-  return {
-    cleanups: [...exposedCleanups(cleanups)],
-    async shutdown() {
+  inFlight = (async () => {
+    try {
+      await phase1(cleanups);
+      advance("p2-bootstrap-fast-slow", onPhase);
+      await phase2();
+      advance("p3-clerk-auth", onPhase);
+      await phase3();
+      advance("p4-panel-layout", onPhase);
+      await phase4();
+      advance("p5-search-intel-url-state", onPhase);
+      await phase5(options.urlSearch);
+      advance("p6-parallel-data-load", onPhase);
+      await phase6();
+      advance("p7-smart-poll-loop", onPhase);
+      await phase7(cleanups, options);
+      advance("p8-desktop-updater", onPhase);
+      await phase8();
+      advance("ready", onPhase);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      useBootStore.getState().fail(message);
       cleanups.drain();
-      useBootStore.getState().reset();
-    },
-  };
+      inFlight = null;
+      activeRefs = 0;
+      throw err;
+    }
+
+    return {
+      cleanups: [...exposedCleanups(cleanups)],
+      async shutdown() {
+        activeRefs -= 1;
+        if (activeRefs > 0) return;
+        cleanups.drain();
+        useBootStore.getState().reset();
+        inFlight = null;
+      },
+    };
+  })();
+
+  return inFlight;
+}
+
+/// Reset the dedupe state — exclusively for tests so each test starts
+/// from a clean slate. Production never calls this; the regular
+/// shutdown ref-count handles cleanup.
+export function __pellucidBootResetForTests(): void {
+  inFlight = null;
+  activeRefs = 0;
 }
 
 function noop(): void {

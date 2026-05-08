@@ -20,6 +20,7 @@ import {
   phase7,
   phase8,
   runBoot,
+  __pellucidBootResetForTests,
 } from "./boot";
 
 interface CleanupRegistry {
@@ -43,6 +44,11 @@ function newRegistry(): CleanupRegistry & { list: (() => void)[] } {
 }
 
 beforeEach(() => {
+  // Module-level boot dedupe state (added to handle React StrictMode
+  // double-mount in dev). Each test starts from a fresh dedupe slot —
+  // otherwise a test that runs `runBoot()` twice gets the cached
+  // handle from the first call instead of a real second run.
+  __pellucidBootResetForTests();
   useBootStore.getState().reset();
   usePanelStore.getState().reset();
   useVariantStore.setState({ variant: "base", switching: false });
