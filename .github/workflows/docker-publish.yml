@@ -35,6 +35,16 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # GHCR requires the repository path to be all-lowercase. The
+      # `docker/metadata-action` below auto-lowers its `tags` output,
+      # but the cache-from/cache-to refs are inline-templated below
+      # and don't go through that pipeline. Without this step the
+      # build fails with `invalid reference format: repository name
+      # (LayerDynamics/pellucid-edge) must be lowercase`.
+      - name: compute lowercase image owner
+        run: |
+          owner_lc=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "OWNER_LC=${owner_lc}" >> "$GITHUB_ENV"
       - uses: docker/metadata-action@v5
         id: meta
         with:
@@ -69,5 +79,5 @@ jobs:
           # prevents a transient registry-write failure from killing
           # an otherwise-good build (the next build just rebuilds the
           # cache).
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:buildcache,mode=max,ignore-error=true
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ matrix.image }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ matrix.image }}:buildcache,mode=max,ignore-error=true
