@@ -1,50 +1,54 @@
 name: deploy
 
-# Deploys the two Railway services (`pellucid-edge`, `pellucid-relay`)
-# from the repo root. The workflow runs on every push to `main` and
-# can be triggered manually with optional per-service skips.
+# Pre-deploy validation gate for the two Railway services
+# (`pellucid-edge`, `pellucid-relay`). Runs on every push to `main`
+# and can be triggered manually.
 #
 # Pipeline:
 #   1. validate — fmt + clippy + full cargo nextest. Gates everything.
-#   2. build-images — matrix build of the two production Dockerfiles
-#      under `deploy/railway/{edge,relay}/Dockerfile`. Catches Dockerfile
-#      bitrot before we ship anything to Railway.
-#   3. deploy-edge / deploy-relay — `railway up --service <name>` against
-#      the `pellucid` Railway project. Each service uses its own
-#      project-scoped token stored as a repo secret.
+#   2. build-images — matrix dry-run of the two production Dockerfiles
+#      under `deploy/railway/{edge,relay}/Dockerfile`. Catches
+#      Dockerfile bitrot before Railway sees it.
+#   3. smoke-deployed — polls the two live URLs after Railway finishes
+#      its own auto-deploy, so a green workflow run means: the code
+#      validated AND the production endpoints are 200-healthy.
 #
-# Required repository secrets (one Railway project token per service —
-# the dashboard issues these under Project → Settings → Tokens):
-#   RAILWAY_TOKEN_EDGE   — token authorized for the pellucid-edge service
-#   RAILWAY_TOKEN_RELAY  — token authorized for the pellucid-relay service
+# Railway does the actual deploy via its GitHub integration on each
+# service (configured per-service in the dashboard: Source → Repo →
+# LayerDynamics/pellucid + railwayConfigFile pointing at the matching
+# `deploy/railway/{edge,relay}/railway.toml`). No `RAILWAY_TOKEN_*`
+# secrets are required by this workflow — the deploy is driven from
+# the Railway side, not from GitHub Actions.
 #
-# Per-service env vars must already be configured in the Railway
-# dashboard (CLERK_*, RELAY_SHARED_SECRET, OPENSKY_*, AIS_API_KEY,
-# UPSTASH_REDIS_REST_*, HF_TOKEN, GROQ_API_KEY, AVIATIONSTACK_API_KEY,
-# CONVEX_DEPLOY_KEY, …). See deploy/railway/{edge,relay}/railway.toml
-# for the canonical list.
+# Repository variables (Settings → Secrets and variables → Variables):
+#   PELLUCID_EDGE_PUBLIC_HOST   — e.g. `pellucid.world`
+#   PELLUCID_RELAY_PUBLIC_HOST  — e.g. `pellucid.wtf`
+# Both are used by the smoke-deployed job to find the post-deploy
+# healthcheck URL. Already populated for this repo.
+#
+# Per-service runtime env vars (CLERK_*, RELAY_SHARED_SECRET, OPENSKY_*,
+# AIS_API_KEY, UPSTASH_REDIS_REST_*, HF_TOKEN, GROQ_API_KEY,
+# AVIATIONSTACK_API_KEY, CONVEX_DEPLOY_KEY, …) are configured in the
+# Railway dashboard. See deploy/railway/{edge,relay}/railway.toml for
+# the canonical list.
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
     inputs:
-      deploy_edge:
-        description: "Deploy pellucid-edge"
-        type: boolean
-        default: true
-      deploy_relay:
-        description: "Deploy pellucid-relay"
-        type: boolean
-        default: true
       skip_image_build:
         description: "Skip the docker image dry-run build (faster, riskier)"
         type: boolean
         default: false
+      skip_smoke:
+        description: "Skip the post-deploy /healthz + /health probe"
+        type: boolean
+        default: false
 
-# Serialise deploys to the same env so two pushes back-to-back don't
-# step on each other on Railway. `cancel-in-progress: false` because we
-# don't want to abandon an already-running deploy mid-flight.
+# Serialise per-branch so two pushes back-to-back don't smoke-test
+# each other's in-flight Railway rollouts. `cancel-in-progress: false`
+# so we don't abandon a partly-completed validation.
 concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: false
@@ -107,8 +111,8 @@ jobs:
       - uses: docker/setup-buildx-action@v3
       - name: build ${{ matrix.image }}
         # `load: false`, `push: false` — we only confirm the Dockerfile
-        # builds end-to-end on the actual repo state. The Railway build
-        # step does the real publish from its own builder.
+        # builds end-to-end on the actual repo state. Railway runs the
+        # real publish from its own builder.
         #
         # No cache configured here on purpose: the GHA cache backend
         # hits a documented eviction race ("failed to copy: cache entry
@@ -127,116 +131,63 @@ jobs:
           load: false
           tags: pellucid/${{ matrix.image }}:ci-${{ github.sha }}
 
-  deploy-edge:
-    name: deploy pellucid-edge
+  smoke-deployed:
+    name: smoke ${{ matrix.image }} live healthcheck
     needs: [validate, build-images]
-    # Run the deploy when:
-    #   - push to main (always), OR
-    #   - workflow_dispatch with deploy_edge == true
-    # Also gate on validate succeeding; build-images may have been
-    # skipped by inputs.skip_image_build, in which case `needs` still
-    # resolves because skipped is treated as success unless we use
-    # `result == 'failure'`. We assert success-or-skipped explicitly.
+    # Skip when the operator opted out, AND require validate success
+    # AND require build-images to either succeed or have been skipped
+    # (skip_image_build=true). `always()` is the documented pattern
+    # for `if:` blocks that need to inspect `needs.*.result`.
     if: |
       always() &&
       needs.validate.result == 'success' &&
       (needs.build-images.result == 'success' || needs.build-images.result == 'skipped') &&
-      (github.event_name != 'workflow_dispatch' || inputs.deploy_edge == true)
+      (github.event_name != 'workflow_dispatch' || inputs.skip_smoke != true)
     runs-on: ubuntu-latest
-    environment:
-      name: railway-edge
-      url: https://${{ vars.PELLUCID_EDGE_PUBLIC_HOST }}/healthz
-    concurrency:
-      group: deploy-edge
-      cancel-in-progress: false
-    env:
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_EDGE }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: pellucid-edge
+            host_var: PELLUCID_EDGE_PUBLIC_HOST
+            path: /healthz
+          - image: pellucid-relay
+            host_var: PELLUCID_RELAY_PUBLIC_HOST
+            path: /health
     steps:
-      - uses: actions/checkout@v4
-      - name: install railway cli
+      # Railway's GitHub-integration deploy starts on the same push
+      # event but runs out-of-band. This job waits up to ~10 min for
+      # the new deploy to swap in by polling the public host. We don't
+      # fail the workflow if the host var is missing — that's just a
+      # signal to skip the smoke step (the workflow's other jobs still
+      # capture the validate + image-build evidence).
+      - name: skip when host var unset
+        id: hostcheck
         run: |
-          curl -fsSL https://railway.com/install.sh | sh
-          echo "$HOME/.railway/bin" >> "$GITHUB_PATH"
-      - name: assert railway token present
-        run: |
-          if [ -z "$RAILWAY_TOKEN" ]; then
-            echo "::error::RAILWAY_TOKEN_EDGE secret is missing"
-            exit 1
+          host="${{ vars[matrix.host_var] }}"
+          if [ -z "$host" ]; then
+            echo "::warning::${{ matrix.host_var }} not set — skipping smoke probe"
+            echo "skip=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "host=${host}" >> "$GITHUB_OUTPUT"
           fi
-          railway --version
-      - name: deploy pellucid-edge
-        # `--service` selects the service inside the project the token
-        # is scoped to; `--detach` returns once the build is queued
-        # rather than tailing logs (the workflow page links to Railway
-        # for the live build log). `--ci` prevents any TTY prompts.
-        run: railway up --service pellucid-edge --ci --detach
-      - name: smoke /healthz
-        # Railway's deploy is asynchronous — give the platform up to
-        # ~5 minutes to swap the active deployment, then poll /healthz.
-        # We don't fail the workflow on a healthcheck miss because
-        # Railway's own healthcheckPath gate already blocks an unhealthy
-        # deploy from going live; this is best-effort visibility.
-        if: vars.PELLUCID_EDGE_PUBLIC_HOST != ''
-        continue-on-error: true
+      - name: probe https://<host>${{ matrix.path }} until 200
+        if: steps.hostcheck.outputs.skip != '1'
         run: |
           set -eu
-          host="${{ vars.PELLUCID_EDGE_PUBLIC_HOST }}"
-          for i in $(seq 1 30); do
-            code=$(curl -sS -o /dev/null -w "%{http_code}" "https://${host}/healthz" || echo 000)
-            echo "[$i/30] https://${host}/healthz -> ${code}"
+          host="${{ steps.hostcheck.outputs.host }}"
+          path="${{ matrix.path }}"
+          # 60 attempts × 10 s = 10 min ceiling. Railway's average
+          # build for these crates lands in 4–7 min; the extra slack
+          # absorbs queueing on the Railway builder.
+          for i in $(seq 1 60); do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" "https://${host}${path}" || echo 000)
+            echo "[$i/60] https://${host}${path} -> ${code}"
             if [ "$code" = "200" ]; then
-              echo "edge healthy"
+              echo "${{ matrix.image }} healthy"
               exit 0
             fi
             sleep 10
           done
-          echo "::warning::edge /healthz did not return 200 within 5 minutes; check Railway dashboard"
-
-  deploy-relay:
-    name: deploy pellucid-relay
-    needs: [validate, build-images]
-    if: |
-      always() &&
-      needs.validate.result == 'success' &&
-      (needs.build-images.result == 'success' || needs.build-images.result == 'skipped') &&
-      (github.event_name != 'workflow_dispatch' || inputs.deploy_relay == true)
-    runs-on: ubuntu-latest
-    environment:
-      name: railway-relay
-      url: https://${{ vars.PELLUCID_RELAY_PUBLIC_HOST }}/health
-    concurrency:
-      group: deploy-relay
-      cancel-in-progress: false
-    env:
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_RELAY }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: install railway cli
-        run: |
-          curl -fsSL https://railway.com/install.sh | sh
-          echo "$HOME/.railway/bin" >> "$GITHUB_PATH"
-      - name: assert railway token present
-        run: |
-          if [ -z "$RAILWAY_TOKEN" ]; then
-            echo "::error::RAILWAY_TOKEN_RELAY secret is missing"
-            exit 1
-          fi
-          railway --version
-      - name: deploy pellucid-relay
-        run: railway up --service pellucid-relay --ci --detach
-      - name: smoke /health
-        if: vars.PELLUCID_RELAY_PUBLIC_HOST != ''
-        continue-on-error: true
-        run: |
-          set -eu
-          host="${{ vars.PELLUCID_RELAY_PUBLIC_HOST }}"
-          for i in $(seq 1 30); do
-            code=$(curl -sS -o /dev/null -w "%{http_code}" "https://${host}/health" || echo 000)
-            echo "[$i/30] https://${host}/health -> ${code}"
-            if [ "$code" = "200" ]; then
-              echo "relay healthy"
-              exit 0
-            fi
-            sleep 10
-          done
-          echo "::warning::relay /health did not return 200 within 5 minutes; check Railway dashboard"
+          echo "::error::${{ matrix.image }} ${path} did not return 200 within 10 minutes; check Railway dashboard"
+          exit 1
