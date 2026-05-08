@@ -109,6 +109,15 @@ jobs:
         # `load: false`, `push: false` — we only confirm the Dockerfile
         # builds end-to-end on the actual repo state. The Railway build
         # step does the real publish from its own builder.
+        #
+        # No cache configured here on purpose: the GHA cache backend
+        # hits a documented eviction race ("failed to copy: cache entry
+        # no longer exists") on multi-image workflows, and the dry-run
+        # has no GHCR push target to write a registry cache to. Railway
+        # does its own cached build, so a from-scratch validation here
+        # is the conservative choice. If this job becomes too slow to
+        # tolerate, switch to `type=registry` after pushing the build
+        # image to GHCR (mirror docker-publish.yml's setup).
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -116,8 +125,6 @@ jobs:
           platforms: linux/amd64
           push: false
           load: false
-          cache-from: type=gha,scope=deploy-${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=deploy-${{ matrix.image }}
           tags: pellucid/${{ matrix.image }}:ci-${{ github.sha }}
 
   deploy-edge:

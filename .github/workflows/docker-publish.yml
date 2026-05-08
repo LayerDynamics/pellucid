@@ -52,5 +52,22 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          # Registry-backed cache (cache lives alongside the image at
+          # GHCR under the `:buildcache` tag). Replaces the previous
+          # `type=gha` cache, which hit the documented eviction race
+          # `failed to solve: failed to copy: cache entry no longer
+          # exists` — the GHA cache backend's index was restored but
+          # the underlying blob had already been evicted by the time
+          # the build ran (GHA caches are evicted after 7 days of
+          # inactivity AND when a repo's total cache exceeds 10 GB,
+          # which the multi-arch + multi-image build trips). The
+          # registry backend has no such eviction policy.
+          # `mode=max` writes every intermediate layer, not just the
+          # final manifest — important here because Cargo + workspace
+          # crates produce many heavy intermediates that benefit from
+          # cache hits across PRs. `ignore-error=true` on cache-to
+          # prevents a transient registry-write failure from killing
+          # an otherwise-good build (the next build just rebuilds the
+          # cache).
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:buildcache,mode=max,ignore-error=true
