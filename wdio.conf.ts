@@ -32,14 +32,18 @@ export const config = {
   // tauri-driver speaks classic WebDriver with the `wry` browserName
   // (the webview engine Tauri embeds — `tauri` is not a recognised
   // value and crashes the session-create handshake with
-  // "Failed to match capabilities"). We also disable BiDi
-  // (`webSocketUrl: false`) because tauri-driver implements only the
-  // HTTP-W3C subset; wdio v9 sets BiDi true by default which causes
-  // the same capability-match failure.
+  // "Failed to match capabilities").
+  //
+  // wdio v9 unconditionally injects `webSocketUrl: true` into the
+  // outgoing capabilities (see webdriver/build/node.js:1014) UNLESS
+  // `wdio:enforceWebDriverClassic: true` is also present —
+  // `webSocketUrl: false` is silently ignored, so we use the documented
+  // opt-out flag instead. tauri-driver only speaks the HTTP-W3C subset
+  // and rejects the BiDi capability with "Failed to match capabilities".
   capabilities: [
     {
       browserName: "wry",
-      webSocketUrl: false,
+      "wdio:enforceWebDriverClassic": true,
       "tauri:options": {
         application: tauriBinary,
       },
