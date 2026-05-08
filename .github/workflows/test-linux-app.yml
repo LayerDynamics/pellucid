@@ -78,6 +78,18 @@ jobs:
       - run: cargo install tauri-driver --locked
       - run: bun install --frozen-lockfile
       - run: bun run --filter=@pellucid/webview build
+      # Force recompile of pellucid-tauri after the frontend bundle
+      # is fresh. `tauri::generate_context!()` is a proc-macro that
+      # embeds `webview/dist/index.html` (and the rest of the bundle)
+      # at lib-compile time. cargo's incremental cache + Swatinem's
+      # restored target/ would otherwise keep an older binary that
+      # was compiled before `webview/dist/` existed in this checkout,
+      # producing `asset not found: index.html` at runtime when the
+      # wdio window.spec navigates to `tauri://localhost/`. A
+      # build.rs `rerun-if-changed=webview/dist` doesn't fix this
+      # because proc-macro outputs aren't in build.rs's tracked set.
+      # Clean the single package — fastest reliable invalidation.
+      - run: cargo clean -p pellucid-tauri
       - run: cargo build --release -p pellucid-tauri
       # Spawn tauri-driver in the background — the wdio.conf.ts expects
       # it already listening at 127.0.0.1:4444. Without this step every
