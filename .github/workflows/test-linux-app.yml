@@ -83,9 +83,29 @@ jobs:
       # it already listening at 127.0.0.1:4444. Without this step every
       # spec fails with ECONNREFUSED. The `&` backgrounds the process;
       # the runner kills it when the job ends.
+      # Sanity-check the binary's webkit2gtk linkage before spawning the
+      # driver. Tauri 2 must be linked against `libwebkit2gtk-4.1.so`;
+      # if the runner ships only 4.0 (older Ubuntu images) the binary
+      # would launch but the webview never opens — and the wdio session
+      # times out with no useful error. Failing loud here saves a 30+
+      # minute red-herring debug session later.
+      - name: verify webkit2gtk-4.1 linkage
+        run: |
+          set -eu
+          bin=${{ github.workspace }}/target/release/pellucid-tauri
+          ldd "$bin" | grep -E "libwebkit2gtk" || true
+          if ! ldd "$bin" | grep -q "libwebkit2gtk-4.1.so"; then
+            echo "::error::pellucid-tauri is not linked against libwebkit2gtk-4.1 — Tauri 2 requires it"
+            exit 1
+          fi
       - name: start tauri-driver
         run: |
-          xvfb-run --auto-servernum tauri-driver --port 4444 \
+          # `RUST_LOG=trace` on tauri-driver surfaces the WebKitWebDriver
+          # subprocess interaction so a stuck session-create dumps useful
+          # diagnostics into `tauri-driver.log` instead of staying silent
+          # (per upstream Tauri docs' debugging recommendation).
+          RUST_LOG=trace xvfb-run -a --server-args="-screen 0 1280x1024x24" \
+            tauri-driver --port 4444 \
             > "${RUNNER_TEMP:-/tmp}/tauri-driver.log" 2>&1 &
           echo "TAURI_DRIVER_PID=$!" >> "$GITHUB_ENV"
           # Wait until the driver is accepting TCP connections (max 30s).
@@ -99,7 +119,13 @@ jobs:
           echo "::error::tauri-driver failed to start within 30s"
           cat "${RUNNER_TEMP:-/tmp}/tauri-driver.log" || true
           exit 1
-      - run: xvfb-run --auto-servernum bun run e2e:desktop
+      # `-a` (alias `--auto-servernum`, kept explicit here so a future
+      # reader doesn't strip it) prevents collision when wdio retries
+      # session-create and xvfb gets re-invoked. `--server-args` matches
+      # the display geometry the wdio.conf.ts viewport assertions assume.
+      - run: |
+          xvfb-run -a --server-args="-screen 0 1280x1024x24" \
+            bun run e2e:desktop
         env:
           PELLUCID_TAURI_BIN: ${{ github.workspace }}/target/release/pellucid-tauri
       - name: stop tauri-driver

@@ -56,13 +56,27 @@ export const config = {
   bail: 0,
   baseUrl: "tauri://localhost",
   waitforTimeout: 10_000,
-  connectionRetryTimeout: 30_000,
+  // Bumped from 30s → 120s and matched at the mocha layer below.
+  // Reason: under xvfb on the GH Actions Ubuntu 24.04 runner the
+  // WebKitWebDriver session-create handshake regularly takes 60-90 s
+  // (cold WebKit2GTK boot + GPU-less rendering setup). 30 s consistently
+  // tripped before the driver could attach, looping into wdio's retry
+  // backoff. Mirrors the value used in the upstream Tauri 2 examples.
+  connectionRetryTimeout: 120_000,
   connectionRetryCount: 3,
+  // Force the classic WebDriver wire at the runner level so wdio v9
+  // does NOT spend its budget probing BiDi (which tauri-driver does
+  // not implement). Capability-level `wdio:enforceWebDriverClassic`
+  // alone leaves the runner pre-flight in BiDi mode for ~5-15 s before
+  // it falls back; setting `automationProtocol: "webdriver"` skips that.
+  automationProtocol: "webdriver",
   framework: "mocha",
   reporters: ["spec"],
   mochaOpts: {
     ui: "bdd",
-    timeout: 60_000,
+    // Match `connectionRetryTimeout` so a per-test mocha cap doesn't
+    // abort while wdio is still retrying the session-create handshake.
+    timeout: 120_000,
   },
 } satisfies import("@wdio/types").Options.Testrunner;
 
