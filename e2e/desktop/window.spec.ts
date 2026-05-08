@@ -20,29 +20,60 @@ import { browser, $, expect } from "@wdio/globals";
 // are present synchronously.
 const REACT_MOUNT_TIMEOUT_MS = 30_000;
 
+async function dumpDomOnFailure(label: string): Promise<never> {
+  // wry doesn't proxy browser console to the wdio log, so when a
+  // mount-wait times out we don't otherwise know if the bundle even
+  // loaded. Dump the live DOM + a marker for `__pellucidRuntime` so
+  // the next CI run answers "did main.tsx ever execute?".
+  const snapshot = await browser.execute(() => {
+    const runtime = (window as { __pellucidRuntime?: unknown })
+      .__pellucidRuntime
+      ? "yes"
+      : "no";
+    return JSON.stringify({
+      url: window.location.href,
+      runtimeAttached: runtime,
+      title: document.title,
+      readyState: document.readyState,
+      bodyHtml: document.body.innerHTML.slice(0, 2000),
+    });
+  });
+  // eslint-disable-next-line no-console
+  console.error(`[window.spec] ${label} — DOM snapshot:`, snapshot);
+  throw new Error(`React never mounted ${label} under wry`);
+}
+
 describe("@desktop pellucid-tauri window", () => {
   it("launches the bundled webview and shows the Pellucid heading", async () => {
     await browser.url("/");
-    await browser.waitUntil(
-      async () => (await $('[data-testid="app-title"]')).isExisting(),
-      {
-        timeout: REACT_MOUNT_TIMEOUT_MS,
-        timeoutMsg: "React never mounted [data-testid=app-title] under wry",
-      },
-    );
+    try {
+      await browser.waitUntil(
+        async () => (await $('[data-testid="app-title"]')).isExisting(),
+        {
+          timeout: REACT_MOUNT_TIMEOUT_MS,
+          timeoutMsg: "wait timeout for [data-testid=app-title]",
+        },
+      );
+    } catch {
+      await dumpDomOnFailure("[data-testid=app-title]");
+    }
     const heading = await $('[data-testid="app-title"]');
     await expect(heading).toBeExisting();
     await expect(heading).toHaveText("Pellucid");
   });
 
   it("renders the product tagline", async () => {
-    await browser.waitUntil(
-      async () => (await $('[data-testid="app-tagline"]')).isExisting(),
-      {
-        timeout: REACT_MOUNT_TIMEOUT_MS,
-        timeoutMsg: "React never mounted [data-testid=app-tagline] under wry",
-      },
-    );
+    try {
+      await browser.waitUntil(
+        async () => (await $('[data-testid="app-tagline"]')).isExisting(),
+        {
+          timeout: REACT_MOUNT_TIMEOUT_MS,
+          timeoutMsg: "wait timeout for [data-testid=app-tagline]",
+        },
+      );
+    } catch {
+      await dumpDomOnFailure("[data-testid=app-tagline]");
+    }
     const tagline = await $('[data-testid="app-tagline"]');
     await expect(tagline).toBeExisting();
     const text = await tagline.getText();
