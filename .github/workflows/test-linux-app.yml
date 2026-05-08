@@ -13,6 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@v2
@@ -22,6 +25,16 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev
+      - run: bun install --frozen-lockfile
+      # `tauri::generate_context!()` panics during proc-macro
+      # expansion if `frontendDist` doesn't exist on disk
+      # (tauri-codegen 2.x src/context.rs:189). With the
+      # `custom-protocol` feature now enabled by default on
+      # pellucid-tauri, `cargo nextest --workspace --all-targets`
+      # triggers that codegen path because pellucid-tauri's tests
+      # compile, so the webview bundle has to exist before nextest
+      # runs.
+      - run: bun run --filter=@pellucid/webview build
       # Excluding pellucid-telegram: it links `grammers-client → libsql →
       # libsql-ffi (vendored sqlite3.c)` while the rest of the workspace
       # links `sqlx → libsqlite3-sys (also vendored sqlite3.c)`. Both
@@ -140,7 +153,7 @@ jobs:
           echo "devUrl (localhost:5173) refs: ${n_devurl:-0}"
           echo "frontendDist literal refs: ${n_frontenddist:-0}"
           if [ "${n_index:-0}" -lt 1 ] || [ "${n_assets:-0}" -lt 1 ]; then
-            echo "::error::tauri build did not embed webview/dist into the binary (n_index=${n_index:-0} n_assets=${n_assets:-0}). Most likely cause: `custom-protocol` feature is missing from pellucid-tauri's default features, putting tauri-codegen in dev mode."
+            echo "::error::tauri build did not embed webview/dist into the binary (n_index=${n_index:-0} n_assets=${n_assets:-0}). Most likely cause: the 'custom-protocol' feature is missing from pellucid-tauri default features, putting tauri-codegen in dev mode."
             exit 1
           fi
           echo "embed assert ok"

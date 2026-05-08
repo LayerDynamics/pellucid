@@ -43,6 +43,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev
       - run: bun install --frozen-lockfile
+      # `tauri::generate_context!()` panics during proc-macro
+      # expansion if `frontendDist` doesn't exist on disk
+      # (tauri-codegen 2.x src/context.rs:189). With the
+      # `custom-protocol` feature now enabled by default on
+      # pellucid-tauri, the bare `cargo build -p pellucid-tauri`
+      # below triggers that codegen path. `cargo tauri build` runs
+      # `beforeBuildCommand` itself, but the bare cargo step does
+      # not, so build the webview here first.
+      - run: bun run --filter=@pellucid/webview build
       - run: cargo build --release -p pellucid-tauri --target ${{ matrix.target }}
       - name: tauri bundle
         run: cargo install tauri-cli --locked --version "^2" && cargo tauri build --target ${{ matrix.target }}

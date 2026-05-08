@@ -27,6 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
@@ -42,6 +45,15 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev \
             libsoup-3.0-dev
+      - run: bun install --frozen-lockfile
+      # `tauri::generate_context!()` panics during proc-macro expansion
+      # if `frontendDist` doesn't exist on disk
+      # (tauri-codegen 2.x src/context.rs:189). With the
+      # `custom-protocol` feature now enabled by default on
+      # pellucid-tauri, `cargo clippy --workspace --all-targets`
+      # triggers that codegen path, so the webview bundle has to
+      # exist before clippy runs.
+      - run: bun run --filter=@pellucid/webview build
       - run: cargo clippy --workspace --all-targets -- -D warnings
 
   tools:

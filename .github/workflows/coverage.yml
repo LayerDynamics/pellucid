@@ -13,6 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: llvm-tools-preview
@@ -24,6 +27,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev
+      - run: bun install --frozen-lockfile
+      # See lint.yml for the explanation: tauri-codegen panics
+      # without `webview/dist` once `custom-protocol` is enabled.
+      - run: bun run --filter=@pellucid/webview build
       # Excluding pellucid-telegram: it links `grammers-client → libsql →
       # libsql-ffi (vendored sqlite3.c)` while the rest of the workspace
       # links `sqlx → libsqlite3-sys (also vendored sqlite3.c)`. Both

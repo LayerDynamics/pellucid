@@ -17,6 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt,clippy
@@ -32,6 +35,12 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev \
             libsoup-3.0-dev
+      - run: bun install --frozen-lockfile
+      # See lint.yml for why this is required: with
+      # `custom-protocol` enabled, tauri-codegen panics during
+      # proc-macro expansion if `webview/dist` doesn't exist, even
+      # for a non-link `cargo check`.
+      - run: bun run --filter=@pellucid/webview build
       - run: cargo check --workspace --all-targets --locked
 
   ts:
