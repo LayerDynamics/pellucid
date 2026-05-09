@@ -6,26 +6,57 @@
 #
 # ## Service variables (set in Railway dashboard before deploy)
 #
-# Required:
-#   RELAY_SHARED_SECRET     — gates the /opensky/* proxy. The
-#                             C1 startup gate exits 78 if this
-#                             is missing while RAILWAY_PROJECT_ID
-#                             is present (always true on Railway).
-#   OPENSKY_CLIENT_ID       — OAuth2 client id for OpenSky.
-#   OPENSKY_CLIENT_SECRET   — OAuth2 client secret for OpenSky.
-#   AIS_API_KEY             — aisstream.io subscribe key.
+# ### Required — application
+#   RELAY_SHARED_SECRET     gates the /opensky/* proxy. The C1
+#                           startup gate exits 78 if this is
+#                           missing while RAILWAY_PROJECT_ID is
+#                           present (always true on Railway).
+#                           MUST equal the edge service's value.
+#   OPENSKY_CLIENT_ID       OAuth2 client id for OpenSky.
+#   OPENSKY_CLIENT_SECRET   OAuth2 client secret for OpenSky.
+#   AIS_API_KEY             aisstream.io subscribe key.
 #
-# Optional (with defaults set under [deploy.envs] below):
-#   PELLUCID_DB_URL         — default points at the mounted Volume.
-#   RUST_LOG                — default `info,...`.
-#   PELLUCID_PROD           — default `true`. Reinforces the C1
-#                             gate's production assertion.
+# ### Required — Litestream replica (Digital Ocean Spaces)
+# Continuous SQLite replication to Digital Ocean Spaces per
+# SPEC-001 §6 + §17.5. Without these set, the relay still boots
+# but the SQLite database is local-Volume-only — losing the
+# Volume (region failover, accidental Volume detach) loses every
+# seeded envelope.
+#
+#   LITESTREAM_REPLICA_URL   Full S3-protocol replica URL with the
+#                            non-AWS endpoint encoded as a query
+#                            string. Use a DIFFERENT bucket path
+#                            from the edge service so the two
+#                            services' WAL frames don't collide.
+#                            For Digital Ocean Spaces in Atlanta:
+#                              s3://allbuckets-1778293858293/pellucid-relay?endpoint=https://atl1.digitaloceanspaces.com&region=atl1&force-path-style=true
+#                            Empty value → Litestream OFF (relay
+#                            runs without replication; acceptable
+#                            for staging only).
+#   LITESTREAM_ACCESS_KEY_ID Digital Ocean Spaces access key id.
+#                            Litestream reads this automatically.
+#   LITESTREAM_SECRET_ACCESS_KEY  matching Digital Ocean Spaces
+#                                 secret key.
+#
+# ### Optional — Litestream tuning
+#   LITESTREAM_SYNC_INTERVAL      default `1s`
+#   LITESTREAM_RETENTION          default `24h`
+#   LITESTREAM_SNAPSHOT_INTERVAL  default `1h`
+#
+# ### Optional — application (with defaults set under [deploy.envs] below)
+#   PELLUCID_DB_URL          default points at the mounted Volume.
+#   RUST_LOG                 default `info,...`.
+#   PELLUCID_PROD            default `true`. Reinforces the C1 gate's
+#                            production assertion.
 #
 # ## Volume
 #
 # Attach a Railway Volume to this service in the dashboard with
 # mount path `/data`. The default `PELLUCID_DB_URL` below stores
-# the SQLite database there so it survives deploys.
+# the SQLite database there so it survives deploys. Litestream
+# replication still happens to the Digital Ocean Spaces bucket;
+# the Volume is the local cache + WAL working set, NOT the
+# durable copy.
 #
 # ## Port
 #
@@ -39,7 +70,10 @@ builder = "DOCKERFILE"
 dockerfilePath = "deploy/railway/relay/Dockerfile"
 
 [deploy]
-# `tini` is the entrypoint; the binary reads PORT itself.
+# `tini` is the entrypoint; the entrypoint script wraps the
+# binary in `litestream replicate -exec`. The relay's
+# `/health` route lives at the gateway-merged router and answers
+# regardless of Litestream state.
 healthcheckPath = "/health"
 healthcheckTimeout = 30
 restartPolicyType = "ON_FAILURE"

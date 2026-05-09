@@ -51,21 +51,27 @@ NOT be committed to the repo.
 | `AVIATIONSTACK_BASE_URL`     | optional | `https://api.aviationstack.com/v1` | Override for staging or wiremock'd tests                                                                                                    |
 | `RUST_LOG`                   | optional | (set in `[deploy.envs]`)  | Tracing filter. Default is `info,pellucid_edge_bin=info,pellucid_gateway=info,pellucid_handlers=info`                                       |
 
-### Storage — Litestream replica
+### Storage — Litestream replica (Digital Ocean Spaces)
 
-Continuous SQLite replication to S3-compatible object storage is
-SPEC-001 §6 / §17.5. The config file lives at
-`deploy/railway/edge/litestream.yml` and reads everything from
-env so no secrets touch the repo.
+Continuous SQLite replication to **Digital Ocean Spaces** is the
+project's chosen durable-storage backend (SPEC-001 §6 / §17.5
+calls for an S3-compatible store; Spaces is the configured
+provider). The config file lives at
+`deploy/railway/<service>/litestream.yml` and reads everything
+from env so **no secrets touch the repo**. Both services
+(`pellucid-edge` and `pellucid-relay`) are configured with
+Litestream sidecars and need the same env-var set on each
+Railway service — only the bucket path differs to keep WAL
+frames separate.
 
 | Var                              | Required | Notes                                                                                                                                       |
 | -------------------------------- | :------: | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `LITESTREAM_REPLICA_URL`         | yes\*    | Full S3-protocol URL with the non-AWS endpoint encoded as a query string. **Empty value disables Litestream entirely** (acceptable for staging only). Examples: |
-|                                  |          | • DO Spaces (Atlanta): `s3://allbuckets-1778293858293/pellucid-edge?endpoint=https://atl1.digitaloceanspaces.com&region=atl1&force-path-style=true` |
-|                                  |          | • Cloudflare R2: `s3://<bucket>/pellucid-edge?endpoint=https://<accountid>.r2.cloudflarestorage.com&region=auto&force-path-style=true`     |
-|                                  |          | • AWS S3: `s3://<bucket>/pellucid-edge` (region picked from env / instance metadata)                                                       |
-| `LITESTREAM_ACCESS_KEY_ID`       | yes\*    | DO Spaces / R2 / S3 access key id. **secret**                                                                                              |
-| `LITESTREAM_SECRET_ACCESS_KEY`   | yes\*    | Matching secret. **secret**                                                                                                                |
+| `LITESTREAM_REPLICA_URL`         | yes\*    | Full S3-protocol URL with the Digital Ocean Spaces endpoint encoded as a query string. **Empty value disables Litestream entirely** (acceptable for staging only). |
+|                                  |          | edge service: `s3://allbuckets-1778293858293/pellucid-edge?endpoint=https://atl1.digitaloceanspaces.com&region=atl1&force-path-style=true` |
+|                                  |          | relay service: `s3://allbuckets-1778293858293/pellucid-relay?endpoint=https://atl1.digitaloceanspaces.com&region=atl1&force-path-style=true` |
+|                                  |          | (Other S3-compatible backends — Cloudflare R2, AWS S3, Backblaze B2 — work via the same URL form by swapping the `endpoint=` host. The Litestream config does not hard-code a provider.) |
+| `LITESTREAM_ACCESS_KEY_ID`       | yes\*    | Digital Ocean Spaces access key id. **secret**                                                                                             |
+| `LITESTREAM_SECRET_ACCESS_KEY`   | yes\*    | Matching Digital Ocean Spaces secret key. **secret**                                                                                       |
 | `LITESTREAM_SYNC_INTERVAL`       | optional | Default `1s` — frequency of WAL ship                                                                                                       |
 | `LITESTREAM_RETENTION`           | optional | Default `24h` — WAL retention window                                                                                                       |
 | `LITESTREAM_SNAPSHOT_INTERVAL`   | optional | Default `1h` — full-snapshot cadence                                                                                                       |
