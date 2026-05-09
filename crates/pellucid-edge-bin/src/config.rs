@@ -38,6 +38,13 @@ pub mod env_names {
     /// is disabled (`/` returns 404), useful for the API-only
     /// integration tests.
     pub const PELLUCID_WEBVIEW_DIST: &str = "PELLUCID_WEBVIEW_DIST";
+    /// Hostname prefix that should serve API only — no SPA
+    /// fallback. Per SPEC-001 §17 (`api.worldmonitor.app` is "same
+    /// binary, separate route map"), requests with `Host:` matching
+    /// this prefix get a 404 for non-API paths instead of
+    /// `index.html`. Empty / missing → SPA fallback served on every
+    /// hostname (current behaviour for single-domain deploys).
+    pub const PELLUCID_API_HOST_PREFIX: &str = "PELLUCID_API_HOST_PREFIX";
 }
 
 /// Default listen address. Bound to `0.0.0.0:8080` per spec.
@@ -83,6 +90,10 @@ pub struct ConfigSource {
     /// Filesystem path to the webview's `dist/` directory. `None`
     /// → resolved from default + filesystem probe at parse time.
     pub webview_dist: Option<String>,
+    /// Hostname prefix marking API-only hosts (`Some("api.")`
+    /// suppresses the SPA fallback for `Host: api.<apex>`
+    /// requests). `None` → SPA served on every hostname.
+    pub api_host_prefix: Option<String>,
 }
 
 /// Resolve the listen-address source from the two env layers
@@ -130,6 +141,7 @@ impl ConfigSource {
             aviationstack_api_key: std::env::var(env_names::AVIATIONSTACK_API_KEY).ok(),
             aviationstack_base_url: std::env::var(env_names::AVIATIONSTACK_BASE_URL).ok(),
             webview_dist: std::env::var(env_names::PELLUCID_WEBVIEW_DIST).ok(),
+            api_host_prefix: std::env::var(env_names::PELLUCID_API_HOST_PREFIX).ok(),
         }
     }
 }
@@ -149,6 +161,12 @@ pub struct Config {
     /// off (the binary doesn't probe the filesystem; tests and the
     /// API-only edge build leave this unset).
     pub webview_dist: Option<String>,
+    /// Hostname prefix that opts a request out of the SPA fallback.
+    /// `Some("api.")` makes `Host: api.<anything>` requests get a
+    /// 404 for non-API paths; `None` (the default) keeps the
+    /// existing single-domain behaviour where the SPA falls back on
+    /// every hostname.
+    pub api_host_prefix: Option<String>,
 }
 
 impl Config {
@@ -193,6 +211,15 @@ impl Config {
                         None
                     }
                 }),
+            // Empty / whitespace-only env values are treated as
+            // unset — operators sometimes export `FOO=` to "clear" a
+            // value and we don't want that to enable host filtering
+            // with an empty prefix (which would match every Host).
+            api_host_prefix: src
+                .api_host_prefix
+                .clone()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty()),
         })
     }
 }
@@ -335,5 +362,43 @@ mod tests {
         assert!(s.db_url.is_none());
         assert!(s.aviationstack_api_key.is_none());
         assert!(s.aviationstack_base_url.is_none());
+        assert!(s.webview_dist.is_none());
+        assert!(s.api_host_prefix.is_none());
+    }
+
+    #[test]
+    fn api_host_prefix_round_trips() {
+        let src = ConfigSource {
+            api_host_prefix: Some("api.".into()),
+            ..ConfigSource::default()
+        };
+        let cfg = Config::parse(&src).unwrap();
+        assert_eq!(cfg.api_host_prefix.as_deref(), Some("api."));
+    }
+
+    #[test]
+    fn api_host_prefix_empty_string_is_treated_as_unset() {
+        // Operators sometimes export `PELLUCID_API_HOST_PREFIX=` to
+        // "clear" the value. An empty prefix would match every Host
+        // header (`"".starts_with("")` is `true`), which would
+        // suppress the SPA fallback on the apex hostname too.
+        // Normalise to None so the SPA still serves on apex.
+        for value in ["", "   ", "\t\n"] {
+            let src = ConfigSource {
+                api_host_prefix: Some(value.into()),
+                ..ConfigSource::default()
+            };
+            let cfg = Config::parse(&src).unwrap();
+            assert!(
+                cfg.api_host_prefix.is_none(),
+                "empty/whitespace value {value:?} should normalise to None"
+            );
+        }
+    }
+
+    #[test]
+    fn api_host_prefix_default_is_none() {
+        let cfg = Config::parse(&ConfigSource::default()).unwrap();
+        assert!(cfg.api_host_prefix.is_none());
     }
 }

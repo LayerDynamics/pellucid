@@ -10,8 +10,24 @@ use std::time::Duration;
 
 use pellucid_edge_bin::{build_app, Config, ConfigSource, HealthcheckBody, HEALTHCHECK_PATH};
 use serde_json::Value;
+use tempfile::TempDir;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
+
+/// Materialise a minimal SPA bundle (just `index.html`) into a
+/// fresh temp dir so the host-routing tests can stand up an
+/// edge instance with `webview_dist` pointing at a real path
+/// without requiring `bun run build` to have been run first.
+fn make_spa_dir() -> (TempDir, String) {
+    let dir = tempfile::tempdir().expect("create temp spa dir");
+    std::fs::write(
+        dir.path().join("index.html"),
+        "<!doctype html><html><body data-test='spa-shell'>pellucid</body></html>",
+    )
+    .expect("write index.html");
+    let path = dir.path().to_string_lossy().to_string();
+    (dir, path)
+}
 
 async fn spawn_edge(cfg: Config) -> String {
     let (router, _pool) = build_app(&cfg).await.unwrap();
@@ -108,6 +124,131 @@ async fn unknown_route_returns_404_via_gateway() {
         .await
         .unwrap();
     assert_eq!(resp.status(), 404);
+}
+
+#[tokio::test]
+async fn spa_falls_back_to_index_html_on_apex_host_when_dist_configured() {
+    // SPEC-001 §17: the apex hostname (and the four variant
+    // subdomains) gets the SPA bundle for any non-API path so
+    // React Router can take over client-side. With
+    // `api_host_prefix` UNSET, every host receives the SPA — the
+    // single-domain default this test pins.
+    //
+    // NOTE on status code: `tower_http::services::ServeDir::
+    // not_found_service(ServeFile)` returns the SPA `index.html`
+    // body with HTTP `404`, not `200`. Browsers ignore the status
+    // and render the body, so React Router still boots; we assert
+    // on body content rather than status so a future tower-http
+    // change to default-200 wouldn't false-fail this regression.
+    let (_dir, spa_path) = make_spa_dir();
+    let src = ConfigSource {
+        webview_dist: Some(spa_path),
+        ..ConfigSource::default()
+    };
+    let cfg = Config::parse(&src).unwrap();
+    let base = spawn_edge(cfg).await;
+
+    let resp = reqwest::Client::new()
+        .get(format!("{base}/some/spa/route"))
+        .header("host", "pellucid.world")
+        .send()
+        .await
+        .unwrap();
+    let body = resp.text().await.unwrap();
+    assert!(
+        body.contains("data-test='spa-shell'"),
+        "expected SPA shell, got: {body}"
+    );
+}
+
+#[tokio::test]
+async fn api_host_prefix_returns_plain_404_for_non_api_paths() {
+    // SPEC-001 §17: when `api_host_prefix = "api."`, a request
+    // arriving with `Host: api.<anything>` gets a plain 404 for
+    // any non-API path instead of the SPA index. Pins the
+    // `api.worldmonitor.app` rule so the api hostname is API-only
+    // (no SPA leakage). Both branches emit `404`, but the api host
+    // branch returns the literal "not found" body emitted by
+    // `HostAwareSpaFallback`, NOT the SPA shell — that's the
+    // observable difference we assert on.
+    let (_dir, spa_path) = make_spa_dir();
+    let src = ConfigSource {
+        webview_dist: Some(spa_path),
+        api_host_prefix: Some("api.".into()),
+        ..ConfigSource::default()
+    };
+    let cfg = Config::parse(&src).unwrap();
+    let base = spawn_edge(cfg).await;
+
+    let resp = reqwest::Client::new()
+        .get(format!("{base}/"))
+        .header("host", "api.pellucid.world")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 404, "api host root should be 404");
+    let body = resp.text().await.unwrap();
+    assert!(
+        !body.contains("data-test='spa-shell'"),
+        "api host should NOT return SPA body, got: {body}"
+    );
+}
+
+#[tokio::test]
+async fn api_host_prefix_still_serves_healthz() {
+    // The host filter only gates the SPA fallback; gateway routes
+    // (including `/healthz`) match under any hostname. The
+    // operational health endpoint must answer regardless of which
+    // host header the upstream load-balancer attaches — otherwise
+    // Railway's healthchecker would fail when the service is
+    // resolved by its api-prefixed name.
+    let (_dir, spa_path) = make_spa_dir();
+    let src = ConfigSource {
+        webview_dist: Some(spa_path),
+        api_host_prefix: Some("api.".into()),
+        ..ConfigSource::default()
+    };
+    let cfg = Config::parse(&src).unwrap();
+    let base = spawn_edge(cfg).await;
+
+    let resp = reqwest::Client::new()
+        .get(format!("{base}{HEALTHCHECK_PATH}"))
+        .header("host", "api.pellucid.world")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 200);
+    let body: HealthcheckBody = resp.json().await.unwrap();
+    assert!(body.ok);
+}
+
+#[tokio::test]
+async fn api_host_prefix_apex_still_gets_spa() {
+    // Same config as `api_host_prefix_returns_plain_404...`, but
+    // the request arrives WITHOUT the `api.` prefix. The SPA
+    // fallback should still serve so the apex/variant hostnames
+    // keep their existing UX. As above, status is `404` from
+    // `not_found_service` — we assert by body content.
+    let (_dir, spa_path) = make_spa_dir();
+    let src = ConfigSource {
+        webview_dist: Some(spa_path),
+        api_host_prefix: Some("api.".into()),
+        ..ConfigSource::default()
+    };
+    let cfg = Config::parse(&src).unwrap();
+    let base = spawn_edge(cfg).await;
+
+    let resp = reqwest::Client::new()
+        .get(format!("{base}/dashboard"))
+        .header("host", "pellucid.world")
+        .send()
+        .await
+        .unwrap();
+    let body = resp.text().await.unwrap();
+    assert!(
+        body.contains("data-test='spa-shell'"),
+        "apex host should still get SPA shell, got: {body}"
+    );
 }
 
 #[tokio::test]

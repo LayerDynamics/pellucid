@@ -1,0 +1,35 @@
+# Litestream configuration for pellucid-edge.
+#
+# Continuously streams the SQLite database at `/data/pellucid-edge.db`
+# to S3-compatible object storage (Digital Ocean Spaces, Cloudflare R2,
+# AWS S3, Backblaze B2) so a fresh container boot can restore the most
+# recent state in seconds.
+#
+# Spec reference: SPEC-001 §6 (Storage), §17.5 (Litestream sidecar).
+# Documented retention SLO: 24 h of WAL frames, durable snapshot
+# every 60 s.
+#
+# All credentials and the replica URL come from environment variables
+# set in the Railway dashboard — NOTHING SECRET LIVES IN THIS FILE OR
+# THE REPO. Litestream auto-reads `LITESTREAM_ACCESS_KEY_ID` and
+# `LITESTREAM_SECRET_ACCESS_KEY` for S3-protocol replicas, so the YAML
+# only references variables that vary per environment (replica URL).
+#
+# Required env vars (set per Railway service):
+#   LITESTREAM_REPLICA_URL          full s3:// URL with endpoint qs,
+#                                   e.g.  s3://bucket/path?endpoint=https://atl1.digitaloceanspaces.com&region=atl1&force-path-style=true
+#   LITESTREAM_ACCESS_KEY_ID        DO Spaces / R2 / S3 access key id
+#   LITESTREAM_SECRET_ACCESS_KEY    DO Spaces / R2 / S3 secret key
+#
+# Optional env vars:
+#   LITESTREAM_SYNC_INTERVAL        default 1s — frequency of WAL ship
+#   LITESTREAM_RETENTION            default 24h — WAL retention window
+#   LITESTREAM_SNAPSHOT_INTERVAL    default 1h — full-snapshot cadence
+
+dbs:
+  - path: /data/pellucid-edge.db
+    replicas:
+      - url: ${LITESTREAM_REPLICA_URL}
+        sync-interval: ${LITESTREAM_SYNC_INTERVAL:-1s}
+        retention: ${LITESTREAM_RETENTION:-24h}
+        snapshot-interval: ${LITESTREAM_SNAPSHOT_INTERVAL:-1h}

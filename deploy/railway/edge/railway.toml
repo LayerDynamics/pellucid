@@ -1,4 +1,4 @@
-# Railway service config — pellucid-edge
+# Railway service config — pellucid-edge (SaaS apex + api host).
 #
 # Point the Railway service at this file via the dashboard
 # "Config-as-code Path" setting:
@@ -6,30 +6,60 @@
 #
 # ## Service variables (set in Railway dashboard before deploy)
 #
-# Required:
-#   CLERK_JWT_ISSUER       — JWKS issuer URL for token verify.
-#   CLERK_JWT_AUDIENCE     — expected `aud` claim.
-#   RELAY_SHARED_SECRET    — auth header for /opensky/* upstream
-#                             calls; must equal the relay app's
-#                             value.
-#   AVIATIONSTACK_API_KEY  — aviation handler upstream key.
-#   CONVEX_DEPLOY_KEY      — Convex Cloud read key (entitlement
-#                             cache fallback).
+# ### Required — application
+#   CLERK_JWT_ISSUER         JWKS issuer URL for token verify.
+#   CLERK_JWT_AUDIENCE       expected `aud` claim.
+#   RELAY_SHARED_SECRET      auth header for /opensky/* upstream
+#                            calls; must equal the relay app's value.
+#   AVIATIONSTACK_API_KEY    aviation handler upstream key.
+#   CONVEX_DEPLOY_KEY        Convex Cloud read key (entitlement
+#                            cache fallback).
 #
-# Optional:
-#   PELLUCID_DB_URL        — default points at the mounted Volume.
-#   PELLUCID_RELAY_BASE_URL — internal URL of the relay service.
-#                             Use the Railway `RAILWAY_PRIVATE_DOMAIN`
-#                             reference to wire the two services
-#                             over the private IPv6 network:
-#                                 http://${{relay.RAILWAY_PRIVATE_DOMAIN}}:3004
-#   AVIATIONSTACK_BASE_URL — defaults to https://api.aviationstack.com/v1.
-#   RUST_LOG               — default `info,...`.
+# ### Required — Litestream replica (Digital Ocean Spaces / R2 / S3)
+#   LITESTREAM_REPLICA_URL   full S3-protocol replica URL with the
+#                            non-AWS endpoint encoded as a query
+#                            string. For Digital Ocean Spaces in
+#                            Atlanta:
+#                              s3://allbuckets-1778293858293/pellucid-edge?endpoint=https://atl1.digitaloceanspaces.com&region=atl1&force-path-style=true
+#                            For Cloudflare R2:
+#                              s3://<bucket>/pellucid-edge?endpoint=https://<accountid>.r2.cloudflarestorage.com&region=auto&force-path-style=true
+#                            Empty value → Litestream OFF, binary
+#                            runs without replication (acceptable
+#                            for staging only).
+#   LITESTREAM_ACCESS_KEY_ID DO Spaces / R2 / S3 access key id.
+#                            Litestream reads this automatically.
+#   LITESTREAM_SECRET_ACCESS_KEY  matching secret key.
+#
+# ### Optional — Litestream tuning
+#   LITESTREAM_SYNC_INTERVAL      default `1s`
+#   LITESTREAM_RETENTION          default `24h`
+#   LITESTREAM_SNAPSHOT_INTERVAL  default `1h`
+#
+# ### Optional — application
+#   PELLUCID_DB_URL          default points at the mounted Volume.
+#   PELLUCID_RELAY_BASE_URL  internal URL of the relay service.
+#                            Use the Railway `RAILWAY_PRIVATE_DOMAIN`
+#                            reference to wire the two services
+#                            over the private IPv6 network:
+#                                http://${{relay.RAILWAY_PRIVATE_DOMAIN}}:3004
+#   AVIATIONSTACK_BASE_URL   defaults to https://api.aviationstack.com/v1.
+#   PELLUCID_API_HOST_PREFIX hostname prefix that should serve API
+#                            ONLY — no SPA fallback. Spec line 1271:
+#                            `api.worldmonitor.app` is "same binary,
+#                            separate route map". Set to `api.` so
+#                            requests with `Host: api.<anything>`
+#                            return 404 for non-API paths instead of
+#                            falling through to `index.html`. Leave
+#                            unset to serve SPA on all hostnames.
+#   RUST_LOG                 default `info,...`.
 #
 # ## Volume
 #
 # Attach a Railway Volume mounted at `/data` to persist the
-# edge service's SQLite database across deploys.
+# edge service's SQLite database across deploys. Litestream
+# replication still happens to the configured replica bucket;
+# the Volume is the local cache + WAL working set, not the
+# durable copy.
 #
 # ## Port
 #

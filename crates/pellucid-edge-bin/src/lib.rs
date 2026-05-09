@@ -8,10 +8,18 @@
 pub mod config;
 pub mod middleware;
 
+use std::convert::Infallible;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
+use std::task::{Context, Poll};
 
+use axum::body::Body;
+use axum::http::{header, Request, StatusCode};
+use axum::response::{IntoResponse, Response};
 use axum::Router;
 use thiserror::Error;
+use tower::{Service, ServiceExt};
 
 use pellucid_cache::CoalesceRegistry;
 use pellucid_core::vault::EnvVault;
@@ -147,16 +155,39 @@ pub async fn build_app(cfg: &Config) -> Result<(Router, Pool), EdgeBootError> {
     // serves the SPA bundle. `not_found_service` falls back to
     // `index.html` so client-side routing works (every route the
     // React Router knows resolves to the SPA shell).
+    //
+    // SaaS host split: when `cfg.api_host_prefix` is set
+    // (`Some("api.")` per SPEC-001 §17), the fallback is wrapped in
+    // `HostAwareSpaFallback` so requests with `Host:
+    // api.<anything>` get a 404 for non-API paths instead of the
+    // SPA. The gateway routes still match under any hostname; only
+    // the catch-all fallback is gated. This keeps the spec's "same
+    // binary, separate route map" property without standing up a
+    // second deployment.
     if let Some(dir) = cfg.webview_dist.as_deref() {
         let index_html = std::path::Path::new(dir).join("index.html");
         let serve = tower_http::services::ServeDir::new(dir)
             .not_found_service(tower_http::services::ServeFile::new(index_html));
-        app = app.fallback_service(serve);
-        tracing::info!(
-            target: "pellucid::edge::spa",
-            path = dir,
-            "serving SPA bundle from {dir}"
-        );
+        if let Some(prefix) = cfg.api_host_prefix.as_deref() {
+            let host_aware = HostAwareSpaFallback {
+                inner: serve,
+                api_host_prefix: prefix.to_string(),
+            };
+            app = app.fallback_service(host_aware);
+            tracing::info!(
+                target: "pellucid::edge::spa",
+                path = dir,
+                api_host_prefix = prefix,
+                "serving SPA bundle from {dir} (404 on Host:{prefix}*)"
+            );
+        } else {
+            app = app.fallback_service(serve);
+            tracing::info!(
+                target: "pellucid::edge::spa",
+                path = dir,
+                "serving SPA bundle from {dir}"
+            );
+        }
     } else {
         tracing::info!(
             target: "pellucid::edge::spa",
@@ -165,6 +196,68 @@ pub async fn build_app(cfg: &Config) -> Result<(Router, Pool), EdgeBootError> {
     }
 
     Ok((app, pool))
+}
+
+/// Tower service that wraps the SPA `ServeDir` fallback so requests
+/// whose `Host:` header begins with `api_host_prefix` get a `404
+/// Not Found` instead of `index.html`. Implements SPEC-001 §17's
+/// `api.worldmonitor.app` rule — the binary serves both the apex
+/// (SPA) and the api-prefixed hostname (API only), but only one
+/// shape of fallback per request.
+///
+/// Inner type is the concrete `ServeDir<SetStatus<ServeFile>>` —
+/// `tower_http::services::ServeDir::not_found_service(ServeFile)`
+/// internally wraps the not-found service in `SetStatus` so it
+/// always responds with `200 OK` rather than the file's natural
+/// `404`. We carry that exact type through the field so callers
+/// don't need to BoxClone-erase it.
+#[derive(Clone)]
+struct HostAwareSpaFallback {
+    inner: tower_http::services::ServeDir<
+        tower_http::set_status::SetStatus<tower_http::services::ServeFile>,
+    >,
+    api_host_prefix: String,
+}
+
+impl Service<Request<Body>> for HostAwareSpaFallback {
+    type Response = Response;
+    type Error = Infallible;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        // `ServeDir`'s own `poll_ready` is `Poll::Ready(Ok(()))`
+        // unconditionally; mirror that so we don't have to drag a
+        // `&mut self.inner` borrow into the future.
+        Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
+        // `Host` may be absent for HTTP/1.0 requests or some test
+        // harnesses; treat that as "not the API host" and let the
+        // SPA serve. An empty `api_host_prefix` is normalised to
+        // `None` in `Config::parse`, so the `starts_with` check
+        // can't accidentally match every request here.
+        let host = req
+            .headers()
+            .get(header::HOST)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .to_string();
+        let prefix = self.api_host_prefix.clone();
+        let inner = self.inner.clone();
+        Box::pin(async move {
+            if host.starts_with(&prefix) {
+                Ok((StatusCode::NOT_FOUND, "not found").into_response())
+            } else {
+                // `ServeDir`'s `Service::Error` is `Infallible`, so
+                // the `Err` branch is statically unreachable. Use
+                // `.map` to lift `Result<Response<_>, Infallible>`
+                // → `Result<Response, Infallible>` without a panic
+                // path.
+                inner.oneshot(req).await.map(IntoResponse::into_response)
+            }
+        })
+    }
 }
 
 /// Returns the crate version string from `CARGO_PKG_VERSION`.
